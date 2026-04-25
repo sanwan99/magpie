@@ -5,6 +5,14 @@ import AppKit
 final class PanelWindow: NSPanel {
     /// Invoked when the user presses Esc inside the panel (via the responder chain's cancelOperation).
     var onCancel: (() -> Void)?
+    /// Invoked when ↵ is pressed — paste the focused clip.
+    var onPaste: (() -> Void)?
+    /// Invoked when ←/↑ is pressed — move focus toward older clips.
+    var onMoveBack: (() -> Void)?
+    /// Invoked when →/↓ is pressed — move focus toward newer clips.
+    var onMoveForward: (() -> Void)?
+    /// Invoked when ⌘1…⌘9 is pressed — paste the Nth clip directly.
+    var onPasteAtIndex: ((Int) -> Void)?
 
     init(contentRect: NSRect = .zero) {
         super.init(
@@ -29,5 +37,34 @@ final class PanelWindow: NSPanel {
 
     override func cancelOperation(_ sender: Any?) {
         onCancel?()
+    }
+
+    override func keyDown(with event: NSEvent) {
+        // ⌘1…⌘9 → quick paste at index
+        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+           let chars = event.charactersIgnoringModifiers,
+           chars.count == 1,
+           let scalar = chars.unicodeScalars.first,
+           let digit = Int(String(scalar)),
+           (1...9).contains(digit) {
+            onPasteAtIndex?(digit - 1)
+            return
+        }
+
+        switch event.keyCode {
+        case 36, 76:           // Return, Numpad Enter
+            onPaste?()
+            return
+        case 123, 126:          // Left, Up
+            onMoveBack?()
+            return
+        case 124, 125:          // Right, Down
+            onMoveForward?()
+            return
+        default:
+            break
+        }
+
+        super.keyDown(with: event)
     }
 }

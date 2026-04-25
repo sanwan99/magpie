@@ -7,16 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		13B8DBD1C611CEE1630BE75F /* ClipPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1162E5E8C9E69BD1CE9299 /* ClipPreview.swift */; };
 		307E6291EEF83EFF3A518BD5 /* ClipRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B8B0377DB6581F92715378 /* ClipRepository.swift */; };
 		34271B20EA6AA955524EBA0A /* ClipDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D52A08CCE57364B8E115C9 /* ClipDetectorTests.swift */; };
 		436274F322855B0C7DE73B77 /* ClipboardWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA20D84DF416E6615B3E0DD /* ClipboardWatcher.swift */; };
 		4ED837A293ABC42048DA8320 /* ClipRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99D42DBEC580388631D90C1 /* ClipRecord.swift */; };
 		50A1189EFF1CC3095117076F /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70DF6177E50AAB779F71CE9D /* Database.swift */; };
+		5D353A7C3CF0A3A5AA8B5C72 /* FrontmostTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24C2F3724963E4EEC1724ACD /* FrontmostTracker.swift */; };
+		692D7EC7B691C45C31E18125 /* StripeLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 873E4BF17645AEA97484E224 /* StripeLayout.swift */; };
 		7C2918D438C0FE75611A3BA3 /* ClipDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31C0A75C12ADACA05540F9D /* ClipDetector.swift */; };
 		8131DD75927F0719937F5FCA /* HotKey in Frameworks */ = {isa = PBXBuildFile; productRef = 9A34A7648A1DD0B8CBC3DC83 /* HotKey */; };
 		844501A380E09FEBFD31DD19 /* VisualEffectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5353797E132BD98E3CB79648 /* VisualEffectView.swift */; };
 		8A1DF8AC7F0C25A9101A56F8 /* ClipPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 896C3E8A869F36F73A524657 /* ClipPayload.swift */; };
 		90F15DB41562C4B14F476669 /* MagpieApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B7872BDF34770F79DAFD816 /* MagpieApp.swift */; };
+		92B835506ADC84F9B6B4E5FF /* Paster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D287871109F263ED4B4DEE3 /* Paster.swift */; };
 		93CAB35747D22B507FA98982 /* PanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F398B1B543EAF5ECC2796A64 /* PanelController.swift */; };
 		93DCDC75B68197CAFD9F9491 /* PanelWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94EC00F5705180BF6D14410 /* PanelWindow.swift */; };
 		9BFFC54969C5647DB43AA2FB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */; };
@@ -24,6 +28,7 @@
 		A81C3B720FCE908B9ECB59BD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16CF44B1430B993367B479CF /* ContentView.swift */; };
 		B75A811423F9917876131551 /* ClipType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63304A665DC30BEA81E22EC7 /* ClipType.swift */; };
 		C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */; };
+		CAC4AA3A605F21CC77F52B62 /* ClipsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10AF74F18089D297DAA78AAE /* ClipsViewModel.swift */; };
 		E03292AFE7689084A6BFCE1E /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = ACB504EB59D9D3BB7935041D /* GRDB */; };
 /* End PBXBuildFile section */
 
@@ -39,13 +44,18 @@
 
 /* Begin PBXFileReference section */
 		0B7872BDF34770F79DAFD816 /* MagpieApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagpieApp.swift; sourceTree = "<group>"; };
+		0D287871109F263ED4B4DEE3 /* Paster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paster.swift; sourceTree = "<group>"; };
+		10AF74F18089D297DAA78AAE /* ClipsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipsViewModel.swift; sourceTree = "<group>"; };
 		1188540642C28FE067DE376D /* MagpieTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MagpieTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		16CF44B1430B993367B479CF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		1B7C6DDC7D71C97047AEDB8C /* Magpie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Magpie.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		24C2F3724963E4EEC1724ACD /* FrontmostTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrontmostTracker.swift; sourceTree = "<group>"; };
 		28D52A08CCE57364B8E115C9 /* ClipDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipDetectorTests.swift; sourceTree = "<group>"; };
 		5353797E132BD98E3CB79648 /* VisualEffectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectView.swift; sourceTree = "<group>"; };
 		63304A665DC30BEA81E22EC7 /* ClipType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipType.swift; sourceTree = "<group>"; };
+		6A1162E5E8C9E69BD1CE9299 /* ClipPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipPreview.swift; sourceTree = "<group>"; };
 		70DF6177E50AAB779F71CE9D /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
+		873E4BF17645AEA97484E224 /* StripeLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripeLayout.swift; sourceTree = "<group>"; };
 		896C3E8A869F36F73A524657 /* ClipPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipPayload.swift; sourceTree = "<group>"; };
 		A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyCenter.swift; sourceTree = "<group>"; };
 		A99D42DBEC580388631D90C1 /* ClipRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipRecord.swift; sourceTree = "<group>"; };
@@ -118,7 +128,10 @@
 		A01B7D3741195A6BFD48D278 /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				6A1162E5E8C9E69BD1CE9299 /* ClipPreview.swift */,
+				10AF74F18089D297DAA78AAE /* ClipsViewModel.swift */,
 				16CF44B1430B993367B479CF /* ContentView.swift */,
+				873E4BF17645AEA97484E224 /* StripeLayout.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -168,6 +181,8 @@
 		D062922651015370DA4D5B21 /* Paste */ = {
 			isa = PBXGroup;
 			children = (
+				24C2F3724963E4EEC1724ACD /* FrontmostTracker.swift */,
+				0D287871109F263ED4B4DEE3 /* Paster.swift */,
 			);
 			path = Paste;
 			sourceTree = "<group>";
@@ -292,16 +307,21 @@
 				9BFFC54969C5647DB43AA2FB /* AppDelegate.swift in Sources */,
 				7C2918D438C0FE75611A3BA3 /* ClipDetector.swift in Sources */,
 				8A1DF8AC7F0C25A9101A56F8 /* ClipPayload.swift in Sources */,
+				13B8DBD1C611CEE1630BE75F /* ClipPreview.swift in Sources */,
 				4ED837A293ABC42048DA8320 /* ClipRecord.swift in Sources */,
 				307E6291EEF83EFF3A518BD5 /* ClipRepository.swift in Sources */,
 				B75A811423F9917876131551 /* ClipType.swift in Sources */,
 				436274F322855B0C7DE73B77 /* ClipboardWatcher.swift in Sources */,
+				CAC4AA3A605F21CC77F52B62 /* ClipsViewModel.swift in Sources */,
 				A81C3B720FCE908B9ECB59BD /* ContentView.swift in Sources */,
 				50A1189EFF1CC3095117076F /* Database.swift in Sources */,
+				5D353A7C3CF0A3A5AA8B5C72 /* FrontmostTracker.swift in Sources */,
 				C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */,
 				90F15DB41562C4B14F476669 /* MagpieApp.swift in Sources */,
 				93CAB35747D22B507FA98982 /* PanelController.swift in Sources */,
 				93DCDC75B68197CAFD9F9491 /* PanelWindow.swift in Sources */,
+				92B835506ADC84F9B6B4E5FF /* Paster.swift in Sources */,
+				692D7EC7B691C45C31E18125 /* StripeLayout.swift in Sources */,
 				844501A380E09FEBFD31DD19 /* VisualEffectView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

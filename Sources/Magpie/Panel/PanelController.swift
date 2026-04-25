@@ -6,6 +6,8 @@ import SwiftUI
 @MainActor
 final class PanelController {
     private let panel: PanelWindow
+    private let viewModel: ClipsViewModel
+    private let frontmost = FrontmostTracker()
     private(set) var isVisible: Bool = false
 
     /// Panel size — matches Stripe layout's intended footprint.
@@ -13,12 +15,15 @@ final class PanelController {
     /// Distance from the bottom of the active screen.
     static let bottomInset: CGFloat = 24
 
-    init() {
+    init(viewModel: ClipsViewModel) {
+        self.viewModel = viewModel
         let frame = NSRect(origin: .zero, size: Self.panelSize)
         self.panel = PanelWindow(contentRect: frame)
         self.panel.contentView = makeContentView()
-        self.panel.onCancel = { [weak self] in
-            self?.hide()
+        wireKeyboard()
+
+        viewModel.onPasteRequest = { [weak self] in
+            self?.paste()
         }
     }
 
@@ -34,6 +39,11 @@ final class PanelController {
 
     func show() {
         guard !isVisible else { return }
+        // Snapshot the frontmost app *before* the panel becomes key, so paste
+        // can target the correct app even if .nonactivatingPanel ever flakes.
+        frontmost.snapshot()
+        viewModel.refresh()
+
         positionAtBottomCenter()
         let target = panel.frame
         let start = target.offsetBy(dx: 0, dy: -target.height - 16)
@@ -64,6 +74,36 @@ final class PanelController {
         isVisible = false
     }
 
+    // MARK: - Paste flow
+
+    /// Paste the currently focused clip into the previously frontmost app.
+    private func paste() {
+        guard let clip = viewModel.focusedClip else { return }
+        executePaste(clip)
+    }
+
+    /// Paste the Nth clip directly (⌘1…⌘9).
+    private func pasteAt(_ index: Int) {
+        guard let clip = viewModel.clip(at: index) else { return }
+        viewModel.focusedIndex = index
+        executePaste(clip)
+    }
+
+    private func executePaste(_ clip: ClipDisplayItem) {
+        let target = frontmost.savedTarget
+        guard let written = Paster.writeToPasteboard(clip), !written.isEmpty else {
+            NSLog("[paste] clip has no pasteable content (id=%@ type=%@)", clip.id, clip.type.rawValue)
+            return
+        }
+        NSLog("[paste] writing %d chars (type=%@) into pasteboard, target=%@",
+              written.count, clip.type.rawValue, target?.bundleIdentifier ?? "?")
+        hide()
+        // Slight delay so the panel has time to fade out before keystroke posts.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            Paster.paste(into: target)
+        }
+    }
+
     // MARK: - Layout
 
     private func positionAtBottomCenter() {
@@ -75,10 +115,30 @@ final class PanelController {
         panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: false)
     }
 
+    // MARK: - Keyboard wiring
+
+    private func wireKeyboard() {
+        panel.onCancel = { [weak self] in
+            self?.hide()
+        }
+        panel.onPaste = { [weak self] in
+            self?.paste()
+        }
+        panel.onMoveBack = { [weak self] in
+            self?.viewModel.moveBack()
+        }
+        panel.onMoveForward = { [weak self] in
+            self?.viewModel.moveForward()
+        }
+        panel.onPasteAtIndex = { [weak self] index in
+            self?.pasteAt(index)
+        }
+    }
+
     // MARK: - Content
 
     private func makeContentView() -> NSView {
-        let host = NSHostingView(rootView: PanelContentView())
+        let host = NSHostingView(rootView: PanelContentView(viewModel: viewModel))
         let container = NSView(frame: NSRect(origin: .zero, size: Self.panelSize))
         container.wantsLayer = true
         container.layer?.cornerRadius = 18
@@ -99,17 +159,53 @@ final class PanelController {
     }
 }
 
-/// Placeholder content shown inside the panel during v0.1 first/second steps.
-/// Replaced by Stripe layout in step 7.
+/// Top-level panel content — header strip + Stripe layout (or empty state).
 private struct PanelContentView: View {
+    @ObservedObject var viewModel: ClipsViewModel
+
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 0) {
+            header
+            Divider().opacity(0.4)
+            content
+        }
+    }
+
+    private var header: some View {
+        HStack {
             Text("Magpie")
-                .font(.system(size: 22, weight: .bold))
-            Text("⌘P toggles · Esc hides · v0.1 skeleton")
+                .font(.system(size: 14, weight: .bold))
+            Spacer()
+            Text("\(viewModel.clips.count) clip\(viewModel.clips.count == 1 ? "" : "s")")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
+                .monospacedDigit()
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if viewModel.clips.isEmpty {
+            VStack(spacing: 6) {
+                Spacer()
+                Image(systemName: "tray")
+                    .font(.system(size: 22))
+                    .foregroundStyle(.tertiary)
+                Text("No clips yet")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.secondary)
+                Text("Copy something — text, code, a link, or a folder path — to get started.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            StripeLayout(viewModel: viewModel)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 }
