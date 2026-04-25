@@ -91,6 +91,24 @@ final class ClipsViewModel {
 
     var focusedIndex: Int = 0
 
+    // MARK: - Layout preferences (persisted)
+
+    /// The currently active panel layout. ⌘\ cycles. Persisted to UserDefaults.
+    var activeLayout: ActiveLayout = .stripe {
+        didSet {
+            UserDefaults.standard.set(activeLayout.rawValue, forKey: Self.activeLayoutKey)
+        }
+    }
+
+    /// Whether the right-side detail pane is shown. Space toggles. Persisted.
+    /// Default OFF so the layout has full width for cards (matches v0.1 feel).
+    /// Users opt in via Space when they want a fuller view of a clip.
+    var detailPaneVisible: Bool = false {
+        didSet {
+            UserDefaults.standard.set(detailPaneVisible, forKey: Self.detailPaneKey)
+        }
+    }
+
     /// Owned by `PanelController`. Called when the UI requests a paste.
     @ObservationIgnored
     var onPasteRequest: (() -> Void)?
@@ -104,10 +122,37 @@ final class ClipsViewModel {
     @ObservationIgnored
     private let limit: Int
 
+    @ObservationIgnored
+    private static let activeLayoutKey = "magpie.activeLayout"
+    @ObservationIgnored
+    private static let detailPaneKey = "magpie.detailPaneVisible"
+
     init(repository: ClipRepository, limit: Int = 200) {
         self.repository = repository
         self.limit = limit
+
+        // Restore persisted layout preferences before refresh — so initial
+        // render uses the user's last choice instead of the default.
+        let defaults = UserDefaults.standard
+        if let raw = defaults.string(forKey: Self.activeLayoutKey),
+           let restored = ActiveLayout(rawValue: raw) {
+            self.activeLayout = restored
+        }
+        if defaults.object(forKey: Self.detailPaneKey) != nil {
+            self.detailPaneVisible = defaults.bool(forKey: Self.detailPaneKey)
+        }
+
         refresh()
+    }
+
+    // MARK: - Layout actions
+
+    func cycleLayout() {
+        activeLayout = activeLayout.next
+    }
+
+    func toggleDetailPane() {
+        detailPaneVisible.toggle()
     }
 
     // MARK: - Refresh
@@ -191,5 +236,16 @@ final class ClipsViewModel {
         guard clips.indices.contains(index) else { return }
         focusedIndex = index
         onPasteRequest?()
+    }
+
+    /// Single-click on a card: focus it AND open the detail pane (auto-show
+    /// the user's intent). Arrow-key navigation deliberately does NOT do
+    /// this — that path is for browsing without committing to detail view.
+    func focusAndShowDetail(at index: Int) {
+        guard clips.indices.contains(index) else { return }
+        focusedIndex = index
+        if !detailPaneVisible {
+            detailPaneVisible = true
+        }
     }
 }

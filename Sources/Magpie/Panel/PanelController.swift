@@ -12,8 +12,9 @@ final class PanelController {
     private var afterHide: (() -> Void)?
     private(set) var isVisible: Bool = false
 
-    /// Panel size — wide enough for Stripe layout + top bar (search + filter rail).
-    static let panelSize = NSSize(width: 980, height: 380)
+    /// Panel size — wide enough for layout body + Detail Pane side-by-side.
+    /// 1200 ≈ 820 main + 1 divider + ~360 detail; height fits Stripe 220 + top bar.
+    static let panelSize = NSSize(width: 1200, height: 380)
     /// Distance from the bottom of the active screen.
     static let bottomInset: CGFloat = 24
 
@@ -189,6 +190,11 @@ final class PanelController {
                 viewModel.toggleFocusedPin()
                 return nil
             }
+            // ⌘\ cycle layout (Stripe → Stack → Grid → Stripe)
+            if chars == "\\" {
+                viewModel.cycleLayout()
+                return nil
+            }
             // ⌘1…⌘9 quick paste at index
             if chars.count == 1,
                let scalar = chars.unicodeScalars.first,
@@ -197,6 +203,21 @@ final class PanelController {
                 pasteAt(digit - 1)
                 return nil
             }
+        }
+
+        // Space toggles the Detail Pane.
+        // Trick: SearchField auto-focuses on panel show, so first-responder is
+        // always NSTextView and `isTextFieldEditing()` always reports true.
+        // Use `searchInput.isEmpty` instead — only intercept Space when the
+        // search field has no content. Once the user is mid-query (e.g.
+        // typing `react hook`), Space falls through as a literal character.
+        if event.keyCode == 49,
+           event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [],
+           viewModel.searchInput.isEmpty {
+            withAnimation(.easeOut(duration: 0.18)) {
+                viewModel.toggleDetailPane()
+            }
+            return nil
         }
 
         // Arrow keys: always navigate cards. The search field is short enough
@@ -213,6 +234,13 @@ final class PanelController {
         }
 
         return event
+    }
+
+    /// True while a SwiftUI TextField (or similar) is actively editing.
+    /// SwiftUI uses `NSTextView` as the field editor when a TextField is focused.
+    private func isTextFieldEditing() -> Bool {
+        guard let fr = panel.firstResponder else { return false }
+        return fr is NSTextView
     }
 
     /// Esc cascade per spec §06: clear search → clear filters → hide panel.
@@ -242,7 +270,10 @@ final class PanelController {
     // MARK: - Content
 
     private func makeContentView() -> NSView {
-        let host = NSHostingView(rootView: PanelContentView(viewModel: viewModel))
+        let host = NSHostingView(rootView: PanelContentView(
+            viewModel: viewModel,
+            onPaste: { [weak self] in self?.paste() }
+        ))
         let container = NSView(frame: NSRect(origin: .zero, size: Self.panelSize))
         container.wantsLayer = true
         container.layer?.cornerRadius = 18
@@ -263,17 +294,21 @@ final class PanelController {
     }
 }
 
-/// Top-level panel content — top bar (search + filter rail) + body (Stripe / empty state).
+/// Top-level panel content — top bar (search + filter rail) + body
+/// (active layout + optional Detail Pane).
 private struct PanelContentView: View {
     let viewModel: ClipsViewModel
+    let onPaste: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             topBar
             Divider().opacity(0.4)
-            content
+            body(for: viewModel.activeLayout)
         }
     }
+
+    // MARK: - Top bar
 
     private var topBar: some View {
         VStack(spacing: 8) {
@@ -281,6 +316,8 @@ private struct PanelContentView: View {
                 Text("Magpie")
                     .font(.system(size: 13, weight: .bold))
                 SearchField(viewModel: viewModel)
+                LayoutSwitcher(viewModel: viewModel)
+                DetailPaneToggle(viewModel: viewModel)
             }
             FilterRail(viewModel: viewModel)
         }
@@ -289,15 +326,50 @@ private struct PanelContentView: View {
         .padding(.bottom, 10)
     }
 
+    // MARK: - Body
+
     @ViewBuilder
-    private var content: some View {
+    private func body(for layout: ActiveLayout) -> some View {
         if viewModel.clips.isEmpty {
             emptyState
         } else {
-            StripeLayout(viewModel: viewModel)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            HStack(spacing: 0) {
+                layoutView(layout)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if viewModel.detailPaneVisible {
+                    Divider().opacity(0.4)
+                        .transition(.opacity)
+                    DetailPane(
+                        clip: viewModel.focusedClip,
+                        onPaste: onPaste,
+                        onTogglePin: { viewModel.toggleFocusedPin() }
+                    )
+                    .frame(width: detailWidth(for: layout))
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+            }
         }
     }
+
+    @ViewBuilder
+    private func layoutView(_ layout: ActiveLayout) -> some View {
+        switch layout {
+        case .stripe: StripeLayout(viewModel: viewModel)
+        case .stack:  StackLayout(viewModel: viewModel)
+        case .grid:   GridLayout(viewModel: viewModel)
+        }
+    }
+
+    private func detailWidth(for layout: ActiveLayout) -> CGFloat {
+        switch layout {
+        case .stripe: return 360  // spec §08
+        case .stack:  return 380  // spec §08 — wider for richer detail
+        case .grid:   return 360
+        }
+    }
+
+    // MARK: - Empty state
 
     private var emptyState: some View {
         VStack(spacing: 6) {
@@ -316,5 +388,75 @@ private struct PanelContentView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Layout switcher (top-bar control)
+
+private struct LayoutSwitcher: View {
+    @Bindable var viewModel: ClipsViewModel
+
+    var body: some View {
+        Menu {
+            ForEach(ActiveLayout.allCases, id: \.self) { layout in
+                Button {
+                    viewModel.activeLayout = layout
+                } label: {
+                    HStack {
+                        Image(systemName: icon(layout))
+                        Text(layout.displayName)
+                        if viewModel.activeLayout == layout {
+                            Spacer()
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: icon(viewModel.activeLayout))
+                    .font(.system(size: 11))
+                Text("⌘\\")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("Switch layout (⌘\\)")
+    }
+
+    private func icon(_ layout: ActiveLayout) -> String {
+        switch layout {
+        case .stripe: return "rectangle.split.3x1"
+        case .stack:  return "list.bullet.rectangle"
+        case .grid:   return "square.grid.2x2"
+        }
+    }
+}
+
+// MARK: - Detail pane toggle (top-bar control)
+
+private struct DetailPaneToggle: View {
+    @Bindable var viewModel: ClipsViewModel
+
+    var body: some View {
+        Button {
+            viewModel.toggleDetailPane()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: viewModel.detailPaneVisible ? "sidebar.right" : "sidebar.squares.right")
+                    .font(.system(size: 11))
+                Text("Space")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.borderless)
+        .help("Toggle detail pane (Space)")
     }
 }
