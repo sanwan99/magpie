@@ -7,14 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		307E6291EEF83EFF3A518BD5 /* ClipRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B8B0377DB6581F92715378 /* ClipRepository.swift */; };
+		34271B20EA6AA955524EBA0A /* ClipDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D52A08CCE57364B8E115C9 /* ClipDetectorTests.swift */; };
+		436274F322855B0C7DE73B77 /* ClipboardWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA20D84DF416E6615B3E0DD /* ClipboardWatcher.swift */; };
+		4ED837A293ABC42048DA8320 /* ClipRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99D42DBEC580388631D90C1 /* ClipRecord.swift */; };
+		50A1189EFF1CC3095117076F /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70DF6177E50AAB779F71CE9D /* Database.swift */; };
+		7C2918D438C0FE75611A3BA3 /* ClipDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31C0A75C12ADACA05540F9D /* ClipDetector.swift */; };
 		8131DD75927F0719937F5FCA /* HotKey in Frameworks */ = {isa = PBXBuildFile; productRef = 9A34A7648A1DD0B8CBC3DC83 /* HotKey */; };
 		844501A380E09FEBFD31DD19 /* VisualEffectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5353797E132BD98E3CB79648 /* VisualEffectView.swift */; };
+		8A1DF8AC7F0C25A9101A56F8 /* ClipPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 896C3E8A869F36F73A524657 /* ClipPayload.swift */; };
 		90F15DB41562C4B14F476669 /* MagpieApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B7872BDF34770F79DAFD816 /* MagpieApp.swift */; };
 		93CAB35747D22B507FA98982 /* PanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F398B1B543EAF5ECC2796A64 /* PanelController.swift */; };
 		93DCDC75B68197CAFD9F9491 /* PanelWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94EC00F5705180BF6D14410 /* PanelWindow.swift */; };
 		9BFFC54969C5647DB43AA2FB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */; };
 		A5F6F0BCAD923D8F7CC44757 /* MagpieTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */; };
 		A81C3B720FCE908B9ECB59BD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16CF44B1430B993367B479CF /* ContentView.swift */; };
+		B75A811423F9917876131551 /* ClipType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63304A665DC30BEA81E22EC7 /* ClipType.swift */; };
 		C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */; };
 		E03292AFE7689084A6BFCE1E /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = ACB504EB59D9D3BB7935041D /* GRDB */; };
 /* End PBXBuildFile section */
@@ -34,12 +42,20 @@
 		1188540642C28FE067DE376D /* MagpieTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MagpieTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		16CF44B1430B993367B479CF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		1B7C6DDC7D71C97047AEDB8C /* Magpie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Magpie.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		28D52A08CCE57364B8E115C9 /* ClipDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipDetectorTests.swift; sourceTree = "<group>"; };
 		5353797E132BD98E3CB79648 /* VisualEffectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectView.swift; sourceTree = "<group>"; };
+		63304A665DC30BEA81E22EC7 /* ClipType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipType.swift; sourceTree = "<group>"; };
+		70DF6177E50AAB779F71CE9D /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
+		896C3E8A869F36F73A524657 /* ClipPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipPayload.swift; sourceTree = "<group>"; };
 		A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyCenter.swift; sourceTree = "<group>"; };
+		A99D42DBEC580388631D90C1 /* ClipRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipRecord.swift; sourceTree = "<group>"; };
+		B31C0A75C12ADACA05540F9D /* ClipDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipDetector.swift; sourceTree = "<group>"; };
 		B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagpieTests.swift; sourceTree = "<group>"; };
 		C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D94EC00F5705180BF6D14410 /* PanelWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelWindow.swift; sourceTree = "<group>"; };
+		E0B8B0377DB6581F92715378 /* ClipRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipRepository.swift; sourceTree = "<group>"; };
 		F398B1B543EAF5ECC2796A64 /* PanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelController.swift; sourceTree = "<group>"; };
+		FDA20D84DF416E6615B3E0DD /* ClipboardWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardWatcher.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +91,7 @@
 		4E6A4FC732AEF62C8B84FF57 /* MagpieTests */ = {
 			isa = PBXGroup;
 			children = (
+				28D52A08CCE57364B8E115C9 /* ClipDetectorTests.swift */,
 				B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */,
 			);
 			path = MagpieTests;
@@ -109,6 +126,9 @@
 		A45FCA91220AEF2DE1691126 /* Storage */ = {
 			isa = PBXGroup;
 			children = (
+				A99D42DBEC580388631D90C1 /* ClipRecord.swift */,
+				E0B8B0377DB6581F92715378 /* ClipRepository.swift */,
+				70DF6177E50AAB779F71CE9D /* Database.swift */,
 			);
 			path = Storage;
 			sourceTree = "<group>";
@@ -155,6 +175,10 @@
 		DFA52A3F6B19F299C5976270 /* Clipboard */ = {
 			isa = PBXGroup;
 			children = (
+				FDA20D84DF416E6615B3E0DD /* ClipboardWatcher.swift */,
+				B31C0A75C12ADACA05540F9D /* ClipDetector.swift */,
+				896C3E8A869F36F73A524657 /* ClipPayload.swift */,
+				63304A665DC30BEA81E22EC7 /* ClipType.swift */,
 			);
 			path = Clipboard;
 			sourceTree = "<group>";
@@ -256,6 +280,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				34271B20EA6AA955524EBA0A /* ClipDetectorTests.swift in Sources */,
 				A5F6F0BCAD923D8F7CC44757 /* MagpieTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -265,7 +290,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				9BFFC54969C5647DB43AA2FB /* AppDelegate.swift in Sources */,
+				7C2918D438C0FE75611A3BA3 /* ClipDetector.swift in Sources */,
+				8A1DF8AC7F0C25A9101A56F8 /* ClipPayload.swift in Sources */,
+				4ED837A293ABC42048DA8320 /* ClipRecord.swift in Sources */,
+				307E6291EEF83EFF3A518BD5 /* ClipRepository.swift in Sources */,
+				B75A811423F9917876131551 /* ClipType.swift in Sources */,
+				436274F322855B0C7DE73B77 /* ClipboardWatcher.swift in Sources */,
 				A81C3B720FCE908B9ECB59BD /* ContentView.swift in Sources */,
+				50A1189EFF1CC3095117076F /* Database.swift in Sources */,
 				C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */,
 				90F15DB41562C4B14F476669 /* MagpieApp.swift in Sources */,
 				93CAB35747D22B507FA98982 /* PanelController.swift in Sources */,
@@ -290,12 +322,13 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.sanwan.MagpieTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sanwan.magpie.tests;
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Magpie.app/Contents/MacOS/Magpie";
 			};
@@ -469,12 +502,13 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 					"@loader_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.sanwan.MagpieTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sanwan.magpie.tests;
 				SDKROOT = macosx;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Magpie.app/Contents/MacOS/Magpie";
 			};

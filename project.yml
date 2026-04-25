@@ -68,6 +68,8 @@ targets:
       base:
         BUNDLE_LOADER: $(TEST_HOST)
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/Magpie.app/Contents/MacOS/Magpie
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.sanwan.magpie.tests
     dependencies:
       - target: Magpie
 
