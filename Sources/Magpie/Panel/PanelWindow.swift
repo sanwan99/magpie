@@ -13,6 +13,8 @@ final class PanelWindow: NSPanel {
     var onMoveForward: (() -> Void)?
     /// Invoked when ⌘1…⌘9 is pressed — paste the Nth clip directly.
     var onPasteAtIndex: ((Int) -> Void)?
+    /// Invoked when ⌘D is pressed — toggle pinned for the focused clip.
+    var onTogglePin: (() -> Void)?
 
     init(contentRect: NSRect = .zero) {
         super.init(
@@ -40,15 +42,22 @@ final class PanelWindow: NSPanel {
     }
 
     override func keyDown(with event: NSEvent) {
-        // ⌘1…⌘9 → quick paste at index
-        if event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
-           let chars = event.charactersIgnoringModifiers,
-           chars.count == 1,
-           let scalar = chars.unicodeScalars.first,
-           let digit = Int(String(scalar)),
-           (1...9).contains(digit) {
-            onPasteAtIndex?(digit - 1)
-            return
+        let cmdOnly = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
+
+        if cmdOnly, let chars = event.charactersIgnoringModifiers {
+            // ⌘1…⌘9 → quick paste at index
+            if chars.count == 1,
+               let scalar = chars.unicodeScalars.first,
+               let digit = Int(String(scalar)),
+               (1...9).contains(digit) {
+                onPasteAtIndex?(digit - 1)
+                return
+            }
+            // ⌘D → toggle pin
+            if chars == "d" {
+                onTogglePin?()
+                return
+            }
         }
 
         switch event.keyCode {

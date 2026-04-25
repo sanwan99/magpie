@@ -42,26 +42,48 @@ enum Paster {
             NSLog("[paste] no frontmost target — skipping ⌘V (just wrote pasteboard)")
             return
         }
+        let bid = target.bundleIdentifier ?? "?"
+        NSLog("[paste] activating target=%@ active=%d", bid, target.isActive ? 1 : 0)
         target.activate()
         // Small delay to let the activation propagate before posting the keystroke.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+            let frontNow = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?"
+            NSLog("[paste] firing ⌘V (frontmost now=%@)", frontNow)
             simulateCmdV()
         }
     }
 
+    /// Posts a full ⌘V key sequence: ⌘ down → V down → V up → ⌘ up.
+    ///
+    /// Why the full sequence (instead of just V down/up with .maskCommand):
+    /// the user is often still physically holding ⌘ when this fires (it was
+    /// part of the ⌘1-9 hotkey that triggered us). With CGEventSource
+    /// `.combinedSessionState`, posted-event flags get merged with the live
+    /// modifier state, which can race with user release/hold and produce
+    /// inconsistent outcomes. We use `.privateState` so the event's flags are
+    /// taken literally, and we send the explicit ⌘ press/release ourselves —
+    /// this makes the sequence robust regardless of what the user is doing
+    /// physically at the moment we fire.
     private static func simulateCmdV() {
-        let src = CGEventSource(stateID: .combinedSessionState)
-        let vKey: CGKeyCode = 0x09 // ANSI V
-        guard
-            let down = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: true),
-            let up = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: false)
-        else {
-            NSLog("[paste] failed to construct CGEvent — Accessibility permission missing?")
-            return
+        let src = CGEventSource(stateID: .privateState)
+        let cmdKey: CGKeyCode = 0x37  // Left Command
+        let vKey: CGKeyCode = 0x09    // ANSI V
+
+        if let cmdDown = CGEvent(keyboardEventSource: src, virtualKey: cmdKey, keyDown: true) {
+            cmdDown.flags = .maskCommand
+            cmdDown.post(tap: .cghidEventTap)
         }
-        down.flags = .maskCommand
-        up.flags = .maskCommand
-        down.post(tap: .cghidEventTap)
-        up.post(tap: .cghidEventTap)
+        if let vDown = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: true) {
+            vDown.flags = .maskCommand
+            vDown.post(tap: .cghidEventTap)
+        }
+        if let vUp = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: false) {
+            vUp.flags = .maskCommand
+            vUp.post(tap: .cghidEventTap)
+        }
+        if let cmdUp = CGEvent(keyboardEventSource: src, virtualKey: cmdKey, keyDown: false) {
+            cmdUp.flags = []
+            cmdUp.post(tap: .cghidEventTap)
+        }
     }
 }

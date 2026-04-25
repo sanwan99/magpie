@@ -4,6 +4,9 @@ import SwiftUI
 struct ClipPreview: View {
     let clip: ClipDisplayItem
     var isFocused: Bool = false
+    /// If set, render a `⌘N` shortcut badge in the header. Stripe layout
+    /// passes 1-9 for the first nine cards (matching the ⌘1-⌘9 hotkeys).
+    var shortcutNumber: Int? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -29,13 +32,27 @@ struct ClipPreview: View {
             y: isFocused ? 2 : 1
         )
         .offset(y: isFocused ? -2 : 0)
-        .animation(.easeOut(duration: 0.12), value: isFocused)
+        // No SwiftUI animation modifier here — applying `.animation(value:)` to
+        // every card causes all 9+ views to recompute styles on each focus
+        // change, which compounds with ScrollViewReader's centering. The
+        // visual snap is sharp and fast; we re-add motion polish in v0.3.
     }
 
     // MARK: - Header (type icon + label + age)
 
     private var header: some View {
         HStack(spacing: 6) {
+            if let n = shortcutNumber {
+                Text("⌘\(n)")
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(.primary.opacity(0.72))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.primary.opacity(0.08))
+                    )
+            }
             Image(systemName: typeIcon)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)

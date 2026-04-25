@@ -8,10 +8,12 @@ final class PanelController {
     private let panel: PanelWindow
     private let viewModel: ClipsViewModel
     private let frontmost = FrontmostTracker()
+    private var keyMonitor: Any?
+    private var afterHide: (() -> Void)?
     private(set) var isVisible: Bool = false
 
-    /// Panel size — matches Stripe layout's intended footprint.
-    static let panelSize = NSSize(width: 980, height: 320)
+    /// Panel size — wide enough for Stripe layout + top bar (search + filter rail).
+    static let panelSize = NSSize(width: 980, height: 380)
     /// Distance from the bottom of the active screen.
     static let bottomInset: CGFloat = 24
 
@@ -61,15 +63,30 @@ final class PanelController {
     }
 
     func hide() {
-        guard isVisible else { return }
+        guard isVisible else {
+            // Even if we weren't visible, run any pending after-hide hook so
+            // paste flows can't get stranded.
+            afterHide?()
+            afterHide = nil
+            return
+        }
         let target = panel.frame.offsetBy(dx: 0, dy: -panel.frame.height - 16)
+        // Drop SwiftUI's first responder (the SearchField) immediately, otherwise
+        // a fast follow-up CGEvent ⌘V would land on the panel's text field
+        // instead of the app behind us.
+        panel.makeFirstResponder(nil)
+        let pendingAfter = afterHide
+        afterHide = nil
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.22
             ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().setFrame(target, display: true)
             panel.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
+            // orderOut tears down keyWindow + revokes frontmost focus from the panel.
+            // Only after this is it safe to simulate ⌘V into the previously frontmost app.
             self?.panel.orderOut(nil)
+            pendingAfter?()
         })
         isVisible = false
     }
@@ -97,11 +114,13 @@ final class PanelController {
         }
         NSLog("[paste] writing %d chars (type=%@) into pasteboard, target=%@",
               written.count, clip.type.rawValue, target?.bundleIdentifier ?? "?")
-        hide()
-        // Slight delay so the panel has time to fade out before keystroke posts.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+        // Schedule the actual ⌘V to fire only AFTER the panel's hide animation
+        // completes and orderOut runs — that way the panel is no longer the
+        // keyWindow, and the synthetic ⌘V lands on the previously frontmost app.
+        afterHide = {
             Paster.paste(into: target)
         }
+        hide()
     }
 
     // MARK: - Layout
@@ -119,7 +138,7 @@ final class PanelController {
 
     private func wireKeyboard() {
         panel.onCancel = { [weak self] in
-            self?.hide()
+            self?.handleCancel()
         }
         panel.onPaste = { [weak self] in
             self?.paste()
@@ -132,6 +151,91 @@ final class PanelController {
         }
         panel.onPasteAtIndex = { [weak self] index in
             self?.pasteAt(index)
+        }
+        panel.onTogglePin = { [weak self] in
+            self?.viewModel.toggleFocusedPin()
+        }
+
+        // SwiftUI's TextField (now hosting the search field) sits at the front of
+        // the responder chain and swallows several command keystrokes that we want
+        // to handle at the panel level (⌘D for pin, ⌘1-9 for quick paste, Esc for
+        // the clear-cascade). Install a local NSEvent monitor that catches these
+        // before SwiftUI sees them, but only while the panel is the key window.
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            guard self.panel.isKeyWindow else { return event }
+            return self.handleLocalKey(event)
+        }
+    }
+
+    private func handleLocalKey(_ event: NSEvent) -> NSEvent? {
+        let cmd = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
+
+        // Esc — clear-cascade (always wins, even while typing in the search field).
+        if event.keyCode == 53 {
+            handleCancel()
+            return nil
+        }
+
+        // Return / Numpad Enter — paste focused clip (always wins).
+        if event.keyCode == 36 || event.keyCode == 76 {
+            paste()
+            return nil
+        }
+
+        if cmd, let chars = event.charactersIgnoringModifiers {
+            // ⌘D toggle pin
+            if chars == "d" {
+                viewModel.toggleFocusedPin()
+                return nil
+            }
+            // ⌘1…⌘9 quick paste at index
+            if chars.count == 1,
+               let scalar = chars.unicodeScalars.first,
+               let digit = Int(String(scalar)),
+               (1...9).contains(digit) {
+                pasteAt(digit - 1)
+                return nil
+            }
+        }
+
+        // Arrow keys: always navigate cards. The search field is short enough
+        // that ceding caret movement to it isn't worth losing primary nav.
+        switch event.keyCode {
+        case 123, 126: // Left, Up
+            viewModel.moveBack()
+            return nil
+        case 124, 125: // Right, Down
+            viewModel.moveForward()
+            return nil
+        default:
+            break
+        }
+
+        return event
+    }
+
+    /// Esc cascade per spec §06: clear search → clear filters → hide panel.
+    private func handleCancel() {
+        if !viewModel.searchInput.isEmpty {
+            viewModel.searchInput = ""
+            viewModel.refresh()
+            return
+        }
+        if viewModel.typeFilter != nil {
+            viewModel.typeFilter = nil
+            return
+        }
+        if viewModel.pinnedOnly {
+            viewModel.pinnedOnly = false
+            return
+        }
+        hide()
+    }
+
+    deinit {
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
         }
     }
 
@@ -159,53 +263,58 @@ final class PanelController {
     }
 }
 
-/// Top-level panel content — header strip + Stripe layout (or empty state).
+/// Top-level panel content — top bar (search + filter rail) + body (Stripe / empty state).
 private struct PanelContentView: View {
-    @ObservedObject var viewModel: ClipsViewModel
+    let viewModel: ClipsViewModel
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            topBar
             Divider().opacity(0.4)
             content
         }
     }
 
-    private var header: some View {
-        HStack {
-            Text("Magpie")
-                .font(.system(size: 14, weight: .bold))
-            Spacer()
-            Text("\(viewModel.clips.count) clip\(viewModel.clips.count == 1 ? "" : "s")")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
+    private var topBar: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 12) {
+                Text("Magpie")
+                    .font(.system(size: 13, weight: .bold))
+                SearchField(viewModel: viewModel)
+            }
+            FilterRail(viewModel: viewModel)
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
-        .padding(.bottom, 8)
+        .padding(.bottom, 10)
     }
 
     @ViewBuilder
     private var content: some View {
         if viewModel.clips.isEmpty {
-            VStack(spacing: 6) {
-                Spacer()
-                Image(systemName: "tray")
-                    .font(.system(size: 22))
-                    .foregroundStyle(.tertiary)
-                Text("No clips yet")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.secondary)
-                Text("Copy something — text, code, a link, or a folder path — to get started.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            emptyState
         } else {
             StripeLayout(viewModel: viewModel)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 6) {
+            Spacer()
+            Image(systemName: viewModel.totalClipCount == 0 ? "tray" : "magnifyingglass")
+                .font(.system(size: 22))
+                .foregroundStyle(.tertiary)
+            Text(viewModel.totalClipCount == 0 ? "No clips yet" : "No matches")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.secondary)
+            Text(viewModel.totalClipCount == 0
+                 ? "Copy something — text, code, a link, or a folder path — to get started."
+                 : "Try a different search or clear filters with Esc.")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

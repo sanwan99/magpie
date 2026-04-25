@@ -10,6 +10,7 @@
 		13B8DBD1C611CEE1630BE75F /* ClipPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1162E5E8C9E69BD1CE9299 /* ClipPreview.swift */; };
 		307E6291EEF83EFF3A518BD5 /* ClipRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0B8B0377DB6581F92715378 /* ClipRepository.swift */; };
 		34271B20EA6AA955524EBA0A /* ClipDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28D52A08CCE57364B8E115C9 /* ClipDetectorTests.swift */; };
+		3B76D7BD45F876AADBFC12CA /* FilterRail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50BB000F525D7388D56DFA0E /* FilterRail.swift */; };
 		436274F322855B0C7DE73B77 /* ClipboardWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA20D84DF416E6615B3E0DD /* ClipboardWatcher.swift */; };
 		4ED837A293ABC42048DA8320 /* ClipRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = A99D42DBEC580388631D90C1 /* ClipRecord.swift */; };
 		50A1189EFF1CC3095117076F /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70DF6177E50AAB779F71CE9D /* Database.swift */; };
@@ -25,11 +26,16 @@
 		93DCDC75B68197CAFD9F9491 /* PanelWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94EC00F5705180BF6D14410 /* PanelWindow.swift */; };
 		9BFFC54969C5647DB43AA2FB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */; };
 		A5F6F0BCAD923D8F7CC44757 /* MagpieTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */; };
+		A69A6CBB91841425509A8F23 /* SearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99558CB0522345CFDA5971AE /* SearchField.swift */; };
 		A81C3B720FCE908B9ECB59BD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16CF44B1430B993367B479CF /* ContentView.swift */; };
 		B75A811423F9917876131551 /* ClipType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63304A665DC30BEA81E22EC7 /* ClipType.swift */; };
+		B84080E000DB51C976C921DF /* ClipRepository+search.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D29E5DA2DB926B811884389 /* ClipRepository+search.swift */; };
 		C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */; };
 		CAC4AA3A605F21CC77F52B62 /* ClipsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10AF74F18089D297DAA78AAE /* ClipsViewModel.swift */; };
+		CD608C827AFC49FBE10287AB /* SearchQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B3B4996D0C583F300744A98 /* SearchQuery.swift */; };
 		E03292AFE7689084A6BFCE1E /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = ACB504EB59D9D3BB7935041D /* GRDB */; };
+		EB17B42439981FBE715839BF /* SearchQueryParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56BE257DA7D9647F2492AEBC /* SearchQueryParser.swift */; };
+		FBB76DA0FB1458CEF51D9374 /* SearchQueryParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C964694F290E166FFC03F031 /* SearchQueryParserTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,17 +57,23 @@
 		1B7C6DDC7D71C97047AEDB8C /* Magpie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Magpie.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		24C2F3724963E4EEC1724ACD /* FrontmostTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrontmostTracker.swift; sourceTree = "<group>"; };
 		28D52A08CCE57364B8E115C9 /* ClipDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipDetectorTests.swift; sourceTree = "<group>"; };
+		50BB000F525D7388D56DFA0E /* FilterRail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterRail.swift; sourceTree = "<group>"; };
 		5353797E132BD98E3CB79648 /* VisualEffectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectView.swift; sourceTree = "<group>"; };
+		56BE257DA7D9647F2492AEBC /* SearchQueryParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchQueryParser.swift; sourceTree = "<group>"; };
+		5B3B4996D0C583F300744A98 /* SearchQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchQuery.swift; sourceTree = "<group>"; };
 		63304A665DC30BEA81E22EC7 /* ClipType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipType.swift; sourceTree = "<group>"; };
 		6A1162E5E8C9E69BD1CE9299 /* ClipPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipPreview.swift; sourceTree = "<group>"; };
 		70DF6177E50AAB779F71CE9D /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
 		873E4BF17645AEA97484E224 /* StripeLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripeLayout.swift; sourceTree = "<group>"; };
 		896C3E8A869F36F73A524657 /* ClipPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipPayload.swift; sourceTree = "<group>"; };
+		99558CB0522345CFDA5971AE /* SearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchField.swift; sourceTree = "<group>"; };
+		9D29E5DA2DB926B811884389 /* ClipRepository+search.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClipRepository+search.swift"; sourceTree = "<group>"; };
 		A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyCenter.swift; sourceTree = "<group>"; };
 		A99D42DBEC580388631D90C1 /* ClipRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipRecord.swift; sourceTree = "<group>"; };
 		B31C0A75C12ADACA05540F9D /* ClipDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipDetector.swift; sourceTree = "<group>"; };
 		B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagpieTests.swift; sourceTree = "<group>"; };
 		C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		C964694F290E166FFC03F031 /* SearchQueryParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchQueryParserTests.swift; sourceTree = "<group>"; };
 		D94EC00F5705180BF6D14410 /* PanelWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelWindow.swift; sourceTree = "<group>"; };
 		E0B8B0377DB6581F92715378 /* ClipRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipRepository.swift; sourceTree = "<group>"; };
 		F398B1B543EAF5ECC2796A64 /* PanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelController.swift; sourceTree = "<group>"; };
@@ -103,6 +115,7 @@
 			children = (
 				28D52A08CCE57364B8E115C9 /* ClipDetectorTests.swift */,
 				B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */,
+				C964694F290E166FFC03F031 /* SearchQueryParserTests.swift */,
 			);
 			path = MagpieTests;
 			sourceTree = "<group>";
@@ -131,6 +144,8 @@
 				6A1162E5E8C9E69BD1CE9299 /* ClipPreview.swift */,
 				10AF74F18089D297DAA78AAE /* ClipsViewModel.swift */,
 				16CF44B1430B993367B479CF /* ContentView.swift */,
+				50BB000F525D7388D56DFA0E /* FilterRail.swift */,
+				99558CB0522345CFDA5971AE /* SearchField.swift */,
 				873E4BF17645AEA97484E224 /* StripeLayout.swift */,
 			);
 			path = UI;
@@ -141,6 +156,7 @@
 			children = (
 				A99D42DBEC580388631D90C1 /* ClipRecord.swift */,
 				E0B8B0377DB6581F92715378 /* ClipRepository.swift */,
+				9D29E5DA2DB926B811884389 /* ClipRepository+search.swift */,
 				70DF6177E50AAB779F71CE9D /* Database.swift */,
 			);
 			path = Storage;
@@ -164,10 +180,20 @@
 				CD4EE75067E4CF3755FD130B /* Hotkey */,
 				A96F5CD682A5F2045E41BBE5 /* Panel */,
 				D062922651015370DA4D5B21 /* Paste */,
+				C170F3EED4F1625334525E19 /* Search */,
 				A45FCA91220AEF2DE1691126 /* Storage */,
 				A01B7D3741195A6BFD48D278 /* UI */,
 			);
 			path = Magpie;
+			sourceTree = "<group>";
+		};
+		C170F3EED4F1625334525E19 /* Search */ = {
+			isa = PBXGroup;
+			children = (
+				5B3B4996D0C583F300744A98 /* SearchQuery.swift */,
+				56BE257DA7D9647F2492AEBC /* SearchQueryParser.swift */,
+			);
+			path = Search;
 			sourceTree = "<group>";
 		};
 		CD4EE75067E4CF3755FD130B /* Hotkey */ = {
@@ -297,6 +323,7 @@
 			files = (
 				34271B20EA6AA955524EBA0A /* ClipDetectorTests.swift in Sources */,
 				A5F6F0BCAD923D8F7CC44757 /* MagpieTests.swift in Sources */,
+				FBB76DA0FB1458CEF51D9374 /* SearchQueryParserTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -309,18 +336,23 @@
 				8A1DF8AC7F0C25A9101A56F8 /* ClipPayload.swift in Sources */,
 				13B8DBD1C611CEE1630BE75F /* ClipPreview.swift in Sources */,
 				4ED837A293ABC42048DA8320 /* ClipRecord.swift in Sources */,
+				B84080E000DB51C976C921DF /* ClipRepository+search.swift in Sources */,
 				307E6291EEF83EFF3A518BD5 /* ClipRepository.swift in Sources */,
 				B75A811423F9917876131551 /* ClipType.swift in Sources */,
 				436274F322855B0C7DE73B77 /* ClipboardWatcher.swift in Sources */,
 				CAC4AA3A605F21CC77F52B62 /* ClipsViewModel.swift in Sources */,
 				A81C3B720FCE908B9ECB59BD /* ContentView.swift in Sources */,
 				50A1189EFF1CC3095117076F /* Database.swift in Sources */,
+				3B76D7BD45F876AADBFC12CA /* FilterRail.swift in Sources */,
 				5D353A7C3CF0A3A5AA8B5C72 /* FrontmostTracker.swift in Sources */,
 				C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */,
 				90F15DB41562C4B14F476669 /* MagpieApp.swift in Sources */,
 				93CAB35747D22B507FA98982 /* PanelController.swift in Sources */,
 				93DCDC75B68197CAFD9F9491 /* PanelWindow.swift in Sources */,
 				92B835506ADC84F9B6B4E5FF /* Paster.swift in Sources */,
+				A69A6CBB91841425509A8F23 /* SearchField.swift in Sources */,
+				CD608C827AFC49FBE10287AB /* SearchQuery.swift in Sources */,
+				EB17B42439981FBE715839BF /* SearchQueryParser.swift in Sources */,
 				692D7EC7B691C45C31E18125 /* StripeLayout.swift in Sources */,
 				844501A380E09FEBFD31DD19 /* VisualEffectView.swift in Sources */,
 			);

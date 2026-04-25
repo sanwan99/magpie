@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import SwiftUI
 
 /// View-side representation of a clip — one row in the panel layouts.
@@ -22,8 +23,6 @@ struct ClipDisplayItem: Identifiable, Equatable {
 }
 
 extension ClipDisplayItem {
-    /// Decode the persisted record into a UI-ready item. Returns nil if the row is
-    /// malformed (unknown type or undecodable payload).
     init?(record: ClipRecord) {
         guard let type = ClipType(rawValue: record.type) else { return nil }
         let decoder = JSONDecoder()
@@ -58,19 +57,51 @@ extension ClipDisplayItem {
     }
 }
 
-/// MainActor-isolated observable view model.
-/// `refresh()` reloads the most recent N clips from the repository; the panel
-/// re-renders via SwiftUI's @Published binding.
+/// MainActor-isolated `@Observable` view model.
+///
+/// Uses the macOS 14+ Observation framework instead of `ObservableObject` +
+/// `@Published`. The key practical difference: SwiftUI tracks property access
+/// per-keypath, so changing `focusedIndex` no longer invalidates the SearchField
+/// or FilterRail — only views that actually read `focusedIndex` re-diff.
 @MainActor
-final class ClipsViewModel: ObservableObject {
-    @Published private(set) var clips: [ClipDisplayItem] = []
-    @Published var focusedIndex: Int = 0
+@Observable
+final class ClipsViewModel {
+    // MARK: - Filtered results (read-only externally)
 
-    /// Owned by `PanelController`. Invoked when the UI requests a paste —
-    /// e.g. double-click or `requestPaste(at:)`.
+    private(set) var clips: [ClipDisplayItem] = []
+    private(set) var totalClipCount: Int = 0
+
+    // MARK: - Interactive state
+
+    /// Free-text search. Each keystroke schedules a debounced apply (default 100 ms)
+    /// to avoid hammering SQLite + re-rendering on every character.
+    var searchInput: String = "" {
+        didSet { scheduleDebouncedApply() }
+    }
+    /// Type pill selection. Applied immediately (single click, no debounce needed).
+    var typeFilter: ClipType? = nil {
+        didSet { refresh() }
+    }
+    /// Pinned-only toggle.
+    var pinnedOnly: Bool = false {
+        didSet { refresh() }
+    }
+
+    // MARK: - Focus
+
+    var focusedIndex: Int = 0
+
+    /// Owned by `PanelController`. Called when the UI requests a paste.
+    @ObservationIgnored
     var onPasteRequest: (() -> Void)?
 
+    @ObservationIgnored
+    private var debounceTask: Task<Void, Never>?
+    @ObservationIgnored
+    private let debounceInterval: Duration = .milliseconds(100)
+    @ObservationIgnored
     private let repository: ClipRepository
+    @ObservationIgnored
     private let limit: Int
 
     init(repository: ClipRepository, limit: Int = 200) {
@@ -79,16 +110,60 @@ final class ClipsViewModel: ObservableObject {
         refresh()
     }
 
+    // MARK: - Refresh
+
     func refresh() {
         do {
-            let records = try repository.recent(limit: limit)
+            let query = currentQuery()
+            let records = try repository.search(query, limit: limit)
             self.clips = records.compactMap { ClipDisplayItem(record: $0) }
-            // After refresh, keep focus in bounds (favor head if list shrank).
+            self.totalClipCount = (try? repository.count()) ?? clips.count
             if focusedIndex >= clips.count {
                 focusedIndex = clips.isEmpty ? 0 : 0
             }
         } catch {
             NSLog("[ui] refresh failed: %@", "\(error)")
+        }
+    }
+
+    private func scheduleDebouncedApply() {
+        debounceTask?.cancel()
+        debounceTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: self?.debounceInterval ?? .milliseconds(100))
+            guard !Task.isCancelled, let self else { return }
+            self.refresh()
+        }
+    }
+
+    /// Reset to "no filter, no search" — Esc cascade calls this.
+    func clearFiltersAndSearch() {
+        debounceTask?.cancel()
+        searchInput = ""
+        typeFilter = nil
+        pinnedOnly = false
+    }
+
+    private func currentQuery() -> SearchQuery {
+        var query = SearchQueryParser.parse(searchInput, pinnedOnly: pinnedOnly)
+        if let t = typeFilter {
+            query.typeFilters.append(t)
+        }
+        return query
+    }
+
+    // MARK: - Pin toggle
+
+    func toggleFocusedPin() {
+        guard let clip = focusedClip else { return }
+        let targetId = clip.id
+        do {
+            try repository.togglePin(clipId: targetId)
+            refresh()
+            if let newIdx = clips.firstIndex(where: { $0.id == targetId }) {
+                focusedIndex = newIdx
+            }
+        } catch {
+            NSLog("[ui] togglePin failed: %@", "\(error)")
         }
     }
 
@@ -112,7 +187,6 @@ final class ClipsViewModel: ObservableObject {
         clips.indices.contains(index) ? clips[index] : nil
     }
 
-    /// Set focus then request a paste — used by double-click and ⌘N quick paste.
     func requestPaste(at index: Int) {
         guard clips.indices.contains(index) else { return }
         focusedIndex = index
