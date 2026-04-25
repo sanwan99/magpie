@@ -47,3 +47,6 @@ fastlane/test_output
 
 # Notes 软链（外挂模式由 .git/info/exclude 二次保险）
 /md
+
+# Distribution artifacts (DMG, archives) — 通过 GitHub Releases 分发，不入 git
+/dist
