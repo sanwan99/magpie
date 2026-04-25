@@ -1,0 +1,91 @@
+name: Magpie
+
+options:
+  bundleIdPrefix: com.sanwan
+  deploymentTarget:
+    macOS: "14.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    GCC_TREAT_WARNINGS_AS_ERRORS: NO
+
+packages:
+  HotKey:
+    url: https://github.com/soffes/HotKey
+    from: 0.2.1
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: 6.29.3
+
+targets:
+  Magpie:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/Magpie
+    resources:
+      - path: Resources/Assets.xcassets
+    info:
+      path: Resources/Info.plist
+      properties:
+        CFBundleName: Magpie
+        CFBundleDisplayName: Magpie
+        CFBundleShortVersionString: 0.1.0
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "14.0"
+        LSUIElement: true
+        NSHumanReadableCopyright: "© 2026 sanwan99 and Magpie contributors"
+        NSAppleEventsUsageDescription: Magpie 需要权限模拟 ⌘V 完成粘贴。
+        NSMainNibFile: ""
+        NSPrincipalClass: NSApplication
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sanwan.magpie
+        ENABLE_APP_SANDBOX: NO
+        COMBINE_HIDPI_IMAGES: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - package: HotKey
+      - package: GRDB
+        product: GRDB
+
+  MagpieTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/MagpieTests
+    settings:
+      base:
+        BUNDLE_LOADER: $(TEST_HOST)
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Magpie.app/Contents/MacOS/Magpie
+    dependencies:
+      - target: Magpie
+
+schemes:
+  Magpie:
+    build:
+      targets:
+        Magpie: all
+        MagpieTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MagpieTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

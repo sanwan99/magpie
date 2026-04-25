@@ -1,0 +1,548 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		8131DD75927F0719937F5FCA /* HotKey in Frameworks */ = {isa = PBXBuildFile; productRef = 9A34A7648A1DD0B8CBC3DC83 /* HotKey */; };
+		844501A380E09FEBFD31DD19 /* VisualEffectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5353797E132BD98E3CB79648 /* VisualEffectView.swift */; };
+		90F15DB41562C4B14F476669 /* MagpieApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B7872BDF34770F79DAFD816 /* MagpieApp.swift */; };
+		93CAB35747D22B507FA98982 /* PanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F398B1B543EAF5ECC2796A64 /* PanelController.swift */; };
+		93DCDC75B68197CAFD9F9491 /* PanelWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94EC00F5705180BF6D14410 /* PanelWindow.swift */; };
+		9BFFC54969C5647DB43AA2FB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */; };
+		A5F6F0BCAD923D8F7CC44757 /* MagpieTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */; };
+		A81C3B720FCE908B9ECB59BD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16CF44B1430B993367B479CF /* ContentView.swift */; };
+		C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */; };
+		E03292AFE7689084A6BFCE1E /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = ACB504EB59D9D3BB7935041D /* GRDB */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		2232E1B43AEA39D6A85DAE20 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CCF8A1AA1C55E2276798D7A0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = FAB15C743361DC8CAE771784;
+			remoteInfo = Magpie;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0B7872BDF34770F79DAFD816 /* MagpieApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagpieApp.swift; sourceTree = "<group>"; };
+		1188540642C28FE067DE376D /* MagpieTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MagpieTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		16CF44B1430B993367B479CF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		1B7C6DDC7D71C97047AEDB8C /* Magpie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Magpie.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5353797E132BD98E3CB79648 /* VisualEffectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectView.swift; sourceTree = "<group>"; };
+		A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyCenter.swift; sourceTree = "<group>"; };
+		B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagpieTests.swift; sourceTree = "<group>"; };
+		C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		D94EC00F5705180BF6D14410 /* PanelWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelWindow.swift; sourceTree = "<group>"; };
+		F398B1B543EAF5ECC2796A64 /* PanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanelController.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C4FABB1944AD0E93CD9839A4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8131DD75927F0719937F5FCA /* HotKey in Frameworks */,
+				E03292AFE7689084A6BFCE1E /* GRDB in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3A93DB2858A70B0261D0F76E /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				BCE90818D1F215E433403503 /* Magpie */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		3F2E67C012E0F44694C60B82 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */,
+				0B7872BDF34770F79DAFD816 /* MagpieApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		4E6A4FC732AEF62C8B84FF57 /* MagpieTests */ = {
+			isa = PBXGroup;
+			children = (
+				B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */,
+			);
+			path = MagpieTests;
+			sourceTree = "<group>";
+		};
+		6FA7DC1D53FD2BCF071E90B5 = {
+			isa = PBXGroup;
+			children = (
+				3A93DB2858A70B0261D0F76E /* Sources */,
+				F8330C18FEF5E3C798654CA8 /* Tests */,
+				949197DB4BAEC6C4EFAC08F8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		949197DB4BAEC6C4EFAC08F8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1B7C6DDC7D71C97047AEDB8C /* Magpie.app */,
+				1188540642C28FE067DE376D /* MagpieTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A01B7D3741195A6BFD48D278 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				16CF44B1430B993367B479CF /* ContentView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		A45FCA91220AEF2DE1691126 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+		A96F5CD682A5F2045E41BBE5 /* Panel */ = {
+			isa = PBXGroup;
+			children = (
+				F398B1B543EAF5ECC2796A64 /* PanelController.swift */,
+				D94EC00F5705180BF6D14410 /* PanelWindow.swift */,
+				5353797E132BD98E3CB79648 /* VisualEffectView.swift */,
+			);
+			path = Panel;
+			sourceTree = "<group>";
+		};
+		BCE90818D1F215E433403503 /* Magpie */ = {
+			isa = PBXGroup;
+			children = (
+				3F2E67C012E0F44694C60B82 /* App */,
+				DFA52A3F6B19F299C5976270 /* Clipboard */,
+				CD4EE75067E4CF3755FD130B /* Hotkey */,
+				A96F5CD682A5F2045E41BBE5 /* Panel */,
+				D062922651015370DA4D5B21 /* Paste */,
+				A45FCA91220AEF2DE1691126 /* Storage */,
+				A01B7D3741195A6BFD48D278 /* UI */,
+			);
+			path = Magpie;
+			sourceTree = "<group>";
+		};
+		CD4EE75067E4CF3755FD130B /* Hotkey */ = {
+			isa = PBXGroup;
+			children = (
+				A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */,
+			);
+			path = Hotkey;
+			sourceTree = "<group>";
+		};
+		D062922651015370DA4D5B21 /* Paste */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Paste;
+			sourceTree = "<group>";
+		};
+		DFA52A3F6B19F299C5976270 /* Clipboard */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Clipboard;
+			sourceTree = "<group>";
+		};
+		F8330C18FEF5E3C798654CA8 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				4E6A4FC732AEF62C8B84FF57 /* MagpieTests */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		63D9C1634A652D762AF4BDE4 /* MagpieTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C1B2B9F1BCF218E538091FE9 /* Build configuration list for PBXNativeTarget "MagpieTests" */;
+			buildPhases = (
+				64110F08A9E209F80603909C /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EA6EB1C956D37C7697ACADFC /* PBXTargetDependency */,
+			);
+			name = MagpieTests;
+			packageProductDependencies = (
+			);
+			productName = MagpieTests;
+			productReference = 1188540642C28FE067DE376D /* MagpieTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		FAB15C743361DC8CAE771784 /* Magpie */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 68D94158CF2474557D86C0AD /* Build configuration list for PBXNativeTarget "Magpie" */;
+			buildPhases = (
+				B68FCA56FEA15742558D5547 /* Sources */,
+				C4FABB1944AD0E93CD9839A4 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Magpie;
+			packageProductDependencies = (
+				9A34A7648A1DD0B8CBC3DC83 /* HotKey */,
+				ACB504EB59D9D3BB7935041D /* GRDB */,
+			);
+			productName = Magpie;
+			productReference = 1B7C6DDC7D71C97047AEDB8C /* Magpie.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		CCF8A1AA1C55E2276798D7A0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					63D9C1634A652D762AF4BDE4 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					FAB15C743361DC8CAE771784 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 1AB47D8643EC2433FB19EBB1 /* Build configuration list for PBXProject "Magpie" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 6FA7DC1D53FD2BCF071E90B5;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E638DB312F3122FFF6660183 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				D2E7EE01B81AC142A0AD205F /* XCRemoteSwiftPackageReference "HotKey" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 949197DB4BAEC6C4EFAC08F8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FAB15C743361DC8CAE771784 /* Magpie */,
+				63D9C1634A652D762AF4BDE4 /* MagpieTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		64110F08A9E209F80603909C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A5F6F0BCAD923D8F7CC44757 /* MagpieTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B68FCA56FEA15742558D5547 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9BFFC54969C5647DB43AA2FB /* AppDelegate.swift in Sources */,
+				A81C3B720FCE908B9ECB59BD /* ContentView.swift in Sources */,
+				C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */,
+				90F15DB41562C4B14F476669 /* MagpieApp.swift in Sources */,
+				93CAB35747D22B507FA98982 /* PanelController.swift in Sources */,
+				93DCDC75B68197CAFD9F9491 /* PanelWindow.swift in Sources */,
+				844501A380E09FEBFD31DD19 /* VisualEffectView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EA6EB1C956D37C7697ACADFC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = FAB15C743361DC8CAE771784 /* Magpie */;
+			targetProxy = 2232E1B43AEA39D6A85DAE20 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4C772015F09F00788FA2724E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sanwan.MagpieTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Magpie.app/Contents/MacOS/Magpie";
+			};
+			name = Debug;
+		};
+		607858AD17BF89108D62C24B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sanwan.magpie;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		934D305B43B06CFA815FBEE9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		9ED467995E2BCE0CB17170B5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sanwan.magpie;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		A1C956E7530C1E72ADDF10A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		F4532E775373715542778B83 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.sanwan.MagpieTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Magpie.app/Contents/MacOS/Magpie";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1AB47D8643EC2433FB19EBB1 /* Build configuration list for PBXProject "Magpie" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1C956E7530C1E72ADDF10A8 /* Debug */,
+				934D305B43B06CFA815FBEE9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		68D94158CF2474557D86C0AD /* Build configuration list for PBXNativeTarget "Magpie" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				607858AD17BF89108D62C24B /* Debug */,
+				9ED467995E2BCE0CB17170B5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C1B2B9F1BCF218E538091FE9 /* Build configuration list for PBXNativeTarget "MagpieTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C772015F09F00788FA2724E /* Debug */,
+				F4532E775373715542778B83 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D2E7EE01B81AC142A0AD205F /* XCRemoteSwiftPackageReference "HotKey" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/soffes/HotKey";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.2.1;
+			};
+		};
+		E638DB312F3122FFF6660183 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.29.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9A34A7648A1DD0B8CBC3DC83 /* HotKey */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D2E7EE01B81AC142A0AD205F /* XCRemoteSwiftPackageReference "HotKey" */;
+			productName = HotKey;
+		};
+		ACB504EB59D9D3BB7935041D /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E638DB312F3122FFF6660183 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = CCF8A1AA1C55E2276798D7A0 /* Project object */;
+}
