@@ -158,8 +158,32 @@ struct ClipPreview: View {
                     .lineLimit(4)
             }
 
+        case .image(let path, let w, let h, let sizeKB):
+            VStack(alignment: .leading, spacing: 4) {
+                if let nsimg = NSImage(contentsOfFile: path) {
+                    Image(nsImage: nsimg)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.black.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                } else {
+                    HStack {
+                        Spacer()
+                        Image(systemName: "photo")
+                            .font(.system(size: 28))
+                            .foregroundStyle(.tertiary)
+                        Spacer()
+                    }
+                }
+                Text("\(w)×\(h) · \(sizeKB) KB")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
         case .unsupported:
-            Text("(unsupported in v0.1)")
+            Text("(unsupported)")
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
                 .italic()

@@ -142,8 +142,46 @@ struct DetailPane: View {
                     .textSelection(.enabled)
             }
 
+        case .image(let path, let w, let h, let sizeKB):
+            VStack(alignment: .leading, spacing: 8) {
+                if let nsimg = NSImage(contentsOfFile: path) {
+                    Image(nsImage: nsimg)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.black.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } else {
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 6) {
+                            Image(systemName: "photo")
+                                .font(.system(size: 32))
+                                .foregroundStyle(.tertiary)
+                            Text("Image file missing")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                }
+                HStack(spacing: 12) {
+                    Label("\(w)×\(h)", systemImage: "ruler")
+                        .font(.system(size: 11, design: .monospaced))
+                    Label("\(sizeKB) KB", systemImage: "internaldrive")
+                        .font(.system(size: 11, design: .monospaced))
+                }
+                .foregroundStyle(.secondary)
+                Text(path)
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+                    .textSelection(.enabled)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+            }
+
         case .unsupported:
-            Text("Unsupported in v0.1 (image type lands in v0.3).")
+            Text("Unsupported clip type")
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
                 .italic()

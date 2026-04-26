@@ -18,6 +18,7 @@ struct ClipDisplayItem: Identifiable, Equatable {
         case url(URL, host: String?)
         case folder(path: String, items: Int)
         case file(path: String, kind: String, sizeKB: Int)
+        case image(path: String, width: Int, height: Int, sizeKB: Int)
         case unsupported
     }
 }
@@ -45,7 +46,8 @@ extension ClipDisplayItem {
             guard let p = try? decoder.decode(FilePayload.self, from: record.payload) else { return nil }
             preview = .file(path: p.path, kind: p.kind, sizeKB: p.sizeKB)
         case .image:
-            preview = .unsupported
+            guard let p = try? decoder.decode(ImagePayload.self, from: record.payload) else { return nil }
+            preview = .image(path: p.path, width: p.width, height: p.height, sizeKB: p.sizeKB)
         }
         self.id = record.id
         self.type = type

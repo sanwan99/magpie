@@ -5,34 +5,61 @@ import AppKit
 /// for Magpie under System Settings → Privacy & Security → Accessibility.
 @MainActor
 enum Paster {
-    /// Writes the clip's payload string into the system pasteboard.
-    /// Returns the string that was written (caller may log).
+    /// Writes the clip's payload to the system pasteboard.
+    /// Returns a brief description of what was written (for log).
     @discardableResult
     static func writeToPasteboard(_ clip: ClipDisplayItem, plainText: Bool = false) -> String? {
-        let body: String?
-        switch clip.preview {
-        case .text(let s):
-            body = s
-        case .code(let s, _):
-            body = s
-        case .url(let url, _):
-            body = url.absoluteString
-        case .folder(let path, _):
-            body = path
-        case .file(let path, _, _):
-            body = path
-        case .unsupported:
-            body = nil
-        }
-        guard let body, !body.isEmpty else { return nil }
+        // `plainText` reserved for ⇧↵ behavior in a future version.
+        _ = plainText
 
         let pb = NSPasteboard.general
         pb.clearContents()
-        pb.setString(body, forType: .string)
-        // `plainText` reserved for ⇧↵ behavior in v0.2; v0.1 always writes plain string,
-        // which is already unstyled.
-        _ = plainText
-        return body
+
+        switch clip.preview {
+        case .text(let s):
+            guard !s.isEmpty else { return nil }
+            pb.setString(s, forType: .string)
+            return s
+
+        case .code(let s, _):
+            guard !s.isEmpty else { return nil }
+            pb.setString(s, forType: .string)
+            return s
+
+        case .url(let url, _):
+            let s = url.absoluteString
+            pb.setString(s, forType: .string)
+            return s
+
+        case .folder(let path, _):
+            pb.setString(path, forType: .string)
+            return path
+
+        case .file(let path, _, _):
+            pb.setString(path, forType: .string)
+            return path
+
+        case .image(let path, let w, let h, _):
+            // Write both .tiff (preferred by image apps) and .png (broader support).
+            // Path string fallback would be misleading (it's an internal cache path),
+            // so omit it.
+            guard let nsimg = NSImage(contentsOfFile: path) else {
+                NSLog("[paste] image file missing: %@", path)
+                return nil
+            }
+            if let tiff = nsimg.tiffRepresentation {
+                pb.setData(tiff, forType: .tiff)
+            }
+            if let tiff = nsimg.tiffRepresentation,
+               let bitmap = NSBitmapImageRep(data: tiff),
+               let png = bitmap.representation(using: .png, properties: [:]) {
+                pb.setData(png, forType: .png)
+            }
+            return "[image \(w)×\(h)]"
+
+        case .unsupported:
+            return nil
+        }
     }
 
     /// Activates the target app and posts a ⌘V keystroke. Honors a tiny activation

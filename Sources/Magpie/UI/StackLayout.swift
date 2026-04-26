@@ -143,6 +143,26 @@ private struct StackRow: View {
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
+        case .image(let path, let w, let h, let sizeKB):
+            HStack(spacing: 6) {
+                if let nsimg = NSImage(contentsOfFile: path) {
+                    Image(nsImage: nsimg)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 40, height: 22)
+                        .background(Color.black.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                } else {
+                    Image(systemName: "photo")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                }
+                Text("\(w)×\(h) · \(sizeKB) KB")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
         case .unsupported:
             Text("(unsupported)")
                 .font(.system(size: 11))

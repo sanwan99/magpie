@@ -23,11 +23,39 @@ enum ClipDetector {
             return detectFromFileURL(first, app: app)
         }
 
-        // 2. String content
+        // 2. Image content — must come before string handling, since some apps
+        //    put both an image and a string-encoded fallback on the pasteboard
+        //    (e.g. screencapture writes both ``public.png`` and a path string).
+        //    Images go to ImageStorage; the DB only keeps a path reference.
+        if let image = NSImage(pasteboard: pasteboard),
+           image.size.width > 0, image.size.height > 0 {
+            return detectFromImage(image, app: app)
+        }
+
+        // 3. String content
         guard let raw = pasteboard.string(forType: .string), !raw.isEmpty else {
             return nil
         }
         return detectFromString(raw, app: app)
+    }
+
+    private static func detectFromImage(_ image: NSImage, app: String?) -> DetectedClip? {
+        guard let saved = ImageStorage.save(image) else { return nil }
+        let payload = ImagePayload(
+            path: saved.path,
+            width: saved.width,
+            height: saved.height,
+            sizeKB: saved.sizeKB
+        )
+        let title = "\(saved.width)×\(saved.height) image"
+        return DetectedClip(
+            type: .image,
+            app: app,
+            title: title,
+            payload: encode(payload),
+            // Make image clips searchable by dimensions / "image" keyword.
+            searchText: "image \(saved.width)x\(saved.height) \(saved.sizeKB)KB"
+        )
     }
 
     /// Pure string-based detection — extracted so unit tests don't need a real pasteboard.

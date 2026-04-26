@@ -35,6 +35,8 @@
 		A69A6CBB91841425509A8F23 /* SearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99558CB0522345CFDA5971AE /* SearchField.swift */; };
 		A81C3B720FCE908B9ECB59BD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16CF44B1430B993367B479CF /* ContentView.swift */; };
 		AAE6AF84ED6F77B57795CC99 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D524858F3A63B88EAC4B5E0 /* Theme.swift */; };
+		AD6E9752A420478DC7594495 /* ImageStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C60B0692C6C4B737AFCC24 /* ImageStorage.swift */; };
+		B6A848B91AF240167519F06B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = AA98C7501CBFBBFEBF52FBDE /* README.md */; };
 		B75A811423F9917876131551 /* ClipType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63304A665DC30BEA81E22EC7 /* ClipType.swift */; };
 		B84080E000DB51C976C921DF /* ClipRepository+search.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D29E5DA2DB926B811884389 /* ClipRepository+search.swift */; };
 		C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */; };
@@ -88,9 +90,11 @@
 		9F9BDBF4E2C842646E6853A0 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyCenter.swift; sourceTree = "<group>"; };
 		A99D42DBEC580388631D90C1 /* ClipRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipRecord.swift; sourceTree = "<group>"; };
+		AA98C7501CBFBBFEBF52FBDE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		B0ED3FF2230855B75C015099 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		B31C0A75C12ADACA05540F9D /* ClipDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipDetector.swift; sourceTree = "<group>"; };
 		B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagpieTests.swift; sourceTree = "<group>"; };
+		B6C60B0692C6C4B737AFCC24 /* ImageStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageStorage.swift; sourceTree = "<group>"; };
 		C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		C964694F290E166FFC03F031 /* SearchQueryParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchQueryParserTests.swift; sourceTree = "<group>"; };
 		D497D633DC96FD726772331F /* GeneralPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralPane.swift; sourceTree = "<group>"; };
@@ -118,9 +122,18 @@
 		0B3E9A1315B7A04FC4B2848F /* Theme */ = {
 			isa = PBXGroup;
 			children = (
+				AA98C7501CBFBBFEBF52FBDE /* README.md */,
 				6D524858F3A63B88EAC4B5E0 /* Theme.swift */,
 			);
 			path = Theme;
+			sourceTree = "<group>";
+		};
+		32D9636FDD0EA8BE9C0B3786 /* Image */ = {
+			isa = PBXGroup;
+			children = (
+				B6C60B0692C6C4B737AFCC24 /* ImageStorage.swift */,
+			);
+			path = Image;
 			sourceTree = "<group>";
 		};
 		3A93DB2858A70B0261D0F76E /* Sources */ = {
@@ -213,6 +226,7 @@
 				3F2E67C012E0F44694C60B82 /* App */,
 				DFA52A3F6B19F299C5976270 /* Clipboard */,
 				CD4EE75067E4CF3755FD130B /* Hotkey */,
+				32D9636FDD0EA8BE9C0B3786 /* Image */,
 				A96F5CD682A5F2045E41BBE5 /* Panel */,
 				D062922651015370DA4D5B21 /* Paste */,
 				C170F3EED4F1625334525E19 /* Search */,
@@ -307,6 +321,7 @@
 			buildConfigurationList = 68D94158CF2474557D86C0AD /* Build configuration list for PBXNativeTarget "Magpie" */;
 			buildPhases = (
 				B68FCA56FEA15742558D5547 /* Sources */,
+				9C8BE836A46B789338C57761 /* Resources */,
 				C4FABB1944AD0E93CD9839A4 /* Frameworks */,
 			);
 			buildRules = (
@@ -365,6 +380,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		9C8BE836A46B789338C57761 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B6A848B91AF240167519F06B /* README.md in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		64110F08A9E209F80603909C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -400,6 +426,7 @@
 				F4A49BBACD0E0EF3846E35ED /* GeneralPane.swift in Sources */,
 				100C517AFC66BD63B1DD3770 /* GridLayout.swift in Sources */,
 				C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */,
+				AD6E9752A420478DC7594495 /* ImageStorage.swift in Sources */,
 				90F15DB41562C4B14F476669 /* MagpieApp.swift in Sources */,
 				93CAB35747D22B507FA98982 /* PanelController.swift in Sources */,
 				93DCDC75B68197CAFD9F9491 /* PanelWindow.swift in Sources */,

@@ -155,6 +155,26 @@ private struct GridTile: View {
                     .font(.system(size: 9))
                     .foregroundStyle(.tertiary)
             }
+        case .image(let path, let w, let h, let sizeKB):
+            VStack(alignment: .leading, spacing: 3) {
+                if let nsimg = NSImage(contentsOfFile: path) {
+                    Image(nsImage: nsimg)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.black.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                } else {
+                    Image(systemName: "photo")
+                        .font(.system(size: 22))
+                        .foregroundStyle(.tertiary)
+                }
+                Text("\(w)×\(h) · \(sizeKB) KB")
+                    .font(.system(size: 8, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
         case .unsupported:
             Text("(unsupported)")
                 .font(.system(size: 10))
