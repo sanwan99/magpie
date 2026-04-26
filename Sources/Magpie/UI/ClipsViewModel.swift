@@ -93,6 +93,20 @@ final class ClipsViewModel {
 
     var focusedIndex: Int = 0
 
+    /// Queue Mode — when ON, paste auto-advances focus to the next clip,
+    /// matching prototype spec §05. Per-session (does not persist).
+    var queueMode: Bool = false
+
+    func toggleQueueMode() {
+        queueMode.toggle()
+    }
+
+    /// Advance focus toward newer clips by one. Called after paste in Queue Mode.
+    func advanceFocusForQueue() {
+        guard !clips.isEmpty else { return }
+        focusedIndex = min(clips.count - 1, focusedIndex + 1)
+    }
+
     // MARK: - Layout preferences (persisted)
 
     /// The currently active panel layout. ⌘\ cycles. Persisted to UserDefaults.

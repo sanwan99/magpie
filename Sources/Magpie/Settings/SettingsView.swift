@@ -16,7 +16,17 @@ struct SettingsView: View {
                 .tabItem {
                     Label("Shortcuts", systemImage: "command")
                 }
+
+            HistoryPane(store: store)
+                .tabItem {
+                    Label("History", systemImage: "clock.arrow.circlepath")
+                }
+
+            PrivacyPane(store: store)
+                .tabItem {
+                    Label("Privacy", systemImage: "lock.shield")
+                }
         }
-        .frame(width: 500, height: 420)
+        .frame(width: 500, height: 480)
     }
 }

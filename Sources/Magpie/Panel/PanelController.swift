@@ -10,6 +10,7 @@ final class PanelController {
     private let snippetsViewModel: SnippetsViewModel
     private let settings = SettingsStore.shared
     private let frontmost = FrontmostTracker()
+    private let biometric = BiometricGate()
     private var keyMonitor: Any?
     private var afterHide: (() -> Void)?
     private var settingsObservationTask: Task<Void, Never>?
@@ -129,7 +130,14 @@ final class PanelController {
         if isVisible {
             hide()
         } else {
-            show()
+            // Auth gate is async (Touch ID may prompt); wrap in Task.
+            // Default biometric path (no useTouchID, or already unlocked) is
+            // synchronous-fast — Task overhead is negligible.
+            Task { @MainActor in
+                let ok = await biometric.authenticateIfNeeded(reason: "Unlock Magpie clipboard")
+                guard ok else { return }
+                show()
+            }
         }
     }
 
@@ -208,11 +216,19 @@ final class PanelController {
         }
         NSLog("[paste] writing %d chars (type=%@) into pasteboard, target=%@",
               written.count, clip.type.rawValue, target?.bundleIdentifier ?? "?")
-        // Schedule the actual ⌘V to fire only AFTER the panel's hide animation
-        // completes and orderOut runs — that way the panel is no longer the
-        // keyWindow, and the synthetic ⌘V lands on the previously frontmost app.
-        afterHide = {
+
+        // Queue Mode: paste, advance focus, and re-open the panel for the
+        // next paste. The panel briefly flashes during the transition; the
+        // user's hand stays on ↵ for batch fills.
+        let inQueue = viewModel.queueMode
+        afterHide = { [weak self, weak viewModel] in
             Paster.paste(into: target)
+            if inQueue {
+                viewModel?.advanceFocusForQueue()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+                    self?.show()
+                }
+            }
         }
         hide()
     }
@@ -297,13 +313,16 @@ final class PanelController {
             }
             // ⌘S toggle Snippets drawer
             if chars == "s" {
-                NSLog("[snippets] ⌘S intercepted, toggling drawer (was visible=%d, count=%d)",
-                      snippetsViewModel.drawerVisible ? 1 : 0,
-                      snippetsViewModel.snippets.count)
                 withAnimation(.easeOut(duration: 0.18)) {
                     snippetsViewModel.toggleDrawer()
                 }
-                NSLog("[snippets] drawer now visible=%d", snippetsViewModel.drawerVisible ? 1 : 0)
+                return nil
+            }
+            // ⌘Q toggle Queue Mode (only when panel is key — otherwise it's the
+            // user's standard "Quit App" shortcut hitting the frontmost app).
+            if chars == "q" {
+                viewModel.toggleQueueMode()
+                NSLog("[queue] queueMode=%d", viewModel.queueMode ? 1 : 0)
                 return nil
             }
             // ⌘1…⌘9 quick paste at index
@@ -450,6 +469,9 @@ private struct PanelContentView: View {
                 Text("Magpie")
                     .font(.system(size: 13, weight: .bold))
                 SearchField(viewModel: viewModel)
+                if viewModel.queueMode {
+                    QueueIndicator()
+                }
                 SnippetsToggle(viewModel: snippetsViewModel)
                 LayoutSwitcher(viewModel: viewModel)
                 DetailPaneToggle(viewModel: viewModel)
@@ -569,6 +591,29 @@ private struct LayoutSwitcher: View {
         case .stack:  return "list.bullet.rectangle"
         case .grid:   return "square.grid.2x2"
         }
+    }
+}
+
+// MARK: - Queue Mode indicator
+
+private struct QueueIndicator: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "arrow.right.circle.fill")
+                .font(.system(size: 10))
+            Text("QUEUE")
+                .font(.system(size: 9, weight: .bold))
+                .tracking(0.4)
+            Text("⌘Q")
+                .font(.system(size: 8, weight: .medium, design: .monospaced))
+                .opacity(0.7)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .foregroundStyle(.orange)
+        .background(Capsule().fill(Color.orange.opacity(0.18)))
+        .overlay(Capsule().strokeBorder(Color.orange.opacity(0.6), lineWidth: 0.5))
+        .help("Queue Mode is on — paste auto-advances focus. Press ⌘Q to turn off.")
     }
 }
 

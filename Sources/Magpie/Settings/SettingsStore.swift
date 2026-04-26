@@ -49,6 +49,38 @@ final class SettingsStore {
         didSet { UserDefaults.standard.set(autoExpandSnippets, forKey: Keys.autoExpand) }
     }
 
+    // MARK: - History (v0.3-c)
+
+    /// 0 = keep forever; otherwise expire non-pinned clips older than this many days.
+    var keepHistoryDays: Int = 0 {
+        didSet { UserDefaults.standard.set(keepHistoryDays, forKey: Keys.keepDays) }
+    }
+
+    /// Max number of non-pinned clips. 0 = unlimited.
+    var maxItems: Int = 2000 {
+        didSet { UserDefaults.standard.set(maxItems, forKey: Keys.maxItems) }
+    }
+
+    /// Bundle identifiers whose clipboard activity is never ingested
+    /// (e.g. com.agilebits.onepassword for 1Password).
+    var ignoredApps: [String] = [] {
+        didSet {
+            UserDefaults.standard.set(ignoredApps, forKey: Keys.ignoredApps)
+        }
+    }
+
+    // MARK: - Privacy (v0.3-c)
+
+    /// Require Touch ID on first panel show after launch.
+    var useTouchID: Bool = false {
+        didSet { UserDefaults.standard.set(useTouchID, forKey: Keys.touchID) }
+    }
+
+    /// Filter out clips that look like API keys / tokens / passwords.
+    var skipSecretLooking: Bool = true {
+        didSet { UserDefaults.standard.set(skipSecretLooking, forKey: Keys.skipSecret) }
+    }
+
     // MARK: - Init / restore
 
     private init() {
@@ -81,6 +113,21 @@ final class SettingsStore {
         if defaults.object(forKey: Keys.autoExpand) != nil {
             self.autoExpandSnippets = defaults.bool(forKey: Keys.autoExpand)
         }
+        if defaults.object(forKey: Keys.keepDays) != nil {
+            self.keepHistoryDays = max(0, defaults.integer(forKey: Keys.keepDays))
+        }
+        if defaults.object(forKey: Keys.maxItems) != nil {
+            self.maxItems = max(0, defaults.integer(forKey: Keys.maxItems))
+        }
+        if let arr = defaults.stringArray(forKey: Keys.ignoredApps) {
+            self.ignoredApps = arr
+        }
+        if defaults.object(forKey: Keys.touchID) != nil {
+            self.useTouchID = defaults.bool(forKey: Keys.touchID)
+        }
+        if defaults.object(forKey: Keys.skipSecret) != nil {
+            self.skipSecretLooking = defaults.bool(forKey: Keys.skipSecret)
+        }
     }
 
     // MARK: - Keys
@@ -94,5 +141,10 @@ final class SettingsStore {
         static let detectColorsAndLinks = "magpie.settings.detectColorsAndLinks"
         static let stripTracking = "magpie.settings.stripTracking"
         static let autoExpand = "magpie.settings.autoExpandSnippets"
+        static let keepDays = "magpie.settings.keepHistoryDays"
+        static let maxItems = "magpie.settings.maxItems"
+        static let ignoredApps = "magpie.settings.ignoredApps"
+        static let touchID = "magpie.settings.useTouchID"
+        static let skipSecret = "magpie.settings.skipSecretLooking"
     }
 }

@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var viewModel: ClipsViewModel?
     private var snippetsViewModel: SnippetsViewModel?
     private var snippetExpander: SnippetExpander?
+    private var historyReaper: HistoryReaper?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let repo = ClipRepository()
@@ -20,10 +21,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             panel?.toggle()
         }
 
+        let reaper = HistoryReaper()
+        reaper.reapNow()  // Apply retention on launch in case user changed settings while app was off.
+
         let watcher = ClipboardWatcher()
-        watcher.onChange = { [weak vm] pasteboard in
+        watcher.onChange = { [weak vm, weak reaper] pasteboard in
             AppDelegate.ingest(pasteboard: pasteboard, repository: repo)
             vm?.refresh()
+            reaper?.scheduleReap()
         }
         watcher.start()
 
@@ -44,6 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.hotkeyCenter = hotkeys
         self.clipboardWatcher = watcher
         self.snippetExpander = expander
+        self.historyReaper = reaper
 
         NSLog("[magpie] launched. ⌘P toggles panel, Esc hides it. clips=%d snippets=%d",
               vm.clips.count, snippetsVM.snippets.count)
@@ -70,14 +76,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         track()
     }
 
-    /// Detect type for the current pasteboard and write it to storage.
+    /// Detect type for the current pasteboard and write it to storage,
+    /// honoring user privacy preferences (ignored apps, skip-secret).
     private static func ingest(pasteboard: NSPasteboard, repository: ClipRepository) {
         let app = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        let store = SettingsStore.shared
+
+        // Ignored apps — never capture clipboard activity from these.
+        if let app, store.ignoredApps.contains(app) {
+            NSLog("[clipboard] count=%d skipped (ignored app: %@)",
+                  pasteboard.changeCount, app)
+            return
+        }
+
         guard let detected = ClipDetector.detect(pasteboard: pasteboard, app: app) else {
             let types = pasteboard.types?.map(\.rawValue).joined(separator: ", ") ?? "nil"
             NSLog("[clipboard] count=%d skipped types=[%@]", pasteboard.changeCount, types)
             return
         }
+
+        // Skip secret-looking content (default ON). Only checks textual clips —
+        // image / file / folder don't carry credential strings in the body.
+        if store.skipSecretLooking,
+           let text = textBody(of: detected),
+           SecretDetector.looksSecret(text) {
+            NSLog("[clipboard] count=%d skipped (looks like secret)", pasteboard.changeCount)
+            return
+        }
+
         do {
             try repository.insert(detected)
             let titlePreview = detected.title?.prefix(60).replacingOccurrences(of: "\n", with: "↵") ?? ""
@@ -88,6 +114,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                   String(titlePreview))
         } catch {
             NSLog("[clipboard] insert failed: %@", "\(error)")
+        }
+    }
+
+    /// Extract the text body of a DetectedClip for SecretDetector matching.
+    /// Returns nil for non-text clip types (image / folder / file).
+    private static func textBody(of detected: DetectedClip) -> String? {
+        switch detected.type {
+        case .text:
+            return (try? JSONDecoder().decode(TextPayload.self, from: detected.payload))?.body
+        case .code:
+            return (try? JSONDecoder().decode(CodePayload.self, from: detected.payload))?.body
+        case .url:
+            return (try? JSONDecoder().decode(URLPayload.self, from: detected.payload))?.url
+        case .folder, .file, .image:
+            return nil
         }
     }
 }
