@@ -39,6 +39,8 @@ private struct StackRow: View {
     let isFocused: Bool
     let shortcutNumber: Int?
 
+    private let settings = SettingsStore.shared
+
     var body: some View {
         HStack(spacing: 12) {
             // Column 1 — ⌘N badge (fixed-width slot so columns align even when nil)
@@ -82,7 +84,7 @@ private struct StackRow: View {
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 7)
-                .fill(isFocused ? Color.primary.opacity(0.10) : Color.clear)
+                .fill(isFocused ? settings.flavor.tokens.focusBg : Color.clear)
         )
     }
 

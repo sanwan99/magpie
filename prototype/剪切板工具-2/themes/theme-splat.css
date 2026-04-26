@@ -1,0 +1,624 @@
+/* Magpie — Splatoon theme
+   Activated by [data-accent="splat"]. Includes: color overrides, ink-splat
+   chips/buttons, squid mascot animations, paint-burst feedback.
+   Pair with: themes/splat.jsx (mascot + background components),
+   assets/squid-yellow.png, assets/squid-purple.png. */
+
+/* ════════════════════════════════════════════════════════════════════════
+   SPLATOON THEME
+   Activated by [data-accent="splat"]. Scoped overrides; falls back to mono
+   palette if the accent is changed back.
+   Two team colors: yellow (#ffe900) and purple (#7a2bff).
+   ──────────────────────────────────────────────────────────────────────── */
+
+:root[data-accent="splat"] {
+  --splat-y:    #ffe900;   /* fluo yellow team */
+  --splat-y-2:  #fff85a;
+  --splat-p:    #7a2bff;   /* fluo purple team */
+  --splat-p-2:  #a35bff;
+  --splat-ink:  #0e0e10;   /* almost-black for splatoon line work */
+  --splat-cream:#fff7d8;   /* paper background */
+  --splat-paper:#1a0633;   /* deep purple "ink" background for dark mode */
+
+  --r-card: 14px;
+  --r-tile: 12px;
+  --r-panel: 22px;
+
+  --accent-h: 280;
+  --accent-c: 50;
+}
+
+/* light = paper, dark = deep purple ink */
+:root[data-accent="splat"][data-theme="light"] {
+  --bg-desk:   #fff2c4;
+  --bg-desk-2: #ffd86b;
+
+  --panel-bg: #ffffff;
+  --panel-bd: var(--splat-ink);
+  --panel-shadow:
+    0 0 0 3px var(--splat-ink),
+    8px 10px 0 var(--splat-ink),
+    0 24px 60px rgba(122, 43, 255, 0.22);
+
+  --ink:  var(--splat-ink);
+  --ink-2: #2a2a30;
+  --ink-3: #5a5a64;
+  --ink-4: rgba(14, 14, 16, 0.18);
+
+  --hairline: rgba(14, 14, 16, 0.16);
+  --card-bg:  #fffce6;
+  --card-bd:  var(--splat-ink);
+  --card-bg-hover: #fff5b3;
+
+  --focus-bg:  var(--splat-y);
+  --focus-bd:  var(--splat-ink);
+  --focus-ink: var(--splat-ink);
+
+  --kbd-bg:  var(--splat-cream);
+  --kbd-bd:  var(--splat-ink);
+
+  --code-bg: #fffae0;
+  --t-kw:  #b30070;
+  --t-str: #b15e00;
+  --t-num: #18804a;
+  --t-com: #6a6a72;
+  --t-fn:  #4a1eb8;
+  --t-prop:#7a2bff;
+}
+
+:root[data-accent="splat"][data-theme="dark"] {
+  --bg-desk:   #1a0633;
+  --bg-desk-2: #0a0214;
+
+  --panel-bg: #14041f;
+  --panel-bd: var(--splat-y);
+  --panel-shadow:
+    0 0 0 3px var(--splat-y),
+    8px 10px 0 var(--splat-ink),
+    0 24px 60px rgba(255, 233, 0, 0.22);
+
+  --ink:  #fff7d8;
+  --ink-2: #f5e7b8;
+  --ink-3: #c9b990;
+  --ink-4: rgba(255, 247, 216, 0.2);
+
+  --hairline: rgba(255, 247, 216, 0.18);
+  --card-bg:  #220a3a;
+  --card-bd:  var(--splat-y);
+  --card-bg-hover: #2c0d4a;
+
+  --focus-bg:  var(--splat-y);
+  --focus-bd:  var(--splat-ink);
+  --focus-ink: var(--splat-ink);
+
+  --kbd-bg:  #14041f;
+  --kbd-bd:  var(--splat-y);
+
+  --code-bg: #0a0214;
+  --t-kw:  #ffe900;
+  --t-str: #ffaa6b;
+  --t-num: #6effa8;
+  --t-com: #c9b990;
+  --t-fn:  #a35bff;
+  --t-prop:#ff70d6;
+}
+
+/* ─── typography swap ──────────────────────────────────────────────────── */
+[data-accent="splat"] body {
+  font-family: 'Tilt Warp', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-feature-settings: normal;
+  letter-spacing: 0.005em;
+}
+[data-accent="splat"] .ctitle,
+[data-accent="splat"] .stack-title,
+[data-accent="splat"] .detail-title,
+[data-accent="splat"] .pane-h,
+[data-accent="splat"] .rail-head,
+[data-accent="splat"] .settings-tl h4,
+[data-accent="splat"] .empty-title,
+[data-accent="splat"] .ft-type,
+[data-accent="splat"] .queue-pill,
+[data-accent="splat"] .paste-btn {
+  font-family: 'Rampart One', 'Tilt Warp', sans-serif;
+  letter-spacing: 0.02em;
+}
+[data-accent="splat"] .detail-title {
+  font-size: 22px; line-height: 1.05;
+  text-transform: uppercase;
+  -webkit-text-stroke: 0.5px var(--splat-ink);
+}
+[data-accent="splat"] .pane-h {
+  color: var(--ink);
+  font-size: 13px; letter-spacing: 0.04em;
+  -webkit-text-stroke: 0.5px transparent;
+}
+
+/* ─── desktop background ──────────────────────────────────────────────── */
+[data-accent="splat"] .desktop {
+  background:
+    radial-gradient(circle at 20% 20%, var(--splat-y) 0%, transparent 30%),
+    radial-gradient(circle at 80% 80%, var(--splat-p-2) 0%, transparent 35%),
+    linear-gradient(135deg, var(--bg-desk), var(--bg-desk-2));
+}
+[data-accent="splat"][data-theme="dark"] .desktop {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 233, 0, 0.5) 0%, transparent 28%),
+    radial-gradient(circle at 80% 80%, rgba(122, 43, 255, 0.7) 0%, transparent 35%),
+    linear-gradient(135deg, var(--bg-desk), var(--bg-desk-2));
+}
+[data-accent="splat"] .wp-orb { display: none; }
+[data-accent="splat"] .wp-grid {
+  background-image:
+    radial-gradient(circle at 50% 50%, transparent 60%, rgba(0,0,0,.3) 100%),
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 6px, rgba(0,0,0,.04) 6px 7px);
+}
+
+/* halftone overlay across the whole desktop */
+[data-accent="splat"] .desktop::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(14,14,16,0.18) 1px, transparent 1.5px);
+  background-size: 6px 6px;
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+}
+[data-accent="splat"][data-theme="dark"] .desktop::after { mix-blend-mode: screen; opacity: 0.18; }
+
+/* mute the faux mac window in splat mode (keep it but blocky) */
+[data-accent="splat"] .faux-window {
+  border: 2.5px solid var(--splat-ink);
+  box-shadow: 6px 8px 0 var(--splat-ink);
+  border-radius: 12px;
+}
+[data-accent="splat"] .menubar {
+  background: var(--splat-ink);
+  color: var(--splat-cream);
+  border-bottom: 0;
+  font-family: 'Tilt Warp', sans-serif;
+}
+[data-accent="splat"] .menubar .mb-item,
+[data-accent="splat"] .menubar .mb-app,
+[data-accent="splat"] .menubar-r { color: var(--splat-cream); }
+
+/* ─── background splatter ─────────────────────────────────────────────── */
+.splat-bg {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.95;
+}
+.splat-bg svg { width: 100%; height: 100%; }
+.splat-bg .bg-team-y path { fill: var(--splat-y); }
+.splat-bg .bg-team-p path { fill: var(--splat-p); }
+[data-theme="dark"] .splat-bg { mix-blend-mode: screen; opacity: 0.85; }
+
+/* ─── panel chrome in splat mode ──────────────────────────────────────── */
+[data-accent="splat"] .panel {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 3px solid var(--panel-bd);
+}
+[data-accent="splat"] .panel::before {
+  /* halftone overlay inside the panel */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(rgba(14,14,16,0.13) 1px, transparent 1.5px);
+  background-size: 5px 5px;
+  border-radius: var(--r-panel);
+  z-index: 0; opacity: 0.4;
+}
+[data-accent="splat"][data-theme="dark"] .panel::before {
+  background-image: radial-gradient(rgba(255,233,0,0.18) 1px, transparent 1.5px);
+}
+[data-accent="splat"] .panel > * { position: relative; z-index: 1; }
+
+[data-accent="splat"] .search {
+  border: 2px solid var(--splat-ink);
+  background: var(--card-bg);
+  border-radius: var(--r-pill);
+  height: 36px;
+}
+[data-accent="splat"][data-theme="dark"] .search { border-color: var(--splat-y); }
+[data-accent="splat"] .search input::placeholder { color: var(--ink-3); }
+
+[data-accent="splat"] .fchip {
+  border: none;
+  background: transparent;
+  font-weight: 700;
+  font-family: 'Tilt Warp', sans-serif;
+  text-transform: uppercase;
+  font-size: 11px; letter-spacing: 0.04em;
+  height: 34px;
+  padding: 0 14px;
+  position: relative;
+  isolation: isolate;
+  color: var(--ink-2);
+  transition: color .2s ease, transform .2s ease;
+}
+/* Ink-blob hover/active background using an SVG path painted via ::before.
+   Each chip rolls a slightly different blob via :nth-child to feel hand-thrown. */
+[data-accent="splat"] .fchip::before {
+  content: '';
+  position: absolute; inset: -4px -8px;
+  z-index: -1;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 110% 130%;
+  opacity: 0;
+  transform: scale(0.85) rotate(-4deg);
+  transition: opacity .15s ease, transform .25s cubic-bezier(.2,1.6,.3,1);
+  /* default blob */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path fill='%23ffe900' stroke='%230e0e10' stroke-width='3' stroke-linejoin='round' d='M10 30 C2 18 12 6 26 8 C30 -2 50 0 56 10 C66 0 90 6 92 22 C108 22 116 38 102 46 C108 58 88 64 80 56 C74 64 50 64 46 52 C30 60 14 54 16 40 C4 38 2 32 10 30 Z'/></svg>");
+}
+[data-accent="splat"] .fchip:nth-child(2)::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path fill='%23ffe900' stroke='%230e0e10' stroke-width='3' stroke-linejoin='round' d='M14 22 C8 8 26 2 38 10 C44 0 70 -2 76 12 C92 8 110 22 104 36 C116 44 106 58 92 54 C82 64 56 60 48 50 C38 60 18 56 18 42 C2 40 4 28 14 22 Z'/></svg>");
+}
+[data-accent="splat"] .fchip:nth-child(3)::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path fill='%23ffe900' stroke='%230e0e10' stroke-width='3' stroke-linejoin='round' d='M8 28 C2 14 18 4 30 10 C36 -2 60 -2 66 8 C80 0 102 8 100 24 C114 30 110 50 96 50 C92 62 70 64 60 54 C48 64 28 60 26 46 C12 46 0 38 8 28 Z'/></svg>");
+}
+[data-accent="splat"] .fchip:nth-child(4)::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path fill='%23ffe900' stroke='%230e0e10' stroke-width='3' stroke-linejoin='round' d='M12 18 C6 6 24 0 36 6 C46 -2 64 2 68 14 C84 8 106 18 100 32 C112 38 102 56 88 52 C84 64 60 62 52 52 C36 62 18 54 20 40 C6 38 2 26 12 18 Z'/></svg>");
+}
+[data-accent="splat"] .fchip:nth-child(5)::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path fill='%23ffe900' stroke='%230e0e10' stroke-width='3' stroke-linejoin='round' d='M10 24 C4 10 22 4 32 12 C42 0 64 4 70 16 C84 12 100 28 92 38 C108 46 92 62 82 54 C72 62 50 64 44 50 C30 60 12 50 14 38 C0 36 4 28 10 24 Z'/></svg>");
+}
+[data-accent="splat"] .fchip:hover {
+  color: var(--splat-ink);
+  transform: rotate(-1.5deg);
+}
+[data-accent="splat"] .fchip:hover::before {
+  opacity: 1;
+  transform: scale(1) rotate(-2deg);
+}
+/* Active = purple ink blob in light mode, yellow in dark */
+[data-accent="splat"] .fchip.is-on {
+  color: var(--splat-cream);
+  transform: rotate(-2deg) scale(1.04);
+}
+[data-accent="splat"] .fchip.is-on::before {
+  opacity: 1;
+  transform: scale(1.05) rotate(-3deg);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path fill='%237a2bff' stroke='%230e0e10' stroke-width='3' stroke-linejoin='round' d='M10 30 C2 18 12 6 26 8 C30 -2 50 0 56 10 C66 0 90 6 92 22 C108 22 116 38 102 46 C108 58 88 64 80 56 C74 64 50 64 46 52 C30 60 14 54 16 40 C4 38 2 32 10 30 Z'/></svg>");
+}
+[data-accent="splat"][data-theme="dark"] .fchip.is-on {
+  color: var(--splat-ink);
+}
+[data-accent="splat"][data-theme="dark"] .fchip.is-on::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path fill='%23ffe900' stroke='%230e0e10' stroke-width='3' stroke-linejoin='round' d='M10 30 C2 18 12 6 26 8 C30 -2 50 0 56 10 C66 0 90 6 92 22 C108 22 116 38 102 46 C108 58 88 64 80 56 C74 64 50 64 46 52 C30 60 14 54 16 40 C4 38 2 32 10 30 Z'/></svg>");
+}
+
+[data-accent="splat"] .layout-seg,
+[data-accent="splat"] .ic-btn {
+  border: 2px solid var(--splat-ink);
+  border-radius: 10px;
+}
+[data-accent="splat"][data-theme="dark"] .layout-seg,
+[data-accent="splat"][data-theme="dark"] .ic-btn { border-color: var(--splat-y); }
+[data-accent="splat"] .layout-seg button {
+  position: relative;
+  isolation: isolate;
+  color: var(--ink-2);
+  transition: color .2s ease;
+}
+[data-accent="splat"] .layout-seg button.on { background: transparent; color: var(--splat-ink); }
+[data-accent="splat"] .layout-seg button.on::before {
+  content: ''; position: absolute; inset: -3px -4px;
+  z-index: -1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 60'><path fill='%23ffe900' stroke='%230e0e10' stroke-width='3' stroke-linejoin='round' d='M10 30 C2 18 12 6 26 8 C30 -2 50 0 56 10 C66 0 90 6 92 22 C108 22 116 38 102 46 C108 58 88 64 80 56 C74 64 50 64 46 52 C30 60 14 54 16 40 C4 38 2 32 10 30 Z'/></svg>");
+  background-repeat: no-repeat; background-position: center; background-size: 110% 130%;
+  transform: rotate(-3deg);
+}
+
+/* ─── cards in splat mode ─────────────────────────────────────────────── */
+[data-accent="splat"] .stripe-card,
+[data-accent="splat"] .grid-tile {
+  border: 2.5px solid var(--splat-ink);
+  border-radius: var(--r-card);
+  box-shadow: 4px 5px 0 var(--splat-ink);
+  transition: transform .18s var(--easing), background .15s, box-shadow .15s;
+}
+[data-accent="splat"][data-theme="dark"] .stripe-card,
+[data-accent="splat"][data-theme="dark"] .grid-tile {
+  border-color: var(--splat-y);
+  box-shadow: 4px 5px 0 var(--splat-ink);
+}
+[data-accent="splat"] .stripe-card:nth-child(odd):not(.is-focus),
+[data-accent="splat"] .grid-tile:nth-child(odd):not(.is-focus) { transform: rotate(-0.6deg); }
+[data-accent="splat"] .stripe-card:nth-child(even):not(.is-focus),
+[data-accent="splat"] .grid-tile:nth-child(even):not(.is-focus) { transform: rotate(0.7deg); }
+[data-accent="splat"] .stripe-card:hover,
+[data-accent="splat"] .grid-tile:hover {
+  transform: translateY(-3px) rotate(0deg);
+  box-shadow: 6px 8px 0 var(--splat-ink);
+  background: var(--splat-y-2);
+}
+[data-accent="splat"] .stripe-card.is-focus,
+[data-accent="splat"] .grid-tile.is-focus {
+  background: var(--splat-y);
+  border-color: var(--splat-ink);
+  color: var(--splat-ink);
+  transform: translateY(-2px) rotate(-1.2deg) scale(1.02);
+  box-shadow: 6px 8px 0 var(--splat-p);
+}
+[data-accent="splat"] .stack-row {
+  border: 2px solid transparent;
+  border-radius: 10px;
+}
+[data-accent="splat"] .stack-row.is-focus {
+  background: var(--splat-y);
+  color: var(--splat-ink);
+  border-color: var(--splat-ink);
+  transform: translateX(4px) rotate(-0.4deg);
+  box-shadow: 4px 4px 0 var(--splat-p);
+}
+[data-accent="splat"] .pin-corner {
+  background: var(--splat-p);
+  color: var(--splat-cream);
+  border: 1.5px solid var(--splat-ink);
+  width: 18px; height: 18px;
+}
+
+/* ─── preview pane / detail ───────────────────────────────────────────── */
+[data-accent="splat"] .preview-pane { border-left: 2px dashed var(--splat-ink); }
+[data-accent="splat"][data-theme="dark"] .preview-pane { border-left-color: var(--splat-y); }
+[data-accent="splat"] .detail-type {
+  background: var(--splat-ink);
+  color: var(--splat-cream);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: 'Tilt Warp', sans-serif;
+}
+[data-accent="splat"] .lang-pill {
+  background: var(--splat-p); color: var(--splat-cream);
+  border: 1px solid var(--splat-ink);
+}
+[data-accent="splat"] .paste-btn {
+  background: transparent;
+  color: var(--splat-cream);
+  border: none;
+  position: relative;
+  isolation: isolate;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  height: 44px;
+  padding: 0 22px;
+  transform: rotate(-2deg);
+  transition: transform .2s ease;
+}
+[data-accent="splat"] .paste-btn::before {
+  content: ''; position: absolute; inset: -8px -14px;
+  z-index: -1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 70'><path fill='%237a2bff' stroke='%230e0e10' stroke-width='3.5' stroke-linejoin='round' d='M14 36 C4 22 16 8 32 10 C36 -2 60 -2 68 8 C82 -4 110 4 114 18 C134 12 152 28 142 42 C160 50 148 68 130 64 C124 76 96 78 88 64 C76 78 50 74 46 60 C28 70 8 60 12 46 C-2 42 0 32 14 36 Z'/></svg>");
+  background-repeat: no-repeat; background-position: center; background-size: 110% 130%;
+}
+[data-accent="splat"] .paste-btn:hover {
+  transform: rotate(0deg) scale(1.05);
+}
+[data-accent="splat"] .paste-btn:hover::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 70'><path fill='%23ffe900' stroke='%230e0e10' stroke-width='3.5' stroke-linejoin='round' d='M14 36 C4 22 16 8 32 10 C36 -2 60 -2 68 8 C82 -4 110 4 114 18 C134 12 152 28 142 42 C160 50 148 68 130 64 C124 76 96 78 88 64 C76 78 50 74 46 60 C28 70 8 60 12 46 C-2 42 0 32 14 36 Z'/></svg>");
+}
+[data-accent="splat"] .paste-btn:hover { color: var(--splat-ink); }
+[data-accent="splat"] .paste-btn .kbd {
+  background: var(--splat-cream); color: var(--splat-ink);
+  border: 1px solid var(--splat-ink);
+}
+[data-accent="splat"] .ghost-btn {
+  border: 2.5px solid var(--splat-ink);
+  border-radius: 10px;
+  background: transparent;
+  font-family: 'Tilt Warp', sans-serif;
+}
+
+/* ─── kbd badges ──────────────────────────────────────────────────────── */
+[data-accent="splat"] .kbd {
+  border: 1.5px solid var(--splat-ink);
+  background: var(--splat-cream);
+  color: var(--splat-ink);
+  font-family: 'Tilt Warp', sans-serif;
+  font-weight: 700;
+}
+[data-accent="splat"][data-theme="dark"] .kbd {
+  border-color: var(--splat-y);
+  background: var(--bg-desk);
+  color: var(--splat-y);
+}
+
+/* ─── panel foot ──────────────────────────────────────────────────────── */
+[data-accent="splat"] .panel-foot {
+  background: var(--splat-ink);
+  color: var(--splat-cream);
+  border-top: 0;
+}
+[data-accent="splat"] .panel-foot,
+[data-accent="splat"] .panel-foot * { color: var(--splat-cream); }
+[data-accent="splat"] .queue-pill {
+  background: var(--splat-y);
+  color: var(--splat-ink);
+  border: 1.5px solid var(--splat-ink);
+  text-transform: uppercase;
+}
+
+/* ─── dock hint ───────────────────────────────────────────────────────── */
+[data-accent="splat"] .dock-hint {
+  background: var(--splat-y);
+  color: var(--splat-ink);
+  border: 2.5px solid var(--splat-ink);
+  border-radius: 12px;
+  box-shadow: 4px 5px 0 var(--splat-ink);
+  font-family: 'Tilt Warp', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transform: rotate(-1.2deg);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   SQUID MASCOT + INK PUDDLE
+   The squid is the visual anchor of the Splatoon theme. Two of them sit on
+   either side of the panel; they emerge from a puddle when the panel opens
+   and dive back in when it closes.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.squid-stage {
+  position: fixed;
+  /* Sit so most of the squid is above the panel's top edge.
+     Panel top edge ≈ bottom:476px. Stage 180px tall → bottom = 476 - 40 (overlap)
+     so only ~40px of the squid tucks behind the panel rim. */
+  bottom: 436px;
+  width: 180px; height: 200px;
+  z-index: 55;
+  pointer-events: none;
+  display: grid; place-items: end center;
+}
+/* Anchor the squids to the actual panel corners, with a little overhang. */
+.squid-stage.stage-left  { left:  max(8px, calc((100vw - 1280px) / 2 - 30px)); }
+.squid-stage.stage-right { right: max(8px, calc((100vw - 1280px) / 2 - 30px)); }
+@media (max-width: 1100px) {
+  .squid-stage { width: 140px; height: 160px; bottom: 410px; }
+}
+
+.squid-img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  /* Soft shadow only — no harsh black drop-shadow that swallowed the eyes. */
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+  user-select: none;
+}
+.squid-img.is-flip { transform: scaleX(-1); }
+
+/* ── puddle (under the squid) ────────────────────────────────────────── */
+.ink-puddle {
+  position: absolute;
+  bottom: -10px; left: 50%;
+  width: 220px; height: 90px;
+  transform: translateX(-50%) scaleY(0.45) scale(0);
+  transform-origin: 50% 100%;
+  transition: transform .55s cubic-bezier(.2, 1.6, .3, 1);
+  z-index: 1;
+}
+.ink-puddle .puddle-svg { width: 100%; height: 100%; overflow: visible; }
+.ink-puddle .puddle-fill { fill: var(--splat-y); }
+.team-purple .puddle-fill { fill: var(--splat-p); }
+.ink-puddle .puddle-dots {
+  fill: transparent;
+  stroke: var(--splat-ink); stroke-width: 0.4;
+  stroke-dasharray: 1 4;
+}
+.ink-puddle.is-on {
+  transform: translateX(-50%) scaleY(0.45) scale(1) rotate(0deg);
+}
+
+/* ── squid body ──────────────────────────────────────────────────────── */
+.squid-wrap {
+  position: relative;
+  width: 180px; height: 180px;
+  margin-bottom: 8px;
+  z-index: 2;
+  transform: translateY(160%) scale(0.4);
+  opacity: 0;
+  transition: transform .55s cubic-bezier(.3, 1.7, .4, 1), opacity .35s ease;
+}
+@media (max-width: 1100px) {
+  .squid-wrap { width: 140px; height: 140px; }
+}
+.squid-stage.is-out .squid-wrap {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  animation: squidWiggle 3s ease-in-out infinite 0.6s;
+}
+.squid-stage.is-in .squid-wrap {
+  transform: translateY(160%) scale(0.4);
+  opacity: 0;
+  transition: transform .35s cubic-bezier(.6, .1, .8, .4), opacity .25s ease .15s;
+}
+
+.squid-svg { width: 100%; height: 100%; overflow: visible; }
+.squid-svg.is-flip { transform: scaleX(-1); }
+
+/* Body is filled with an SVG gradient. Each team controls the two stop colors
+   so the squid has the classic Splatoon "lighter top → saturated bottom" shading. */
+.team-yellow .grad-top { stop-color: #f6ff5a; }
+.team-yellow .grad-bot { stop-color: #c8ff21; }
+.team-purple .grad-top { stop-color: #8a3dff; }
+.team-purple .grad-bot { stop-color: #5b1ed4; }
+
+.squid-body {
+  stroke: #0e0e10;
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+.squid-shadow {
+  fill: rgba(14, 14, 16, 0.18);
+}
+.team-purple .squid-shadow { fill: rgba(0, 0, 0, 0.28); }
+
+@keyframes squidWiggle {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  25%      { transform: translateY(-8px) rotate(2deg); }
+  50%      { transform: translateY(-2px) rotate(-2deg); }
+  75%      { transform: translateY(-6px) rotate(3deg); }
+}
+
+/* ── splat burst (replaces "Pasted" pill) ────────────────────────────── */
+.splat-burst {
+  position: fixed; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 200;
+  width: 280px; height: 280px;
+  pointer-events: none;
+  animation: burstScale .6s cubic-bezier(.2, 1.6, .3, 1) forwards;
+}
+.splat-burst svg { width: 100%; height: 100%; overflow: visible; }
+.splat-burst .burst-fill { fill: var(--splat-y); stroke: var(--splat-ink); stroke-width: 3; }
+.splat-burst.team-purple .burst-fill { fill: var(--splat-p); }
+.splat-burst .burst-label {
+  position: absolute; left: 50%; top: 50%;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  font-family: 'Rampart One', 'Tilt Warp', sans-serif;
+  font-size: 56px; color: var(--splat-ink);
+  -webkit-text-stroke: 2px var(--splat-cream);
+  letter-spacing: 0.04em;
+  text-shadow: 4px 4px 0 var(--splat-cream);
+}
+.splat-burst.team-purple .burst-label { color: var(--splat-cream); -webkit-text-stroke: 2px var(--splat-ink); text-shadow: 4px 4px 0 var(--splat-ink); }
+@keyframes burstScale {
+  0%   { transform: translate(-50%, -50%) scale(0) rotate(-30deg); opacity: 0; }
+  40%  { transform: translate(-50%, -50%) scale(1.15) rotate(0deg); opacity: 1; }
+  70%  { transform: translate(-50%, -50%) scale(1) rotate(2deg); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.1) rotate(-3deg); opacity: 0; }
+}
+
+/* ── Splatoon Tweaks panel: nicer in splat mode ──────────────────────── */
+[data-accent="splat"] .tweaks-panel {
+  border: 2.5px solid var(--splat-ink);
+  box-shadow: 4px 5px 0 var(--splat-ink);
+}
+[data-accent="splat"][data-theme="dark"] .tweaks-panel { border-color: var(--splat-y); }
+
+/* settings sheet skin */
+[data-accent="splat"] .settings {
+  border: 3px solid var(--splat-ink);
+  box-shadow: 8px 10px 0 var(--splat-ink);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: var(--panel-bg);
+}
+[data-accent="splat"] .settings-tl {
+  background: var(--splat-ink);
+  color: var(--splat-cream);
+}
+[data-accent="splat"] .settings-tl h4 { color: var(--splat-cream); }
+[data-accent="splat"] .sw.on { background: var(--splat-p); }
+[data-accent="splat"] .seg button.on { background: var(--splat-y); color: var(--splat-ink); }
+
+/* snippets rail */
+[data-accent="splat"] .rail {
+  border: 2.5px solid var(--splat-ink);
+  box-shadow: 4px 5px 0 var(--splat-ink);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: var(--panel-bg);
+}
+[data-accent="splat"] .snip-sc {
+  background: var(--splat-y); color: var(--splat-ink);
+  border: 1px solid var(--splat-ink);
+}

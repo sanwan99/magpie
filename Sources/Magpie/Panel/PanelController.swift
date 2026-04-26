@@ -7,9 +7,12 @@ import SwiftUI
 final class PanelController {
     private let panel: PanelWindow
     private let viewModel: ClipsViewModel
+    private let settings = SettingsStore.shared
     private let frontmost = FrontmostTracker()
     private var keyMonitor: Any?
     private var afterHide: (() -> Void)?
+    private var settingsObservationTask: Task<Void, Never>?
+    private weak var visualEffectView: NSVisualEffectView?
     private(set) var isVisible: Bool = false
 
     /// Panel size — wide enough for layout body + Detail Pane side-by-side.
@@ -23,10 +26,52 @@ final class PanelController {
         let frame = NSRect(origin: .zero, size: Self.panelSize)
         self.panel = PanelWindow(contentRect: frame)
         self.panel.contentView = makeContentView()
+        applyAppearance()
+        applyVibrancy()
         wireKeyboard()
+        observeSettings()
 
         viewModel.onPasteRequest = { [weak self] in
             self?.paste()
+        }
+    }
+
+    /// Subscribe to SettingsStore changes via Observation tracking. Each
+    /// withObservationTracking is a one-shot subscription, so we re-arm in
+    /// the closure to keep listening.
+    private func observeSettings() {
+        let store = settings
+        func track() {
+            withObservationTracking {
+                _ = store.theme
+                _ = store.vibrancy
+            } onChange: { [weak self] in
+                Task { @MainActor in
+                    self?.applyAppearance()
+                    self?.applyVibrancy()
+                    track()
+                }
+            }
+        }
+        track()
+    }
+
+    private func applyAppearance() {
+        panel.appearance = settings.theme.appearance
+    }
+
+    private func applyVibrancy() {
+        guard let effect = visualEffectView else { return }
+        effect.material = mapVibrancy(settings.vibrancy)
+    }
+
+    /// 0…60 slider → NSVisualEffectView material.
+    /// Three buckets so each step is visually distinct.
+    private func mapVibrancy(_ value: Double) -> NSVisualEffectView.Material {
+        switch value {
+        case ..<20:    return .windowBackground
+        case 20..<45:  return .menu
+        default:       return .hudWindow
         }
     }
 
@@ -192,7 +237,14 @@ final class PanelController {
             }
             // ⌘\ cycle layout (Stripe → Stack → Grid → Stripe)
             if chars == "\\" {
-                viewModel.cycleLayout()
+                withAnimation(.easeOut(duration: 0.18)) {
+                    viewModel.cycleLayout()
+                }
+                return nil
+            }
+            // ⌘, open Settings
+            if chars == "," {
+                SettingsWindowController.shared.show()
                 return nil
             }
             // ⌘1…⌘9 quick paste at index
@@ -280,11 +332,12 @@ final class PanelController {
         container.layer?.masksToBounds = true
 
         let effect = NSVisualEffectView(frame: container.bounds)
-        effect.material = .hudWindow
+        effect.material = mapVibrancy(settings.vibrancy)
         effect.blendingMode = .behindWindow
         effect.state = .active
         effect.autoresizingMask = [.width, .height]
         container.addSubview(effect)
+        self.visualEffectView = effect
 
         host.frame = container.bounds
         host.autoresizingMask = [.width, .height]
@@ -300,11 +353,21 @@ private struct PanelContentView: View {
     let viewModel: ClipsViewModel
     let onPaste: () -> Void
 
+    private let settings = SettingsStore.shared
+
     var body: some View {
-        VStack(spacing: 0) {
-            topBar
-            Divider().opacity(0.4)
-            body(for: viewModel.activeLayout)
+        ZStack {
+            // Decorative flavor overlay (e.g. Splat's purple-ink wash) sits
+            // between the NSVisualEffectView and the SwiftUI content. Default
+            // flavors leave this transparent so vibrancy shows through.
+            if let overlay = settings.flavor.tokens.panelBgOverlay {
+                overlay.ignoresSafeArea()
+            }
+            VStack(spacing: 0) {
+                topBar
+                Divider().opacity(0.4)
+                body(for: viewModel.activeLayout)
+            }
         }
     }
 

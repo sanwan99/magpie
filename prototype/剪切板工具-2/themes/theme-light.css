@@ -1,0 +1,39 @@
+/* Magpie — Light theme
+   macOS-flavored vibrancy + bright vibrant surfaces. */
+
+/* ── Light theme ─────────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  --bg-desk: #d6d2cc;
+  --bg-desk-2: #b8b3aa;
+
+  --panel-bg: rgba(252, 250, 247, 0.62);
+  --panel-bd: rgba(0, 0, 0, 0.08);
+  --panel-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 24px 60px rgba(0, 0, 0, 0.18),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+
+  --ink:  #1c1c1e;
+  --ink-2: rgba(28, 28, 30, 0.66);
+  --ink-3: rgba(28, 28, 30, 0.42);
+  --ink-4: rgba(28, 28, 30, 0.18);
+
+  --hairline: rgba(0, 0, 0, 0.07);
+  --card-bg:  rgba(255, 255, 255, 0.6);
+  --card-bd:  rgba(0, 0, 0, 0.06);
+  --card-bg-hover: rgba(255, 255, 255, 0.85);
+  --focus-bg:   color-mix(in oklch, oklch(86% var(--accent-c, 0)% var(--accent-h, 0)) 60%, white);
+  --focus-bd:   color-mix(in oklch, oklch(50% calc(var(--accent-c, 0)% + 12) var(--accent-h, 0)) 50%, transparent);
+  --focus-ink:  oklch(20% calc(var(--accent-c, 0)% + 4) var(--accent-h, 0));
+
+  --kbd-bg:  rgba(0, 0, 0, 0.06);
+  --kbd-bd:  rgba(0, 0, 0, 0.1);
+
+  --code-bg: rgba(0, 0, 0, 0.035);
+  --t-kw:  #8a3ffc;
+  --t-str: #b8762f;
+  --t-num: #2a6f3a;
+  --t-com: rgba(28, 28, 30, 0.4);
+  --t-fn:  #1a4a8c;
+  --t-prop:#5a3aa8;
+}

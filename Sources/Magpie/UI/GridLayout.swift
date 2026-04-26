@@ -42,7 +42,10 @@ private struct GridTile: View {
     let isFocused: Bool
     let shortcutNumber: Int?
 
+    private let settings = SettingsStore.shared
+
     var body: some View {
+        let t = settings.flavor.tokens
         VStack(alignment: .leading, spacing: 6) {
             header
             previewBody
@@ -51,12 +54,25 @@ private struct GridTile: View {
         .padding(10)
         .frame(height: 170, alignment: .topLeading)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: t.tileCornerRadius)
                 .fill(.background.opacity(isFocused ? 0.45 : 0.32))
         )
+        .background(
+            RoundedRectangle(cornerRadius: t.tileCornerRadius)
+                .fill(isFocused ? Color.clear : t.cardBgIdle)
+        )
+        .background(
+            RoundedRectangle(cornerRadius: t.tileCornerRadius)
+                .fill(isFocused ? t.focusBg : Color.clear)
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(Color.primary.opacity(isFocused ? 0.18 : 0.06), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: t.tileCornerRadius)
+                .strokeBorder(
+                    isFocused
+                        ? t.strokeColor.opacity(t.focusStrokeOpacity)
+                        : t.strokeColor.opacity(t.strokeOpacity),
+                    lineWidth: isFocused ? t.focusStrokeWidth : t.strokeWidth
+                )
         )
         .shadow(
             color: Color.black.opacity(isFocused ? 0.10 : 0.03),

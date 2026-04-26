@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<title>Magpie — 原型设计说明</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ink: #1a1a1c;
+    --ink-2: rgba(26,26,28,.66);
+    --ink-3: rgba(26,26,28,.42);
+    --ink-4: rgba(26,26,28,.12);
+    --paper: #f7f5f0;
+    --paper-2: #efebe2;
+    --line: rgba(0,0,0,.08);
+    --code-bg: rgba(0,0,0,.04);
+    --accent: oklch(50% 4% 240);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    font-size: 14px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, kbd, pre, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+  /* ── Layout ────────────────────────────────────────────────── */
+  .doc {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 760px);
+    gap: 56px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 64px 48px 120px;
+  }
+  nav.toc {
+    position: sticky; top: 32px; align-self: start;
+    font-size: 12.5px;
+    border-left: .5px solid var(--line);
+    padding-left: 16px;
+  }
+  nav.toc h6 {
+    margin: 0 0 10px; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3);
+  }
+  nav.toc a {
+    display: block; padding: 3px 0; color: var(--ink-2);
+    text-decoration: none;
+  }
+  nav.toc a:hover { color: var(--ink); }
+  nav.toc .sub { padding-left: 14px; font-size: 11.5px; color: var(--ink-3); }
+
+  main { min-width: 0; }
+
+  /* ── Hero ──────────────────────────────────────────────────── */
+  .hero { margin-bottom: 56px; }
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px;
+  }
+  h1 {
+    margin: 0 0 12px;
+    font-size: 56px; font-weight: 700; letter-spacing: -0.02em;
+    line-height: 1.05;
+  }
+  .lede { font-size: 17px; color: var(--ink-2); max-width: 60ch; margin: 0 0 28px; }
+  .meta-strip {
+    display: flex; gap: 18px; flex-wrap: wrap;
+    font-size: 12px; color: var(--ink-3);
+    padding: 14px 0; border-top: .5px solid var(--line); border-bottom: .5px solid var(--line);
+  }
+  .meta-strip b { color: var(--ink); font-weight: 600; }
+
+  /* ── Sections ──────────────────────────────────────────────── */
+  section { margin-bottom: 64px; scroll-margin-top: 24px; }
+  h2 {
+    font-size: 28px; font-weight: 700; letter-spacing: -0.01em;
+    margin: 0 0 6px; padding-top: 12px;
+    border-top: 1px solid var(--ink);
+  }
+  h2 .num {
+    display: inline-block; min-width: 36px;
+    font-family: ui-monospace, monospace; font-size: 18px;
+    font-weight: 500; color: var(--ink-3); vertical-align: 2px;
+  }
+  .h2-sub { color: var(--ink-2); margin: 0 0 24px; max-width: 60ch; }
+
+  h3 {
+    font-size: 17px; font-weight: 600; margin: 28px 0 6px;
+  }
+  h4 {
+    font-size: 13px; font-weight: 600; margin: 16px 0 6px;
+    color: var(--ink-2); text-transform: uppercase; letter-spacing: .05em;
+  }
+
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 8px 0 16px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  li::marker { color: var(--ink-3); }
+  hr { border: 0; border-top: .5px solid var(--line); margin: 28px 0; }
+
+  a.ref { color: inherit; text-decoration: underline;
+    text-decoration-color: var(--ink-4); text-underline-offset: 3px; }
+  a.ref:hover { text-decoration-color: var(--ink); }
+
+  /* ── Inline elements ──────────────────────────────────────── */
+  code {
+    background: var(--code-bg); padding: 1px 6px; border-radius: 4px;
+    font-size: 12.5px;
+  }
+  kbd {
+    display: inline-grid; place-items: center;
+    min-width: 20px; height: 20px; padding: 0 5px;
+    background: #fff; border: .5px solid rgba(0,0,0,.18);
+    border-bottom-width: 1.5px;
+    border-radius: 4px; font-size: 11px; font-family: inherit;
+    box-shadow: 0 1px 0 rgba(0,0,0,.04);
+    margin: 0 1px; color: var(--ink);
+  }
+  pre {
+    background: var(--code-bg); border: .5px solid var(--line);
+    border-radius: 8px; padding: 14px 16px;
+    font-size: 12px; line-height: 1.6;
+    overflow-x: auto; margin: 12px 0 18px;
+    white-space: pre;
+  }
+  blockquote {
+    margin: 18px 0; padding: 12px 16px;
+    border-left: 3px solid var(--ink); background: var(--paper-2);
+    border-radius: 0 8px 8px 0;
+    color: var(--ink-2); font-size: 13px;
+  }
+
+  /* ── Specific blocks ──────────────────────────────────────── */
+  .lozenge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--ink); color: var(--paper);
+    padding: 2px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; letter-spacing: .02em;
+  }
+
+  .grid-2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+    margin: 18px 0 24px;
+  }
+  .card {
+    background: #fff; border: .5px solid var(--line);
+    border-radius: 10px; padding: 16px 18px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 14px; }
+  .card p { font-size: 12.5px; color: var(--ink-2); margin: 0; }
+
+  /* Spec tables */
+  table.spec {
+    width: 100%; border-collapse: collapse; font-size: 12.5px;
+    margin: 12px 0 22px;
+  }
+  table.spec th, table.spec td {
+    text-align: left; padding: 10px 12px;
+    border-bottom: .5px solid var(--line); vertical-align: top;
+  }
+  table.spec th {
+    font-weight: 600; color: var(--ink-3); font-size: 11px;
+    letter-spacing: .04em; text-transform: uppercase;
+    background: var(--paper-2); border-bottom: 1px solid var(--ink);
+  }
+  table.spec td.k { font-family: ui-monospace, monospace; font-size: 12px; white-space: nowrap; }
+  table.spec td.k kbd { margin-right: 2px; }
+  table.spec td.t { color: var(--ink-2); }
+
+  /* Schema/JSON-ish blocks */
+  .schema {
+    background: var(--paper-2); border: .5px solid var(--line);
+    border-radius: 10px; padding: 14px 16px;
+    font-family: ui-monospace, monospace; font-size: 12px;
+    line-height: 1.7; margin: 12px 0;
+    white-space: pre;
+  }
+  .schema .com { color: var(--ink-3); }
+  .schema .kw { color: oklch(40% 12% 280); }
+  .schema .str { color: oklch(45% 14% 30); }
+
+  /* ASCII layout sketches */
+  pre.sketch {
+    font-size: 11.5px; line-height: 1.5;
+    background: var(--paper-2); border-style: dashed;
+  }
+
+  /* Print-friendly */
+  @media print {
+    nav.toc { display: none; }
+    .doc { grid-template-columns: 1fr; max-width: 100%; padding: 24px; }
+    pre, .schema { break-inside: avoid; }
+    h2 { break-before: page; }
+    .hero h1 { font-size: 36px; }
+  }
+
+  @media (max-width: 920px) {
+    .doc { grid-template-columns: 1fr; gap: 24px; padding: 32px 24px 80px; }
+    nav.toc { position: static; border-left: 0; padding: 0;
+      border-top: .5px solid var(--line); padding-top: 16px; }
+    h1 { font-size: 40px; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+
+<body>
+<div class="doc">
+
+<nav class="toc">
+  <h6>目录</h6>
+  <a href="#hero">Magpie</a>
+  <a href="#vision">01 · 产品定位</a>
+  <a href="#info-architecture">02 · 信息架构</a>
+  <a href="#data">03 · 数据模型</a>
+  <a href="#screens">04 · 界面与组件</a>
+  <a href="#interactions">05 · 交互行为</a>
+  <a href="#shortcuts">06 · 快捷键</a>
+  <a href="#search">07 · 搜索与过滤</a>
+  <a href="#layouts">08 · 三种布局</a>
+  <a href="#settings">09 · 设置面板</a>
+  <a href="#snippets">10 · Snippets</a>
+  <a href="#visual">11 · 视觉规范</a>
+  <a href="#tech">12 · 技术建议</a>
+  <a href="#milestones">13 · 实现路线</a>
+</nav>
+
+<main>
+
+<!-- ─────────────────────────────────────────────── -->
+<header id="hero" class="hero">
+  <div class="eyebrow">Prototype Spec · v0.1</div>
+  <h1>Magpie</h1>
+  <p class="lede">
+    一个本地优先、键盘驱动的 macOS 剪切板管理器。
+    像喜鹊一样，把你随手复制的零碎都收集起来——文本、代码、链接、图片、文件、文件夹路径——
+    用一次按键召唤，一次按键粘贴。
+  </p>
+  <div class="meta-strip">
+    <span><b>形态</b> 屏幕底部条形面板（Dock 式）</span>
+    <span><b>平台</b> macOS 14+</span>
+    <span><b>建议技术</b> SwiftUI / Tauri / Electron + React</span>
+    <span><b>原型文件</b> <code>Deck Clipboard.html</code></span>
+  </div>
+</header>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="vision">
+  <h2><span class="num">01</span>产品定位</h2>
+  <p class="h2-sub">先定调，再做事。决策一旦定下，所有后续设计都围绕它收敛。</p>
+
+  <h3>三句话原则</h3>
+  <ol>
+    <li><b>本地优先 · 隐私第一。</b>所有数据存本地 SQLite，可选 Touch ID 解锁；不联网、不上传、不分析。</li>
+    <li><b>键盘是一等公民。</b>从呼出到粘贴，全流程不需要触碰鼠标。每个鼠标可达的功能都必须有快捷键。</li>
+    <li><b>类型即视觉。</b>不同类型（文本/代码/链接/图片/文件/文件夹）有专门的预览，第一眼就知道是什么。</li>
+  </ol>
+
+  <h3>不做什么</h3>
+  <ul>
+    <li>不做云同步、账号系统、协同编辑（保持本地纯净）。</li>
+    <li>不做花哨配色或品牌渐变。色彩极简（黑白灰），强调"内容本身"。</li>
+    <li>不做 AI 摘要 / 推荐（避免噪音；后续如需加入须另开抽屉）。</li>
+  </ul>
+
+  <h3>名字与隐喻</h3>
+  <p>
+    <b>Magpie（喜鹊）</b>——天生爱收集闪亮小物件的鸟。这隐喻贯穿始终：
+    复制即"叼回来"、pin 即"塞进巢里"、queue mode 即"按顺序往外掏"。
+    Logo 建议是一个简洁的喜鹊侧影或衔着方形光斑的极简符号。
+  </p>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="info-architecture">
+  <h2><span class="num">02</span>信息架构</h2>
+  <p class="h2-sub">应用主体只有<b>一个面板</b>，从屏幕底部呼出。所有功能都挂在它上面。</p>
+
+  <pre class="sketch">
+┌──────────────────── Magpie Panel (底部条形) ────────────────────┐
+│                                                                 │
+│  [search ⌕]   [type filters]   [pin][queue]   [layout][⋯][⚙]  │  ← 顶栏
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│   ┌──┐ ┌──┐ ┌──┐ ┌──┐ ┌──┐ ┌──┐ ┌──┐ ┌──┐    │  Detail Pane  │  ← 主体
+│   │c1│ │c2│ │c3│ │c4│ │c5│ │c6│ │c7│ │c8│ … │  (focused)    │
+│   └──┘ └──┘ └──┘ └──┘ └──┘ └──┘ └──┘ └──┘    │  big preview  │
+│                                              │  metadata     │
+│                                              │  [Paste ↵]    │
+│  ─────────────────────────────────────────────────────────────  │
+│  Type · App · 12m ago         ↑↓ Nav  ↵ Paste  ⌘D Pin  Esc    │  ← 底栏
+└─────────────────────────────────────────────────────────────────┘
+
+附属浮层：
+   • Snippets Rail   — 面板上方抽屉
+   • Settings Sheet  — 居中模态（macOS 标题栏风格）
+   • Paste Toast     — 粘贴成功的中央提示
+   • Dock Hint       — 面板隐藏时的"⌘P 召唤"提示</pre>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="data">
+  <h2><span class="num">03</span>数据模型</h2>
+  <p class="h2-sub">每条剪切记录是一个 <code>Clip</code>。共 <b>6 种类型</b>，结构相似但 type-specific 字段不同。</p>
+
+  <h3>Clip（统一字段）</h3>
+  <div class="schema"><span class="com">// 所有 Clip 都有这些</span>
+{
+  id:        <span class="str">"c01"</span>          <span class="com">// uuid / nanoid</span>
+  type:      <span class="kw">ClipType</span>        <span class="com">// 见下</span>
+  app:       <span class="str">"vscode"</span>       <span class="com">// 来源 app 标识</span>
+  createdAt: <span class="kw">Date</span>            <span class="com">// 复制时刻</span>
+  pinned:    <span class="kw">Bool</span>            <span class="com">// 是否置顶</span>
+  tags:      [<span class="str">"react"</span>, <span class="str">"snippet"</span>]
+  title:     <span class="str">"useDebounce hook"</span>  <span class="com">// 可选；自动生成或用户改</span>
+}</div>
+
+  <h3>ClipType — 6 种</h3>
+  <table class="spec">
+    <thead><tr><th>type</th><th>专属字段</th><th>用途</th><th>预览要点</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="k">text</td>
+        <td class="k">body: String</td>
+        <td class="t">纯文本/段落</td>
+        <td class="t">前 6 行截断，等宽 + 普通字体混排</td>
+      </tr>
+      <tr>
+        <td class="k">code</td>
+        <td class="k">body: String<br/>lang: String</td>
+        <td class="t">代码片段，带语言提示</td>
+        <td class="t">语法高亮，detail 视图带行号</td>
+      </tr>
+      <tr>
+        <td class="k">url</td>
+        <td class="k">url, host, title, desc</td>
+        <td class="t">链接（可拉 OGP 信息）</td>
+        <td class="t">favicon + 标题 + 摘要 + 缩略图</td>
+      </tr>
+      <tr>
+        <td class="k">image</td>
+        <td class="k">w, h, sizeKB, blob</td>
+        <td class="t">截图/位图</td>
+        <td class="t">缩略图 + 尺寸 overlay</td>
+      </tr>
+      <tr>
+        <td class="k">file</td>
+        <td class="k">path, kind, sizeKB</td>
+        <td class="t">单个文件路径</td>
+        <td class="t">文件图标 + 名 + 路径（mono）</td>
+      </tr>
+      <tr>
+        <td class="k">folder</td>
+        <td class="k">path, items</td>
+        <td class="t"><b>用户主用：复制文件夹路径</b></td>
+        <td class="t">文件夹图标 + 名 + 路径 + 内含文件数</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Snippet（用户定义模板）</h3>
+  <div class="schema">{
+  id:       <span class="str">"s01"</span>
+  shortcut: <span class="str">";sig"</span>      <span class="com">// 触发字符串，输入时自动展开</span>
+  title:    <span class="str">"Email signature"</span>
+  body:     <span class="str">"— Yu\nProduct & Design"</span>
+}</div>
+
+  <blockquote>
+    <b>实现提示：</b>底层只用一张表 <code>clips</code>，所有类型走 JSON 字段。
+    Snippets 单独一张表 <code>snippets</code>。
+    搜索建立 FTS5 虚拟表（SQLite 全文检索）覆盖 <code>title / body / url / host / desc / path / tags</code>。
+  </blockquote>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="screens">
+  <h2><span class="num">04</span>界面与组件</h2>
+  <p class="h2-sub">面板由 4 个区域 + 5 个组件级元素组成。</p>
+
+  <h3>4 个区域</h3>
+  <div class="grid-2">
+    <div class="card">
+      <h3>① Panel Head</h3>
+      <p>搜索框（带计数器）、类型筛选条、Pin/Queue 开关、布局切换、Snippets / Settings 入口。所有过滤条件都在这一行。</p>
+    </div>
+    <div class="card">
+      <h3>② Panel Body</h3>
+      <p>左侧：当前布局（Stripe / Stack / Grid）展示 clips。右侧：Detail Pane（Stack 模式下更宽）。</p>
+    </div>
+    <div class="card">
+      <h3>③ Panel Foot</h3>
+      <p>状态条：当前选中的类型 / 来源 app / 复制时间；右侧滚动展示主要快捷键。Queue Mode 开启时显示 Pill。</p>
+    </div>
+    <div class="card">
+      <h3>④ Floating Layers</h3>
+      <p>Snippets Rail（面板上方）、Settings Sheet（居中）、Paste Toast（粘贴反馈）、Dock Hint（面板隐藏时的呼出提示）。</p>
+    </div>
+  </div>
+
+  <h3>5 个核心组件</h3>
+  <table class="spec">
+    <thead><tr><th>组件</th><th>职责</th><th>关键 props</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>&lt;ClipCard&gt;</code></td>
+        <td>列表中的单条目卡片，类型敏感的预览</td>
+        <td>clip, focused, dense</td>
+      </tr>
+      <tr>
+        <td><code>&lt;ClipPreview&gt;</code></td>
+        <td>类型分发的紧凑预览（switch on type）</td>
+        <td>clip, dense</td>
+      </tr>
+      <tr>
+        <td><code>&lt;ClipDetail&gt;</code></td>
+        <td>右侧详情面板：标题 + 完整预览 + 操作按钮</td>
+        <td>clip, onPin, onPaste</td>
+      </tr>
+      <tr>
+        <td><code>&lt;CodeBlock&gt;</code></td>
+        <td>代码渲染（轻量语法着色，可选行号）</td>
+        <td>src, lang, lineNumbers, maxLines</td>
+      </tr>
+      <tr>
+        <td><code>&lt;FilterRail&gt;</code></td>
+        <td>顶栏类型筛选条（All / Text / Code / Link / Image / File / Folder）</td>
+        <td>value, onChange</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="interactions">
+  <h2><span class="num">05</span>交互行为</h2>
+  <p class="h2-sub">每一个动作都要"短"——最多两步完成。</p>
+
+  <h3>呼出与隐藏</h3>
+  <ul>
+    <li><b>呼出</b>：全局 <kbd>⌘</kbd>+<kbd>P</kbd> 触发。面板从屏幕底部滑入（300ms ease-out），同时自动 focus 搜索框。</li>
+    <li><b>隐藏</b>：<kbd>Esc</kbd> 在搜索为空且无浮层时，下滑退出。或再次按 <kbd>⌘</kbd>+<kbd>P</kbd>。</li>
+    <li><b>失焦自动隐藏</b>（设置可关）：当面板失去 key window 状态超过 200ms，自动收起。</li>
+  </ul>
+
+  <h3>选择与导航</h3>
+  <ul>
+    <li><kbd>←</kbd>/<kbd>→</kbd> 或 <kbd>↑</kbd>/<kbd>↓</kbd> 切换 focus（焦点项滚动入视）。</li>
+    <li>鼠标单击：选中。鼠标双击：直接粘贴。</li>
+    <li><kbd>Space</kbd>：切换右侧 Detail Pane 显隐。</li>
+  </ul>
+
+  <h3>粘贴</h3>
+  <ul>
+    <li><kbd>↵</kbd>：粘贴当前 focus 项。先关闭面板，再写入系统剪切板，再向前一个 active app 模拟 <kbd>⌘</kbd>+<kbd>V</kbd>。</li>
+    <li><kbd>⇧</kbd>+<kbd>↵</kbd>：粘贴为纯文本（剥离格式）。</li>
+    <li><kbd>⌘</kbd>+<kbd>1</kbd>…<kbd>9</kbd>：跳过选择，直接粘贴第 N 项。</li>
+    <li>粘贴后中央显示 toast "Pasted"（700ms 淡出）。</li>
+  </ul>
+
+  <h3>Pin / 搜藏</h3>
+  <ul>
+    <li><kbd>⌘</kbd>+<kbd>D</kbd>：toggle 当前 focus 项的 pinned。Pin 项始终排在过滤结果最前。</li>
+    <li>右上角"Pinned"开关：仅显示 pin 项。</li>
+  </ul>
+
+  <h3>Queue Mode（队列粘贴）</h3>
+  <ul>
+    <li><kbd>⌘</kbd>+<kbd>Q</kbd>：开启 / 关闭。底栏显示 Pill 指示器。</li>
+    <li>开启后，每次 <kbd>↵</kbd> 粘贴当前项，然后 <b>focus 自动前进一项</b>。适合连续粘贴多条到表格、表单。</li>
+    <li>关闭时回到普通模式。</li>
+  </ul>
+
+  <h3>Folder 类型的特殊行为</h3>
+  <blockquote>
+    用户的核心场景：复制文件夹路径。
+    <kbd>↵</kbd> 默认粘贴 path 字符串（不是 Finder 引用）。
+    <kbd>⇧</kbd>+<kbd>↵</kbd> 粘贴 POSIX 绝对路径（展开 <code>~</code>）。
+    <kbd>⌥</kbd>+<kbd>↵</kbd> 粘贴 <code>file://</code> URL。
+    详情面板有"Press ↵ to copy path"提示，避免歧义。
+  </blockquote>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="shortcuts">
+  <h2><span class="num">06</span>快捷键</h2>
+  <p class="h2-sub">完整覆盖。设置页有可视化对照表，并允许重绑。</p>
+
+  <table class="spec">
+    <thead><tr><th>快捷键</th><th>作用</th><th>作用域</th></tr></thead>
+    <tbody>
+      <tr><td class="k"><kbd>⌘</kbd><kbd>P</kbd></td><td class="t">呼出 / 收起面板</td><td class="t">全局</td></tr>
+      <tr><td class="k"><kbd>↵</kbd></td><td class="t">粘贴选中项</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>⇧</kbd><kbd>↵</kbd></td><td class="t">粘贴为纯文本</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>⌥</kbd><kbd>↵</kbd></td><td class="t">特殊粘贴（folder→file:// URL）</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>⌘</kbd><kbd>1</kbd>…<kbd>9</kbd></td><td class="t">快速粘贴第 N 项</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>←</kbd><kbd>→</kbd> / <kbd>↑</kbd><kbd>↓</kbd></td><td class="t">移动 focus</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>/</kbd></td><td class="t">快速跳到搜索框</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>⌘</kbd><kbd>D</kbd></td><td class="t">Pin / Unpin 当前项</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>⌘</kbd><kbd>Q</kbd></td><td class="t">切换 Queue Mode</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>Space</kbd></td><td class="t">切换 Detail Pane 显隐</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>⌘</kbd><kbd>\</kbd></td><td class="t">循环切换布局（stripe→stack→grid）</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>⌘</kbd><kbd>,</kbd></td><td class="t">打开设置</td><td class="t">面板</td></tr>
+      <tr><td class="k"><kbd>Esc</kbd></td><td class="t">逐级取消（清搜索 → 清类型 → 收面板）</td><td class="t">面板</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="search">
+  <h2><span class="num">07</span>搜索与过滤</h2>
+  <p class="h2-sub">普通用户只需打字；高级用户用 <code>key:value</code> 语法。</p>
+
+  <h3>语法</h3>
+  <ul>
+    <li><b>关键词</b>：多个空格分隔的词为 AND 关系，命中 title / body / url / host / desc / path / tags。</li>
+    <li><b>类型过滤</b>：<code>type:code</code> · <code>type:folder</code> · <code>type:url</code></li>
+    <li><b>来源 app</b>：<code>app:vscode</code> · <code>app:terminal</code></li>
+    <li><b>标签</b>：<code>tag:design</code></li>
+    <li><b>组合</b>：<code>type:code react hook</code> = 类型为 code，且 body/title 含 react 和 hook。</li>
+  </ul>
+
+  <h3>UI 行为</h3>
+  <ul>
+    <li>实时过滤（无 debounce 太刻意；用 16ms 节流够了）。</li>
+    <li>搜索框右侧实时显示结果计数。</li>
+    <li>顶部类型筛选条与搜索语法 <b>合取</b>：两者都要满足。</li>
+    <li>当结果为空：展示居中"No matches"占位 + "Esc 清除筛选"提示。</li>
+  </ul>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="layouts">
+  <h2><span class="num">08</span>三种布局</h2>
+  <p class="h2-sub">同一份数据，三种节奏。用户可按场景切换；偏好持久化。</p>
+
+  <h3>Stripe — 横向条形流（默认）</h3>
+  <ul>
+    <li>水平滚动卡片，每张固定宽 220px、高 220px，间距 10px。</li>
+    <li>最贴合"屏幕底部 Dock"形态。视觉密度中等。</li>
+    <li>focus 项轻微上移 2px + 投影增强。</li>
+    <li>右侧固定一个 360px 的 Detail Pane。</li>
+  </ul>
+
+  <h3>Stack — 居中列表</h3>
+  <ul>
+    <li>垂直一行一个，每行 4 列：<code>⌘N | type icon | title + meta | mini preview</code>。</li>
+    <li>信息密度最高，适合深度检索。</li>
+    <li>右侧 Detail Pane 更宽（380px）。</li>
+  </ul>
+
+  <h3>Grid — 紧凑网格</h3>
+  <ul>
+    <li><code>repeat(auto-fill, minmax(170px, 1fr))</code>，瓦片高 170px。</li>
+    <li>适合视觉内容（图片、颜色——虽然我们移除了颜色——、文件夹）。</li>
+    <li>Detail Pane 可关。</li>
+  </ul>
+
+  <blockquote>
+    <b>建议</b>：默认 Stripe；让用户自然发现 Stack 和 Grid，但不强推。
+    布局偏好存 <code>UserDefaults</code>，跟随 app 启动恢复。
+  </blockquote>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="settings">
+  <h2><span class="num">09</span>设置面板</h2>
+  <p class="h2-sub">居中模态，macOS 标题栏风格（左上角红黄绿小圆点）。</p>
+
+  <h3>4 个分页</h3>
+
+  <h4>General</h4>
+  <ul>
+    <li><b>Theme</b>：Light / Dark（也可后续加 Auto follow system）。</li>
+    <li><b>Vibrancy</b>：毛玻璃强度滑块（0–60px）。</li>
+    <li><b>Accent</b>：Mono / Graphite / Blue / Olive 四档低饱和强调色。</li>
+    <li><b>Launch at login</b> · <b>Show recent first</b> · <b>Detect colors and links</b> · <b>Strip tracking parameters from URLs</b>（开关组）。</li>
+  </ul>
+
+  <h4>Shortcuts</h4>
+  <ul>
+    <li>所有快捷键的对照表。每行右侧渲染 <kbd> 标记。</li>
+    <li>v0.1 仅展示；v0.2 允许重绑（点击行进入捕获模式）。</li>
+  </ul>
+
+  <h4>History</h4>
+  <ul>
+    <li><b>Keep history for</b>：7 / 30 / 90 days / Forever。</li>
+    <li><b>Max items</b>：默认 2000，超出按时间淘汰非 pin 项。</li>
+    <li><b>Ignore apps</b>：黑名单（不捕获 1Password、Keychain Access 等）。</li>
+    <li><b>Clear history</b>：危险按钮，需二次确认。</li>
+  </ul>
+
+  <h4>Privacy</h4>
+  <ul>
+    <li><b>Touch ID to unlock</b>：每次启动需要 Touch ID。</li>
+    <li><b>Encrypt local store</b>：用 Keychain 存 SQLCipher 密钥。</li>
+    <li><b>Skip secret-looking content</b>：正则识别 API key / token / OTP，不入库。</li>
+    <li><b>Send analytics</b>：默认 OFF，永不开。</li>
+  </ul>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="snippets">
+  <h2><span class="num">10</span>Snippets（用户模板）</h2>
+  <p class="h2-sub">面板上方抽屉。打字 <code>;sig</code> 或在抽屉里点选即可粘贴对应模板。</p>
+
+  <ul>
+    <li>每条 Snippet 有 <code>shortcut</code>、<code>title</code>、<code>body</code> 三字段。</li>
+    <li>点击抽屉中的条目：把 shortcut 写进搜索框，或直接粘贴（设置可选）。</li>
+    <li>底部"+ New snippet"进入编辑器（v0.2）。</li>
+    <li>建议预置：<code>;sig</code>（签名）<code>;meet</code>（会议模板）<code>;date</code>（ISO 日期）<code>;review</code>（PR 检查表）。</li>
+  </ul>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="visual">
+  <h2><span class="num">11</span>视觉规范</h2>
+  <p class="h2-sub">极简黑白灰；vibrancy 是主角，色彩永远是配角。</p>
+
+  <h3>色彩系统</h3>
+  <table class="spec">
+    <thead><tr><th>语义</th><th>Light</th><th>Dark</th></tr></thead>
+    <tbody>
+      <tr><td>panel-bg</td><td class="k">rgba(252,250,247,.62)</td><td class="k">rgba(22,22,24,.58)</td></tr>
+      <tr><td>ink (主文本)</td><td class="k">#1c1c1e</td><td class="k">#f2f2f5</td></tr>
+      <tr><td>ink-2 (次要)</td><td class="k">66% opacity</td><td class="k">70% opacity</td></tr>
+      <tr><td>ink-3 (辅助/占位)</td><td class="k">42%</td><td class="k">45%</td></tr>
+      <tr><td>hairline</td><td class="k">7% black</td><td class="k">7% white</td></tr>
+      <tr><td>focus-bg</td><td colspan="2" class="k">由 accent 计算（OKLCH，低饱和）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>排版</h3>
+  <ul>
+    <li>主字体：<b>SF Pro Text</b>（系统字体），13px / 1.45。</li>
+    <li>等宽：<b>SF Mono</b>，用于代码、路径、hex 等。</li>
+    <li>标题（详情面板）：16px / 600 weight。</li>
+    <li>所有大写小标签：11px / 600 / letter-spacing 0.06em。</li>
+  </ul>
+
+  <h3>圆角与阴影</h3>
+  <ul>
+    <li>面板 18px，卡片 12px，瓦片 10px，按钮 7-8px。</li>
+    <li>阴影分层：1px inset 高光 + 24px 远阴影 + 4px 近阴影。Dark 下加重 50%。</li>
+  </ul>
+
+  <h3>毛玻璃</h3>
+  <ul>
+    <li><code>backdrop-filter: blur(36px) saturate(170%)</code> 是默认。</li>
+    <li>下层必须有内容（桌面壁纸、其他窗口），否则毛玻璃失去意义——这点对 macOS 原生实现来说自动满足。</li>
+  </ul>
+
+  <h3>动效</h3>
+  <ul>
+    <li>面板呼出：<code>cubic-bezier(.2,.7,.2,1)</code>，350ms。</li>
+    <li>focus 切换：<code>scroll-behavior: smooth</code>，让焦点条目滑入视野。</li>
+    <li>粘贴 toast：进 250ms，停 400ms，出 300ms。</li>
+    <li>所有 hover：120ms 线性。</li>
+  </ul>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="tech">
+  <h2><span class="num">12</span>技术建议</h2>
+  <p class="h2-sub">本地使用、个人项目。建议用最省心的栈。</p>
+
+  <h3>方案 A · SwiftUI（最贴近原型）</h3>
+  <ul>
+    <li>原生体验、完美 vibrancy（<code>NSVisualEffectView</code>）、Touch ID 一行 API。</li>
+    <li>剪切板监听：<code>NSPasteboard.general.changeCount</code> 轮询（400ms）。</li>
+    <li>全局快捷键：<code>HotKey</code> Swift package。</li>
+    <li>持久化：SQLite via GRDB；Snippet/Tag 简单 JOIN。</li>
+    <li>粘贴回前台：保存 <code>NSWorkspace.frontmostApplication</code>，关闭面板后激活并模拟 ⌘V。</li>
+  </ul>
+
+  <h3>方案 B · Tauri + React（跨平台空间，单文件可分发）</h3>
+  <ul>
+    <li>前端就是当前 HTML/JSX 原型，几乎可以直接搬。</li>
+    <li>Rust 端做剪切板监听（<code>arboard</code> crate）+ 全局快捷键（<code>tauri-plugin-global-shortcut</code>）。</li>
+    <li>窗口设为 always-on-top + transparent + 不抢焦点。</li>
+    <li>体积比 Electron 小得多（~10MB）。</li>
+  </ul>
+
+  <h3>方案 C · Electron + React（最简单）</h3>
+  <ul>
+    <li>原型代码几乎零改动。</li>
+    <li>缺点：体积大（120MB+）、毛玻璃不完美。</li>
+    <li>仅推荐快速 MVP。</li>
+  </ul>
+
+  <h3>共通要点</h3>
+  <ul>
+    <li><b>剪切板写入</b>：粘贴前先备份当前 pasteboard，粘贴后 200ms 还原（可选；避免污染用户原本要复制的内容）。</li>
+    <li><b>图片存储</b>：>1MB 的图存为单独文件，DB 只存路径。</li>
+    <li><b>应用归因</b>：监听到剪切板变化时立刻记录 <code>NSWorkspace.frontmostApplication.bundleIdentifier</code>。</li>
+    <li><b>类型识别</b>：先按 pasteboard type，再按内容嗅探（folder = 目录路径且 <code>isDirectory</code> 为真）。</li>
+  </ul>
+</section>
+
+<!-- ─────────────────────────────────────────────── -->
+<section id="milestones">
+  <h2><span class="num">13</span>实现路线</h2>
+  <p class="h2-sub">三周可出可用版本；先做骨架，再做修饰。</p>
+
+  <h3>v0.1 · 骨架（1 周）</h3>
+  <ul>
+    <li>剪切板监听 + 入库 + Stripe 布局</li>
+    <li>⌘P 呼出 / Esc 收起 / ↵ 粘贴 / 鼠标双击粘贴</li>
+    <li>支持类型：text · code · url · folder（其余先存 raw）</li>
+  </ul>
+
+  <h3>v0.2 · 检索与状态（1 周）</h3>
+  <ul>
+    <li>搜索框 + 类型筛选 + Pin</li>
+    <li>Stack & Grid 布局切换</li>
+    <li>Detail Pane + 完整快捷键</li>
+    <li>Settings：General + Shortcuts</li>
+  </ul>
+
+  <h3>v0.3 · 收尾（1 周）</h3>
+  <ul>
+    <li>Image / File 类型完整支持</li>
+    <li>Snippets 抽屉 + 编辑器</li>
+    <li>Settings：History + Privacy + Touch ID</li>
+    <li>Queue Mode</li>
+    <li>动效打磨 + 主题切换</li>
+  </ul>
+
+  <h3>之后</h3>
+  <ul>
+    <li>正则搜索、智能规则、URL 净化</li>
+    <li>跨设备同步（如果你愿意，端到端加密）</li>
+    <li>CLI 工具：<code>magpie put / get / search</code></li>
+  </ul>
+
+  <hr />
+
+  <p style="color: var(--ink-3); font-size: 12px;">
+    本文档与 <code>Deck Clipboard.html</code> 原型配套使用。所有 UI 都可在原型里直接体验：
+    Tweaks 面板（右下角）支持深浅色 / 强调色 / 毛玻璃强度 / 布局四个维度的实时切换。
+  </p>
+</main>
+
+</div>
+</body>
+</html>

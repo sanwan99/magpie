@@ -1,0 +1,55 @@
+/* Magpie — Dark theme
+   macOS-flavored vibrancy on near-black surfaces. */
+
+/* ── Dark theme ──────────────────────────────────────────────────────── */
+:root[data-theme="dark"] {
+  --bg-desk: #1a1d22;
+  --bg-desk-2: #0e1014;
+
+  --panel-bg: rgba(22, 22, 24, 0.58);
+  --panel-bd: rgba(255, 255, 255, 0.07);
+  --panel-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 24px 60px rgba(0, 0, 0, 0.55),
+    0 4px 16px rgba(0, 0, 0, 0.4);
+
+  --ink:  #f2f2f5;
+  --ink-2: rgba(242, 242, 245, 0.7);
+  --ink-3: rgba(242, 242, 245, 0.45);
+  --ink-4: rgba(242, 242, 245, 0.18);
+
+  --hairline: rgba(255, 255, 255, 0.07);
+  --card-bg:  rgba(255, 255, 255, 0.04);
+  --card-bd:  rgba(255, 255, 255, 0.07);
+  --card-bg-hover: rgba(255, 255, 255, 0.08);
+  --focus-bg:  color-mix(in oklch, oklch(28% calc(var(--accent-c, 0)% + 6) var(--accent-h, 0)) 70%, transparent);
+  --focus-bd:  color-mix(in oklch, oklch(70% calc(var(--accent-c, 0)% + 14) var(--accent-h, 0)) 60%, transparent);
+  --focus-ink: oklch(96% calc(var(--accent-c, 0)% + 2) var(--accent-h, 0));
+
+  --kbd-bg: rgba(255, 255, 255, 0.08);
+  --kbd-bd: rgba(255, 255, 255, 0.12);
+
+  --code-bg: rgba(0, 0, 0, 0.28);
+  --t-kw:  #c98aff;
+  --t-str: #e0a36b;
+  --t-num: #84c8a3;
+  --t-com: rgba(242, 242, 245, 0.36);
+  --t-fn:  #82b6ff;
+  --t-prop:#b69bff;
+}
+
+/* ── Dark-specific component tweaks ──────────────────────────────────── */
+[data-theme="dark"] .menubar { background: rgba(0, 0, 0, 0.35); }
+[data-theme="dark"] .wp-orb { opacity: .3; }
+[data-theme="dark"] .faux-window { background: rgba(38, 38, 42, 0.92); color: #ddd; }
+[data-theme="dark"] .fw-tl { background: rgba(255,255,255,0.04); }
+[data-theme="dark"] .fw-side { background: rgba(255,255,255,.03); }
+[data-theme="dark"] .fw-line { background: rgba(255,255,255,.08); }
+[data-theme="dark"] .fchip.is-on { background: var(--ink); color: #1a1a1c; }
+[data-theme="dark"] .stripe-card .card-foot { background: rgba(255,255,255,.02); }
+[data-theme="dark"] .pin-corner { color: #1a1a1c; }
+[data-theme="dark"] .paste-btn { color: #1a1a1c; }
+[data-theme="dark"] .paste-btn .kbd { background: rgba(0,0,0,.18); }
+[data-theme="dark"] .panel-foot { background: rgba(255,255,255,.02); }
+[data-theme="dark"] .queue-pill { color: #1a1a1c; }
+[data-theme="dark"] .paste-flash { color: #1a1a1c; }

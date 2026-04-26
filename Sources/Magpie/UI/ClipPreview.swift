@@ -8,7 +8,10 @@ struct ClipPreview: View {
     /// passes 1-9 for the first nine cards (matching the ⌘1-⌘9 hotkeys).
     var shortcutNumber: Int? = nil
 
+    private let settings = SettingsStore.shared
+
     var body: some View {
+        let t = settings.flavor.tokens
         VStack(alignment: .leading, spacing: 8) {
             header
             previewBody
@@ -18,12 +21,27 @@ struct ClipPreview: View {
         .padding(12)
         .frame(width: 220, height: 220, alignment: .topLeading)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: t.cardCornerRadius)
                 .fill(.background.opacity(isFocused ? 0.45 : 0.32))
         )
+        // Flavor-specific idle card tint (Splat: pale cream over the purple
+        // overlay). Default flavors leave this transparent.
+        .background(
+            RoundedRectangle(cornerRadius: t.cardCornerRadius)
+                .fill(isFocused ? Color.clear : t.cardBgIdle)
+        )
+        .background(
+            RoundedRectangle(cornerRadius: t.cardCornerRadius)
+                .fill(isFocused ? t.focusBg : Color.clear)
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(Color.primary.opacity(isFocused ? 0.18 : 0.06), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: t.cardCornerRadius)
+                .strokeBorder(
+                    isFocused
+                        ? t.strokeColor.opacity(t.focusStrokeOpacity)
+                        : t.strokeColor.opacity(t.strokeOpacity),
+                    lineWidth: isFocused ? t.focusStrokeWidth : t.strokeWidth
+                )
         )
         .shadow(
             color: Color.black.opacity(isFocused ? 0.12 : 0.04),
