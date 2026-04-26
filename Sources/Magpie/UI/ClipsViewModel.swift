@@ -116,14 +116,11 @@ final class ClipsViewModel {
         }
     }
 
-    /// Whether the right-side detail pane is shown. Space toggles. Persisted.
-    /// Default OFF so the layout has full width for cards (matches v0.1 feel).
-    /// Users opt in via Space when they want a fuller view of a clip.
-    var detailPaneVisible: Bool = false {
-        didSet {
-            UserDefaults.standard.set(detailPaneVisible, forKey: Self.detailPaneKey)
-        }
-    }
+    /// Whether the right-side detail pane is shown. Space toggles.
+    /// **不持久化** —— 每次启动默认关闭，让卡片 stripe 占满 body 宽度；
+    /// 想看 detail 时按 Space 临时打开，关闭面板后状态丢弃。
+    /// （之前持久化导致用户开过一次后每次启动都自动展开。）
+    var detailPaneVisible: Bool = false
 
     /// Owned by `PanelController`. Called when the UI requests a paste.
     @ObservationIgnored
@@ -140,8 +137,6 @@ final class ClipsViewModel {
 
     @ObservationIgnored
     private static let activeLayoutKey = "magpie.activeLayout"
-    @ObservationIgnored
-    private static let detailPaneKey = "magpie.detailPaneVisible"
 
     init(repository: ClipRepository, limit: Int = 200) {
         self.repository = repository
@@ -149,14 +144,14 @@ final class ClipsViewModel {
 
         // Restore persisted layout preferences before refresh — so initial
         // render uses the user's last choice instead of the default.
+        // detailPaneVisible 故意不恢复：每次启动都从 false 开始。
         let defaults = UserDefaults.standard
         if let raw = defaults.string(forKey: Self.activeLayoutKey),
            let restored = ActiveLayout(rawValue: raw) {
             self.activeLayout = restored
         }
-        if defaults.object(forKey: Self.detailPaneKey) != nil {
-            self.detailPaneVisible = defaults.bool(forKey: Self.detailPaneKey)
-        }
+        // 清掉历史 key（之前版本写入过的用户重启后还会被恢复 true）。
+        defaults.removeObject(forKey: "magpie.detailPaneVisible")
 
         refresh()
     }

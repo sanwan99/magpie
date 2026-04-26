@@ -6,6 +6,9 @@ struct DetailPane: View {
     let clip: ClipDisplayItem?
     let onPaste: () -> Void
     let onTogglePin: () -> Void
+    /// 点击 header 右上"扩大"按钮时调用 — 由 PanelController 转发到
+    /// ExpandedPreviewWindowController.shared.show(clip:)。
+    var onExpand: (() -> Void)? = nil
     private let settings = SettingsStore.shared
     @Environment(\.colorScheme) private var colorScheme
 
@@ -57,6 +60,9 @@ struct DetailPane: View {
                     .font(.system(size: 10))
                     .foregroundStyle(settings.flavor == .splat ? splatCream.opacity(0.65) : Color.secondary.opacity(0.65))
                     .monospacedDigit()
+                if onExpand != nil {
+                    expandButton
+                }
             }
 
             if let title = clip.title, !title.isEmpty {
@@ -73,6 +79,28 @@ struct DetailPane: View {
                     .foregroundStyle(settings.flavor == .splat ? splatCream.opacity(0.48) : Color.secondary.opacity(0.55))
             }
         }
+    }
+
+    /// 扩大化按钮 — 把当前 clip 在独立窗口里大尺寸渲染。
+    /// 视觉跟随 flavor：splat 用墨黑底 + 奶白图标；普通主题低调灰色。
+    private var expandButton: some View {
+        Button {
+            onExpand?()
+        } label: {
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(settings.flavor == .splat ? splatCream : Color.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(settings.flavor == .splat
+                              ? splatInk.opacity(0.85)
+                              : Color.primary.opacity(0.06))
+                )
+        }
+        .buttonStyle(.plain)
+        .help("放大查看（⌘O）")
     }
 
     private func typeBadge(for type: ClipType) -> some View {

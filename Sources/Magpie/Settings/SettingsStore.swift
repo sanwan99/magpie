@@ -305,4 +305,13 @@ struct SettingsText {
             en: "Cancel cascade (clear search -> filter -> close)"
         )
     }
+
+    // MARK: - Panel footer key hints
+    var hintNavigate: String    { language.pick(zh: "切换",     en: "Navigate") }
+    var hintPaste: String       { language.pick(zh: "粘贴",     en: "Paste") }
+    var hintPreview: String     { language.pick(zh: "预览",     en: "Preview") }
+    var hintCloseDetail: String { language.pick(zh: "关闭详情", en: "Close detail") }
+    var hintPin: String         { language.pick(zh: "固定",     en: "Pin") }
+    var hintClose: String       { language.pick(zh: "关闭",     en: "Close") }
+    var hintQueueMode: String   { language.pick(zh: "队列模式", en: "Queue mode") }
 }

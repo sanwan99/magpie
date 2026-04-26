@@ -18,10 +18,13 @@ final class PanelController {
     private(set) var isVisible: Bool = false
 
     /// Panel size — wide enough for layout body + Detail Pane side-by-side.
-    /// Height leaves room for the prototype footer hint rail.
-    static let panelSize = NSSize(width: 1200, height: 420)
+    /// Height = topBar(~86) + divider + 220 卡 + Stripe v-padding 32 + footer(34)
+    /// ≈ 372，取 380 留 8pt 呼吸量。codex 之前调到 420 让 Stripe 卡片上下各
+    /// 浮 25pt 空白，视觉上"卡片飘在中间"——降回 380 让卡片几乎贴满 body。
+    static let panelSize = NSSize(width: 1200, height: 380)
     /// Distance from the bottom of the active screen.
-    static let bottomInset: CGFloat = 24
+    /// 0 = 完全贴 dock 上沿（visibleFrame 已扣掉 dock 高度）。
+    static let bottomInset: CGFloat = 0
 
     init(viewModel: ClipsViewModel, snippetsViewModel: SnippetsViewModel) {
         self.viewModel = viewModel
@@ -318,6 +321,13 @@ final class PanelController {
                 }
                 return nil
             }
+            // ⌘O 在独立窗口放大查看当前 focused clip（detail pane 开关无所谓）
+            if chars == "o" {
+                if let clip = viewModel.focusedClip {
+                    ExpandedPreviewWindowController.shared.show(clip: clip)
+                }
+                return nil
+            }
             // ⌘Q toggle Queue Mode (only when panel is key — otherwise it's the
             // user's standard "Quit App" shortcut hitting the frontmost app).
             if chars == "q" {
@@ -344,7 +354,9 @@ final class PanelController {
         if event.keyCode == 49,
            event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [],
            viewModel.searchInput.isEmpty {
-            withAnimation(.easeOut(duration: 0.18)) {
+            // spring + scale 让关闭/打开有"啪"的弹性反馈（之前 0.18s easeOut
+            // 太轻飘，看不清自己刚按了 Space）。
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.74)) {
                 viewModel.toggleDetailPane()
             }
             return nil
@@ -521,10 +533,20 @@ private struct PanelContentView: View {
                     DetailPane(
                         clip: viewModel.focusedClip,
                         onPaste: onPaste,
-                        onTogglePin: { viewModel.toggleFocusedPin() }
+                        onTogglePin: { viewModel.toggleFocusedPin() },
+                        onExpand: {
+                            guard let clip = viewModel.focusedClip else { return }
+                            ExpandedPreviewWindowController.shared.show(clip: clip)
+                        }
                     )
                     .frame(width: detailWidth(for: layout))
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    // move + opacity + 轻微缩放：关闭时整面板向右滑出 + 透明
+                    // + 缩到 94%，配合 spring 形成"啪"地一下的明显反馈。
+                    .transition(
+                        .move(edge: .trailing)
+                            .combined(with: .opacity)
+                            .combined(with: .scale(scale: 0.94, anchor: .trailing))
+                    )
                 }
             }
         }
@@ -607,21 +629,23 @@ private struct PanelFooter: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let text = SettingsText(language: settings.language)
         HStack(spacing: 12) {
             focusedMeta
             Spacer(minLength: 8)
             if viewModel.queueMode {
-                Text("Queue mode")
+                Text(text.hintQueueMode)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(settings.flavor == .splat ? splatInk : .orange)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(Capsule().fill(settings.flavor == .splat ? splatYellow : Color.orange.opacity(0.18)))
             }
-            KeyHint(keys: ["↑", "↓"], label: "Navigate")
-            KeyHint(keys: ["↵"], label: "Paste")
-            KeyHint(keys: ["⌘", "D"], label: "Pin")
-            KeyHint(keys: ["Esc"], label: "Close")
+            KeyHint(keys: ["↑", "↓"], label: text.hintNavigate)
+            KeyHint(keys: ["↵"], label: text.hintPaste)
+            KeyHint(keys: ["Space"], label: viewModel.detailPaneVisible ? text.hintCloseDetail : text.hintPreview)
+            KeyHint(keys: ["⌘", "D"], label: text.hintPin)
+            KeyHint(keys: ["Esc"], label: text.hintClose)
         }
         .font(.system(size: 11, weight: .medium))
         .foregroundStyle(settings.flavor == .splat ? splatCream : Color.secondary)
@@ -834,7 +858,9 @@ private struct DetailPaneToggle: View {
 
     var body: some View {
         Button {
-            viewModel.toggleDetailPane()
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.74)) {
+                viewModel.toggleDetailPane()
+            }
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: viewModel.detailPaneVisible ? "sidebar.right" : "sidebar.squares.right")

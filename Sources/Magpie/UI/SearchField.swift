@@ -14,7 +14,7 @@ struct SearchField: View {
                 .font(.system(size: 12))
                 .foregroundStyle(settings.flavor == .splat ? splatCream.opacity(0.8) : Color.secondary)
 
-            TextField("Search clips · type:code  app:vscode  tag:design", text: $viewModel.searchInput)
+            TextField("", text: $viewModel.searchInput)
                 .textFieldStyle(.plain)
                 .font(.system(size: settings.flavor == .splat ? 14 : 13, weight: settings.flavor == .splat ? .semibold : .regular))
                 .foregroundStyle(settings.flavor == .splat ? splatCream : Color.primary)
