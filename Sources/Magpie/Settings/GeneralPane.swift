@@ -48,6 +48,14 @@ struct GeneralPane: View {
                 Toggle("Show recent first", isOn: $store.showRecentFirst)
                 Toggle("Detect colors and links", isOn: $store.detectColorsAndLinks)
                 Toggle("Strip tracking parameters from URLs", isOn: $store.stripTrackingFromURLs)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("Auto-expand snippet shortcuts (e.g. `;sig`)", isOn: $store.autoExpandSnippets)
+                    Text("Requires macOS Input Monitoring permission. macOS will prompt the first time you enable this.")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                        .padding(.leading, 22)
+                }
             }
         }
         .formStyle(.grouped)

@@ -42,6 +42,13 @@ final class SettingsStore {
         didSet { UserDefaults.standard.set(stripTrackingFromURLs, forKey: Keys.stripTracking) }
     }
 
+    /// Snippets auto-expansion (typing `;sig` anywhere triggers replacement).
+    /// Default OFF — needs Input Monitoring permission, may feel invasive
+    /// to users who don't use snippets. Enable explicitly in Settings.
+    var autoExpandSnippets: Bool = false {
+        didSet { UserDefaults.standard.set(autoExpandSnippets, forKey: Keys.autoExpand) }
+    }
+
     // MARK: - Init / restore
 
     private init() {
@@ -71,6 +78,9 @@ final class SettingsStore {
         if defaults.object(forKey: Keys.stripTracking) != nil {
             self.stripTrackingFromURLs = defaults.bool(forKey: Keys.stripTracking)
         }
+        if defaults.object(forKey: Keys.autoExpand) != nil {
+            self.autoExpandSnippets = defaults.bool(forKey: Keys.autoExpand)
+        }
     }
 
     // MARK: - Keys
@@ -83,5 +93,6 @@ final class SettingsStore {
         static let showRecentFirst = "magpie.settings.showRecentFirst"
         static let detectColorsAndLinks = "magpie.settings.detectColorsAndLinks"
         static let stripTracking = "magpie.settings.stripTracking"
+        static let autoExpand = "magpie.settings.autoExpandSnippets"
     }
 }

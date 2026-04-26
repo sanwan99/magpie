@@ -45,6 +45,7 @@
 		C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */; };
 		C6543E3D3B82B9BF2CF69A0F /* SnippetsDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DC264DB062FBB36F8833C7 /* SnippetsDrawer.swift */; };
 		C808016F30CDF702C8910131 /* ShortcutsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 359009EECF76C308845CBC3C /* ShortcutsPane.swift */; };
+		C8676C5EA0B1B00A5D8CBB79 /* SnippetExpander.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750E56CA85161A2000332237 /* SnippetExpander.swift */; };
 		CAC4AA3A605F21CC77F52B62 /* ClipsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10AF74F18089D297DAA78AAE /* ClipsViewModel.swift */; };
 		CD608C827AFC49FBE10287AB /* SearchQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B3B4996D0C583F300744A98 /* SearchQuery.swift */; };
 		DD559C5ECB8B996045AA47AB /* SnippetEditorWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4314E6F96AADE0BE3E680DF /* SnippetEditorWindowController.swift */; };
@@ -92,6 +93,7 @@
 		6A1162E5E8C9E69BD1CE9299 /* ClipPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipPreview.swift; sourceTree = "<group>"; };
 		6D524858F3A63B88EAC4B5E0 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		70DF6177E50AAB779F71CE9D /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
+		750E56CA85161A2000332237 /* SnippetExpander.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetExpander.swift; sourceTree = "<group>"; };
 		873E4BF17645AEA97484E224 /* StripeLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripeLayout.swift; sourceTree = "<group>"; };
 		88DC264DB062FBB36F8833C7 /* SnippetsDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetsDrawer.swift; sourceTree = "<group>"; };
 		896C3E8A869F36F73A524657 /* ClipPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipPayload.swift; sourceTree = "<group>"; };
@@ -192,6 +194,7 @@
 				3488C2B7829149351B25BD20 /* Snippet.swift */,
 				3D5286EC8C01688226A7C0FD /* SnippetEditor.swift */,
 				B4314E6F96AADE0BE3E680DF /* SnippetEditorWindowController.swift */,
+				750E56CA85161A2000332237 /* SnippetExpander.swift */,
 				0144B966C0A53A5CC4C31476 /* SnippetRecord.swift */,
 				D153EAF69D81ED1CA7FEEAA4 /* SnippetRepository.swift */,
 				88DC264DB062FBB36F8833C7 /* SnippetsDrawer.swift */,
@@ -470,6 +473,7 @@
 				FC1C851AC699A25395E9A045 /* Snippet.swift in Sources */,
 				E5C2F57B21B3A8BB60E611CC /* SnippetEditor.swift in Sources */,
 				DD559C5ECB8B996045AA47AB /* SnippetEditorWindowController.swift in Sources */,
+				C8676C5EA0B1B00A5D8CBB79 /* SnippetExpander.swift in Sources */,
 				0890449EEA2740A390576D24 /* SnippetRecord.swift in Sources */,
 				1375778A46653DEE1382C75D /* SnippetRepository.swift in Sources */,
 				C6543E3D3B82B9BF2CF69A0F /* SnippetsDrawer.swift in Sources */,

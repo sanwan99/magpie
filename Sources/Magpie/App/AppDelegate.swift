@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var repository: ClipRepository?
     private var viewModel: ClipsViewModel?
     private var snippetsViewModel: SnippetsViewModel?
+    private var snippetExpander: SnippetExpander?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let repo = ClipRepository()
@@ -26,15 +27,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         watcher.start()
 
+        // Snippet auto-expansion (e.g. typing ;sig in any text field).
+        // OFF by default — requires Input Monitoring permission. User opts in
+        // via Settings → General → "Auto-expand snippet shortcuts".
+        let expander = SnippetExpander()
+        expander.snippetsViewModel = snippetsVM
+        if SettingsStore.shared.autoExpandSnippets {
+            expander.start()
+        }
+        observeAutoExpandToggle(expander: expander)
+
         self.repository = repo
         self.viewModel = vm
         self.snippetsViewModel = snippetsVM
         self.panelController = panel
         self.hotkeyCenter = hotkeys
         self.clipboardWatcher = watcher
+        self.snippetExpander = expander
 
         NSLog("[magpie] launched. ⌘P toggles panel, Esc hides it. clips=%d snippets=%d",
               vm.clips.count, snippetsVM.snippets.count)
+    }
+
+    /// React to user toggling autoExpandSnippets in Settings — start/stop the
+    /// expander accordingly. One-shot withObservationTracking re-arms each fire.
+    private func observeAutoExpandToggle(expander: SnippetExpander) {
+        func track() {
+            withObservationTracking {
+                _ = SettingsStore.shared.autoExpandSnippets
+            } onChange: { [weak expander] in
+                Task { @MainActor in
+                    guard let expander else { return }
+                    if SettingsStore.shared.autoExpandSnippets {
+                        expander.start()
+                    } else {
+                        expander.stop()
+                    }
+                    track()
+                }
+            }
+        }
+        track()
     }
 
     /// Detect type for the current pasteboard and write it to storage.
