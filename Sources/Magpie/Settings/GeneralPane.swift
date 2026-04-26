@@ -4,17 +4,26 @@ struct GeneralPane: View {
     @Bindable var store: SettingsStore
 
     var body: some View {
+        let text = SettingsText(language: store.language)
+
         Form {
-            Section("Appearance") {
-                Picker("Theme", selection: $store.theme) {
+            Section(text.appearance) {
+                Picker(text.languageLabel, selection: $store.language) {
+                    ForEach(AppLanguage.allCases, id: \.self) { language in
+                        Text(language.displayName).tag(language)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Picker(text.theme, selection: $store.theme) {
                     ForEach(AppTheme.allCases, id: \.self) { t in
-                        Text(t.displayName).tag(t)
+                        Text(t.displayName(language: store.language)).tag(t)
                     }
                 }
                 .pickerStyle(.segmented)
 
                 HStack {
-                    Text("Vibrancy")
+                    Text(text.vibrancy)
                     Slider(value: $store.vibrancy, in: 0...60)
                     Text("\(Int(store.vibrancy))")
                         .font(.system(size: 11, design: .monospaced))
@@ -24,7 +33,7 @@ struct GeneralPane: View {
                 }
 
                 HStack(alignment: .top, spacing: 8) {
-                    Text("Flavor")
+                    Text(text.flavor)
                         .padding(.top, 6)
                     Spacer()
                     LazyVGrid(
@@ -34,7 +43,8 @@ struct GeneralPane: View {
                         ForEach(Flavor.allCases, id: \.self) { flavor in
                             FlavorSwatch(
                                 flavor: flavor,
-                                isSelected: store.flavor == flavor
+                                isSelected: store.flavor == flavor,
+                                language: store.language
                             ) {
                                 store.flavor = flavor
                             }
@@ -43,15 +53,15 @@ struct GeneralPane: View {
                 }
             }
 
-            Section("Behavior") {
-                Toggle("Launch at login", isOn: $store.launchAtLogin)
-                Toggle("Show recent first", isOn: $store.showRecentFirst)
-                Toggle("Detect colors and links", isOn: $store.detectColorsAndLinks)
-                Toggle("Strip tracking parameters from URLs", isOn: $store.stripTrackingFromURLs)
+            Section(text.behavior) {
+                Toggle(text.launchAtLogin, isOn: $store.launchAtLogin)
+                Toggle(text.showRecentFirst, isOn: $store.showRecentFirst)
+                Toggle(text.detectColorsAndLinks, isOn: $store.detectColorsAndLinks)
+                Toggle(text.stripTracking, isOn: $store.stripTrackingFromURLs)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Auto-expand snippet shortcuts (e.g. `;sig`)", isOn: $store.autoExpandSnippets)
-                    Text("Requires macOS Input Monitoring permission. macOS will prompt the first time you enable this.")
+                    Toggle(text.autoExpand, isOn: $store.autoExpandSnippets)
+                    Text(text.autoExpandNote)
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                         .padding(.leading, 22)
@@ -66,6 +76,7 @@ struct GeneralPane: View {
 private struct FlavorSwatch: View {
     let flavor: Flavor
     let isSelected: Bool
+    let language: AppLanguage
     let onTap: () -> Void
 
     var body: some View {
@@ -92,7 +103,7 @@ private struct FlavorSwatch: View {
                         )
                 )
 
-                Text(flavor.displayName)
+                Text(flavor.displayName(language: language))
                     .font(.system(size: 9, weight: isSelected ? .semibold : .regular))
                     .foregroundStyle(isSelected ? .primary : .secondary)
             }

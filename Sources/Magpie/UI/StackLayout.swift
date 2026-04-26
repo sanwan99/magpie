@@ -88,6 +88,25 @@ private struct StackRow: View {
             RoundedRectangle(cornerRadius: 7)
                 .fill(isFocused ? tokens.focusBg : Color.clear)
         )
+        .background(
+            RoundedRectangle(cornerRadius: settings.flavor == .splat ? 10 : 7)
+                .fill(settings.flavor == .splat && isFocused
+                    ? (tokens.focusGlowColor ?? Color.black).opacity(0.9)
+                    : Color.clear)
+                .offset(x: 4, y: 4)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: settings.flavor == .splat ? 10 : 7)
+                .strokeBorder(
+                    settings.flavor == .splat && isFocused
+                        ? (tokens.focusStrokeColor ?? tokens.strokeColor).opacity(tokens.focusStrokeOpacity)
+                        : Color.clear,
+                    lineWidth: settings.flavor == .splat && isFocused ? 2 : 0
+                )
+        )
+        .offset(x: settings.flavor == .splat && isFocused ? 4 : 0)
+        .rotationEffect(settings.flavor == .splat && isFocused ? .degrees(-0.4) : .degrees(0))
+        .environment(\.colorScheme, settings.flavor == .splat && isFocused ? .light : colorScheme)
     }
 
     @ViewBuilder

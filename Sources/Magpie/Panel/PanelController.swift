@@ -18,8 +18,8 @@ final class PanelController {
     private(set) var isVisible: Bool = false
 
     /// Panel size — wide enough for layout body + Detail Pane side-by-side.
-    /// 1200 ≈ 820 main + 1 divider + ~360 detail; height fits Stripe 220 + top bar.
-    static let panelSize = NSSize(width: 1200, height: 380)
+    /// Height leaves room for the prototype footer hint rail.
+    static let panelSize = NSSize(width: 1200, height: 420)
     /// Distance from the bottom of the active screen.
     static let bottomInset: CGFloat = 24
 
@@ -409,7 +409,7 @@ final class PanelController {
         ))
         let container = NSView(frame: NSRect(origin: .zero, size: Self.panelSize))
         container.wantsLayer = true
-        container.layer?.cornerRadius = 18
+        container.layer?.cornerRadius = 22
         container.layer?.masksToBounds = true
 
         let effect = NSVisualEffectView(frame: container.bounds)
@@ -464,6 +464,20 @@ private struct PanelContentView: View {
                 }
                 Divider().opacity(0.4)
                 body(for: viewModel.activeLayout)
+                    .frame(maxHeight: .infinity)
+                PanelFooter(viewModel: viewModel)
+            }
+        }
+        .overlay {
+            if settings.flavor == .splat {
+                RoundedRectangle(cornerRadius: 22)
+                    .strokeBorder(splatYellow, lineWidth: 3)
+                    .padding(1.5)
+                    .allowsHitTesting(false)
+            } else {
+                RoundedRectangle(cornerRadius: 18)
+                    .strokeBorder(regularPanelBorder, lineWidth: 0.5)
+                    .allowsHitTesting(false)
             }
         }
     }
@@ -502,7 +516,7 @@ private struct PanelContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 if viewModel.detailPaneVisible {
-                    Divider().opacity(0.4)
+                    detailSeparator
                         .transition(.opacity)
                     DetailPane(
                         clip: viewModel.focusedClip,
@@ -513,6 +527,18 @@ private struct PanelContentView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var detailSeparator: some View {
+        if settings.flavor == .splat {
+            VerticalDashedLine()
+                .stroke(splatYellow, style: StrokeStyle(lineWidth: 2, dash: [6, 7]))
+                .frame(width: 16)
+                .padding(.vertical, 18)
+        } else {
+            Divider().opacity(0.4)
         }
     }
 
@@ -553,6 +579,157 @@ private struct PanelContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    private var splatYellow: Color {
+        Color(red: 1.00, green: 0.91, blue: 0.00)
+    }
+
+    private var regularPanelBorder: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.07)
+            : Color.black.opacity(0.08)
+    }
+}
+
+private struct VerticalDashedLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        return path
+    }
+}
+
+private struct PanelFooter: View {
+    let viewModel: ClipsViewModel
+
+    private let settings = SettingsStore.shared
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 12) {
+            focusedMeta
+            Spacer(minLength: 8)
+            if viewModel.queueMode {
+                Text("Queue mode")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(settings.flavor == .splat ? splatInk : .orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(settings.flavor == .splat ? splatYellow : Color.orange.opacity(0.18)))
+            }
+            KeyHint(keys: ["↑", "↓"], label: "Navigate")
+            KeyHint(keys: ["↵"], label: "Paste")
+            KeyHint(keys: ["⌘", "D"], label: "Pin")
+            KeyHint(keys: ["Esc"], label: "Close")
+        }
+        .font(.system(size: 11, weight: .medium))
+        .foregroundStyle(settings.flavor == .splat ? splatCream : Color.secondary)
+        .padding(.horizontal, 18)
+        .frame(height: 34)
+        .background(
+            Rectangle()
+                .fill(settings.flavor == .splat ? Color.clear : Color.primary.opacity(0.018))
+        )
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(settings.flavor == .splat ? Color.clear : footerHairline)
+                .frame(height: 0.5)
+        }
+    }
+
+    @ViewBuilder
+    private var focusedMeta: some View {
+        if let clip = viewModel.focusedClip {
+            HStack(spacing: 7) {
+                Text(clip.type.rawValue.capitalized)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(settings.flavor == .splat ? splatCream : Color.secondary)
+                Text("·")
+                    .foregroundStyle(.tertiary)
+                AppDot(app: clip.app)
+                Text("·")
+                    .foregroundStyle(.tertiary)
+                Text("\(timeAgo(clip.createdAt)) ago")
+                    .monospacedDigit()
+            }
+            .lineLimit(1)
+        } else {
+            Color.clear.frame(width: 1, height: 1)
+        }
+    }
+
+    private func timeAgo(_ date: Date) -> String {
+        let secs = Date().timeIntervalSince(date)
+        if secs < 60     { return "now" }
+        if secs < 3600   { return "\(Int(secs / 60))m" }
+        if secs < 86_400 { return "\(Int(secs / 3600))h" }
+        return "\(Int(secs / 86_400))d"
+    }
+
+    private var splatYellow: Color { Color(red: 1.00, green: 0.91, blue: 0.00) }
+    private var splatCream: Color { colorScheme == .dark ? Color(red: 1.00, green: 0.97, blue: 0.85) : Color(red: 0.05, green: 0.05, blue: 0.06) }
+    private var splatInk: Color { Color(red: 0.05, green: 0.05, blue: 0.06) }
+    private var footerHairline: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.07)
+            : Color.black.opacity(0.07)
+    }
+}
+
+private struct AppDot: View {
+    let app: String?
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(Color(red: 0.20, green: 0.53, blue: 1.00))
+                .frame(width: 7, height: 7)
+            Text(shortAppLabel)
+        }
+    }
+
+    private var shortAppLabel: String {
+        guard let app, !app.isEmpty else { return "Unknown" }
+        return app.split(separator: ".").last.map(String.init) ?? app
+    }
+}
+
+private struct KeyHint: View {
+    let keys: [String]
+    let label: String
+
+    private let settings = SettingsStore.shared
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 4) {
+            HStack(spacing: 2) {
+                ForEach(keys, id: \.self) { key in
+                    Text(key)
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(settings.flavor == .splat ? splatYellow : Color.primary.opacity(0.72))
+                        .padding(.horizontal, key.count > 1 ? 5 : 4)
+                        .padding(.vertical, 2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 5)
+                                .fill(settings.flavor == .splat ? Color(red: 0.08, green: 0.02, blue: 0.12) : Color.primary.opacity(0.06))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .strokeBorder(settings.flavor == .splat ? splatYellow : Color.primary.opacity(0.12), lineWidth: settings.flavor == .splat ? 1.5 : 0.5)
+                        )
+                }
+            }
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(settings.flavor == .splat ? splatCream : Color.secondary)
+        }
+        .lineLimit(1)
+    }
+
+    private var splatYellow: Color { Color(red: 1.00, green: 0.91, blue: 0.00) }
+    private var splatCream: Color { colorScheme == .dark ? Color(red: 1.00, green: 0.97, blue: 0.85) : Color(red: 0.05, green: 0.05, blue: 0.06) }
 }
 
 // MARK: - Layout switcher (top-bar control)

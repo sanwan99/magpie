@@ -6,6 +6,8 @@ struct DetailPane: View {
     let clip: ClipDisplayItem?
     let onPaste: () -> Void
     let onTogglePin: () -> Void
+    private let settings = SettingsStore.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Group {
@@ -18,7 +20,7 @@ struct DetailPane: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             Rectangle()
-                .fill(Color.primary.opacity(0.025))
+                .fill(Color.clear)
         )
     }
 
@@ -44,28 +46,23 @@ struct DetailPane: View {
     private func header(for clip: ClipDisplayItem) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Image(systemName: typeIcon(clip.type))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                Text(clip.type.rawValue.uppercased())
-                    .font(.system(size: 9, weight: .semibold))
-                    .tracking(0.6)
-                    .foregroundStyle(.secondary)
+                typeBadge(for: clip.type)
                 if clip.pinned {
                     Image(systemName: "pin.fill")
                         .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(settings.flavor == .splat ? splatYellow : Color.secondary)
                 }
                 Spacer()
                 Text(timeAgo(clip.createdAt))
                     .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(settings.flavor == .splat ? splatCream.opacity(0.65) : Color.secondary.opacity(0.65))
                     .monospacedDigit()
             }
 
             if let title = clip.title, !title.isEmpty {
                 Text(title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: settings.flavor == .splat ? 21 : 16, weight: .semibold))
+                    .foregroundStyle(settings.flavor == .splat ? splatCream : Color.primary)
                     .lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -73,9 +70,26 @@ struct DetailPane: View {
             if let app = clip.app, !app.isEmpty {
                 Text(app)
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(settings.flavor == .splat ? splatCream.opacity(0.48) : Color.secondary.opacity(0.55))
             }
         }
+    }
+
+    private func typeBadge(for type: ClipType) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: typeIcon(type))
+                .font(.system(size: 11, weight: .medium))
+            Text(type.rawValue.uppercased())
+                .font(.system(size: 9, weight: .bold))
+                .tracking(0.8)
+        }
+        .foregroundStyle(settings.flavor == .splat ? splatCream : Color.secondary)
+        .padding(.horizontal, settings.flavor == .splat ? 8 : 0)
+        .padding(.vertical, settings.flavor == .splat ? 3 : 0)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(settings.flavor == .splat ? splatInk : Color.clear)
+        )
     }
 
     // MARK: - Full preview
@@ -191,34 +205,62 @@ struct DetailPane: View {
     // MARK: - Actions
 
     private func actions(for clip: ClipDisplayItem) -> some View {
-        VStack(spacing: 6) {
-            Button(action: onPaste) {
-                HStack {
-                    Image(systemName: "arrow.uturn.up")
-                    Text("Paste")
-                    Spacer()
-                    Text("↵")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .keyboardShortcut(.return, modifiers: [])
+        Group {
+            if settings.flavor == .splat {
+                VStack(alignment: .leading, spacing: 10) {
+                    Button(action: onPaste) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.uturn.up")
+                            Text("PASTE")
+                            Spacer()
+                            Text("↵")
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        }
+                    }
+                    .buttonStyle(SplatActionButtonStyle(kind: .primary, colorScheme: colorScheme))
+                    .keyboardShortcut(.return, modifiers: [])
 
-            Button(action: onTogglePin) {
-                HStack {
-                    Image(systemName: clip.pinned ? "pin.slash" : "pin")
-                    Text(clip.pinned ? "Unpin" : "Pin")
-                    Spacer()
-                    Text("⌘D")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.secondary)
+                    Button(action: onTogglePin) {
+                        HStack(spacing: 8) {
+                            Image(systemName: clip.pinned ? "pin.slash" : "pin")
+                            Text(clip.pinned ? "UNPIN" : "PIN")
+                            Spacer()
+                            Text("⌘D")
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        }
+                    }
+                    .buttonStyle(SplatActionButtonStyle(kind: .secondary, colorScheme: colorScheme))
                 }
-                .frame(maxWidth: .infinity)
+            } else {
+                VStack(spacing: 6) {
+                    Button(action: onPaste) {
+                        HStack {
+                            Image(systemName: "arrow.uturn.up")
+                            Text("Paste")
+                            Spacer()
+                            Text("↵")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(RegularActionButtonStyle(isPrimary: true, colorScheme: colorScheme))
+                    .keyboardShortcut(.return, modifiers: [])
+
+                    Button(action: onTogglePin) {
+                        HStack {
+                            Image(systemName: clip.pinned ? "pin.slash" : "pin")
+                            Text(clip.pinned ? "Unpin" : "Pin")
+                            Spacer()
+                            Text("⌘D")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(RegularActionButtonStyle(isPrimary: false, colorScheme: colorScheme))
+                }
             }
-            .buttonStyle(.bordered)
         }
     }
 
@@ -257,5 +299,107 @@ struct DetailPane: View {
         if secs < 3600   { return "\(Int(secs / 60))m ago" }
         if secs < 86_400 { return "\(Int(secs / 3600))h ago" }
         return "\(Int(secs / 86_400))d ago"
+    }
+
+    private var splatYellow: Color { Color(red: 1.00, green: 0.91, blue: 0.00) }
+    private var splatPurple: Color { Color(red: 0.48, green: 0.17, blue: 1.00) }
+    private var splatInk: Color { Color(red: 0.05, green: 0.05, blue: 0.06) }
+    private var splatCream: Color {
+        colorScheme == .dark
+            ? Color(red: 1.00, green: 0.97, blue: 0.85)
+            : Color(red: 0.05, green: 0.05, blue: 0.06)
+    }
+}
+
+private enum SplatActionKind {
+    case primary
+    case secondary
+}
+
+private struct SplatActionButtonStyle: ButtonStyle {
+    let kind: SplatActionKind
+    let colorScheme: ColorScheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(kind == .primary ? splatCream : splatYellow)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: kind == .primary ? 44 : 36)
+            .background(
+                RoundedRectangle(cornerRadius: kind == .primary ? 18 : 9)
+                    .fill(kind == .primary ? splatPurple : Color(red: 0.13, green: 0.04, blue: 0.23).opacity(0.96))
+            )
+            .background(
+                RoundedRectangle(cornerRadius: kind == .primary ? 18 : 9)
+                    .fill(kind == .primary ? splatInk.opacity(0.85) : Color.clear)
+                    .offset(x: kind == .primary ? 4 : 0, y: kind == .primary ? 4 : 0)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: kind == .primary ? 18 : 9)
+                    .strokeBorder(kind == .primary ? splatInk : splatYellow.opacity(0.75), lineWidth: kind == .primary ? 2 : 1.5)
+            )
+            .rotationEffect(kind == .primary ? .degrees(-2) : .degrees(0))
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.78 : 1)
+    }
+
+    private var splatPurple: Color { Color(red: 0.48, green: 0.17, blue: 1.00) }
+    private var splatYellow: Color { Color(red: 1.00, green: 0.91, blue: 0.00) }
+    private var splatInk: Color { Color(red: 0.05, green: 0.05, blue: 0.06) }
+    private var splatCream: Color {
+        colorScheme == .dark
+            ? Color(red: 1.00, green: 0.97, blue: 0.85)
+            : Color(red: 0.05, green: 0.05, blue: 0.06)
+    }
+}
+
+private struct RegularActionButtonStyle: ButtonStyle {
+    let isPrimary: Bool
+    let colorScheme: ColorScheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: isPrimary ? .semibold : .medium))
+            .foregroundStyle(isPrimary ? primaryForeground : secondaryForeground)
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, minHeight: 32)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isPrimary ? primaryBackground : secondaryBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(isPrimary ? Color.clear : regularBorder, lineWidth: isPrimary ? 0 : 0.5)
+            )
+            .opacity(configuration.isPressed ? 0.72 : 1)
+    }
+
+    private var primaryBackground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.95, green: 0.95, blue: 0.96)
+            : Color(red: 0.11, green: 0.11, blue: 0.12)
+    }
+
+    private var primaryForeground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.10, green: 0.10, blue: 0.11)
+            : Color.white
+    }
+
+    private var secondaryBackground: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.04)
+            : Color.white.opacity(0.60)
+    }
+
+    private var secondaryForeground: Color {
+        Color.secondary
+    }
+
+    private var regularBorder: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.07)
+            : Color.black.opacity(0.06)
     }
 }

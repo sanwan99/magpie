@@ -5,16 +5,19 @@ import SwiftUI
 struct SearchField: View {
     @Bindable var viewModel: ClipsViewModel
     @FocusState private var focused: Bool
+    private let settings = SettingsStore.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(settings.flavor == .splat ? splatCream.opacity(0.8) : Color.secondary)
 
             TextField("Search clips · type:code  app:vscode  tag:design", text: $viewModel.searchInput)
                 .textFieldStyle(.plain)
-                .font(.system(size: 13))
+                .font(.system(size: settings.flavor == .splat ? 14 : 13, weight: settings.flavor == .splat ? .semibold : .regular))
+                .foregroundStyle(settings.flavor == .splat ? splatCream : Color.primary)
                 .focused($focused)
 
             if !viewModel.searchInput.isEmpty {
@@ -31,22 +34,52 @@ struct SearchField: View {
 
             Text("\(viewModel.clips.count) / \(viewModel.totalClipCount)")
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(settings.flavor == .splat ? splatCream.opacity(0.72) : Color.secondary)
                 .monospacedDigit()
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.vertical, settings.flavor == .splat ? 7 : 6)
         .background(
-            RoundedRectangle(cornerRadius: 7)
-                .fill(.background.opacity(0.4))
+            RoundedRectangle(cornerRadius: settings.flavor == .splat ? 18 : 999)
+                .fill(searchBackground)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 7)
-                .strokeBorder(.primary.opacity(0.06), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: settings.flavor == .splat ? 18 : 999)
+                .strokeBorder(
+                    settings.flavor == .splat ? splatYellow : searchBorder,
+                    lineWidth: settings.flavor == .splat ? 2 : 0.5
+                )
         )
         .onAppear {
             // Focus the field on first show; subsequent ⌘P calls also reset focus.
             focused = true
         }
+    }
+
+    private var splatYellow: Color { Color(red: 1.00, green: 0.91, blue: 0.00) }
+    private var searchBackground: Color {
+        if settings.flavor == .splat {
+            return splatCard
+        }
+        return colorScheme == .dark
+            ? Color.white.opacity(0.04)
+            : Color.white.opacity(0.60)
+    }
+
+    private var searchBorder: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.07)
+            : Color.black.opacity(0.06)
+    }
+
+    private var splatCard: Color {
+        colorScheme == .dark
+            ? Color(red: 0.13, green: 0.04, blue: 0.23).opacity(0.94)
+            : Color(red: 1.00, green: 0.99, blue: 0.90)
+    }
+    private var splatCream: Color {
+        colorScheme == .dark
+            ? Color(red: 1.00, green: 0.97, blue: 0.85)
+            : Color(red: 0.05, green: 0.05, blue: 0.06)
     }
 }

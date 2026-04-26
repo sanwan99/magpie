@@ -11,10 +11,14 @@ enum AppTheme: String, Codable, Sendable, CaseIterable {
     case dark
 
     var displayName: String {
+        displayName(language: .en)
+    }
+
+    func displayName(language: AppLanguage) -> String {
         switch self {
-        case .system: return "Follow System"
-        case .light:  return "Light"
-        case .dark:   return "Dark"
+        case .system: return language.pick(zh: "跟随系统", en: "Follow System")
+        case .light:  return language.pick(zh: "浅色", en: "Light")
+        case .dark:   return language.pick(zh: "深色", en: "Dark")
         }
     }
 
@@ -47,11 +51,15 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
     case splat
 
     var displayName: String {
+        displayName(language: .en)
+    }
+
+    func displayName(language: AppLanguage) -> String {
         switch self {
-        case .mono:     return "Mono"
-        case .graphite: return "Graphite"
-        case .blue:     return "Blue"
-        case .olive:    return "Olive"
+        case .mono:     return language.pick(zh: "单色", en: "Mono")
+        case .graphite: return language.pick(zh: "石墨", en: "Graphite")
+        case .blue:     return language.pick(zh: "蓝色", en: "Blue")
+        case .olive:    return language.pick(zh: "橄榄", en: "Olive")
         case .splat:    return "Splat"
         }
     }
@@ -60,10 +68,10 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
     /// token set regardless of base theme; Splat returns a different palette
     /// for dark mode (deep purple ink) vs light mode (paper-white).
     func tokens(for scheme: ColorScheme) -> FlavorTokens {
-        if self == .splat && scheme == .dark {
-            return Flavor.splatDarkTokens
+        if self == .splat {
+            return scheme == .dark ? Flavor.splatDarkTokens : tokens
         }
-        return tokens
+        return regularTokens(for: scheme)
     }
 
     /// Backwards-compatible default-light tokens. Used by previews and as the
@@ -80,6 +88,7 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 panelBgOverlay:   nil,
                 focusGlowColor:   nil,
                 strokeColor:      .primary,
+                focusStrokeColor: nil,
                 strokeOpacity:    0.06,
                 strokeWidth:      0.5,
                 focusStrokeOpacity: 0.55,
@@ -97,6 +106,7 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 panelBgOverlay:   nil,
                 focusGlowColor:   nil,
                 strokeColor:      .primary,
+                focusStrokeColor: nil,
                 strokeOpacity:    0.06,
                 strokeWidth:      0.5,
                 focusStrokeOpacity: 0.55,
@@ -114,6 +124,7 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 panelBgOverlay:   nil,
                 focusGlowColor:   nil,
                 strokeColor:      .primary,
+                focusStrokeColor: nil,
                 strokeOpacity:    0.06,
                 strokeWidth:      0.5,
                 focusStrokeOpacity: 0.65,
@@ -131,6 +142,7 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 panelBgOverlay:   nil,
                 focusGlowColor:   nil,
                 strokeColor:      .primary,
+                focusStrokeColor: nil,
                 strokeOpacity:    0.06,
                 strokeWidth:      0.5,
                 focusStrokeOpacity: 0.55,
@@ -159,6 +171,7 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 panelBgOverlay:   nil,                                         // paper-light panel
                 focusGlowColor:   nil,
                 strokeColor:      .black,
+                focusStrokeColor: nil,
                 strokeOpacity:    0.95,
                 strokeWidth:      1.5,
                 focusStrokeOpacity: 1.00,
@@ -168,6 +181,117 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
             )
         }
     }
+}
+
+private extension Flavor {
+    func regularTokens(for scheme: ColorScheme) -> FlavorTokens {
+        let palette = regularPalette
+        switch scheme {
+        case .dark:
+            return FlavorTokens(
+                accent:           palette.accent,
+                focusBgColor:     palette.darkFocus,
+                focusBgIntensity: palette.darkFocusIntensity,
+                cardBgIdleColor:  .white,
+                cardBgIdleOpacity: 0.04,
+                panelBgOverlay:   Color(red: 0.086, green: 0.086, blue: 0.094).opacity(0.58),
+                focusGlowColor:   nil,
+                strokeColor:      .white,
+                focusStrokeColor: palette.darkFocusBorder,
+                strokeOpacity:    0.07,
+                strokeWidth:      0.5,
+                focusStrokeOpacity: 0.60,
+                focusStrokeWidth: 0.5,
+                cardCornerRadius: 12,
+                tileCornerRadius: 10
+            )
+        case .light:
+            return FlavorTokens(
+                accent:           palette.accent,
+                focusBgColor:     palette.lightFocus,
+                focusBgIntensity: palette.lightFocusIntensity,
+                cardBgIdleColor:  .white,
+                cardBgIdleOpacity: 0.60,
+                panelBgOverlay:   Color(red: 0.988, green: 0.980, blue: 0.969).opacity(0.62),
+                focusGlowColor:   nil,
+                strokeColor:      .black,
+                focusStrokeColor: palette.lightFocusBorder,
+                strokeOpacity:    0.06,
+                strokeWidth:      0.5,
+                focusStrokeOpacity: 0.50,
+                focusStrokeWidth: 0.5,
+                cardCornerRadius: 12,
+                tileCornerRadius: 10
+            )
+        @unknown default:
+            return tokens
+        }
+    }
+
+    var regularPalette: RegularThemePalette {
+        switch self {
+        case .mono:
+            return RegularThemePalette(
+                accent: Color(white: 0.55),
+                darkFocus: Color(red: 0.31, green: 0.25, blue: 0.28),
+                darkFocusIntensity: 0.70,
+                darkFocusBorder: Color(red: 0.72, green: 0.64, blue: 0.68),
+                lightFocus: Color(red: 0.93, green: 0.90, blue: 0.91),
+                lightFocusIntensity: 1.00,
+                lightFocusBorder: Color(red: 0.50, green: 0.44, blue: 0.47)
+            )
+        case .graphite:
+            return RegularThemePalette(
+                accent: Color(red: 0.42, green: 0.42, blue: 0.46),
+                darkFocus: Color(red: 0.22, green: 0.27, blue: 0.35),
+                darkFocusIntensity: 0.72,
+                darkFocusBorder: Color(red: 0.49, green: 0.57, blue: 0.70),
+                lightFocus: Color(red: 0.88, green: 0.90, blue: 0.94),
+                lightFocusIntensity: 1.00,
+                lightFocusBorder: Color(red: 0.42, green: 0.48, blue: 0.58)
+            )
+        case .blue:
+            return RegularThemePalette(
+                accent: Color(red: 0.32, green: 0.50, blue: 0.78),
+                darkFocus: Color(red: 0.05, green: 0.17, blue: 0.42),
+                darkFocusIntensity: 0.72,
+                darkFocusBorder: Color(red: 0.36, green: 0.59, blue: 1.00),
+                lightFocus: Color(red: 0.85, green: 0.90, blue: 1.00),
+                lightFocusIntensity: 1.00,
+                lightFocusBorder: Color(red: 0.25, green: 0.44, blue: 0.78)
+            )
+        case .olive:
+            return RegularThemePalette(
+                accent: Color(red: 0.48, green: 0.55, blue: 0.34),
+                darkFocus: Color(red: 0.20, green: 0.28, blue: 0.08),
+                darkFocusIntensity: 0.72,
+                darkFocusBorder: Color(red: 0.56, green: 0.73, blue: 0.34),
+                lightFocus: Color(red: 0.89, green: 0.94, blue: 0.78),
+                lightFocusIntensity: 1.00,
+                lightFocusBorder: Color(red: 0.42, green: 0.51, blue: 0.24)
+            )
+        case .splat:
+            return RegularThemePalette(
+                accent: Color(red: 0.48, green: 0.17, blue: 1.00),
+                darkFocus: Color(red: 0.48, green: 0.17, blue: 1.00),
+                darkFocusIntensity: 0.30,
+                darkFocusBorder: Color(red: 0.48, green: 0.17, blue: 1.00),
+                lightFocus: Color(red: 1.00, green: 0.91, blue: 0.00),
+                lightFocusIntensity: 0.92,
+                lightFocusBorder: Color(red: 0.48, green: 0.17, blue: 1.00)
+            )
+        }
+    }
+}
+
+private struct RegularThemePalette {
+    let accent: Color
+    let darkFocus: Color
+    let darkFocusIntensity: Double
+    let darkFocusBorder: Color
+    let lightFocus: Color
+    let lightFocusIntensity: Double
+    let lightFocusBorder: Color
 }
 
 /// All visual variables a flavor can override.
@@ -195,6 +319,8 @@ struct FlavorTokens: Sendable {
     let focusGlowColor: Color?
     /// Default card / tile border color.
     let strokeColor: Color
+    /// Optional focused border color. nil = reuse strokeColor.
+    let focusStrokeColor: Color?
     /// Default border alpha when not focused.
     let strokeOpacity: Double
     /// Default border width when not focused.
@@ -223,39 +349,23 @@ struct FlavorTokens: Sendable {
 // MARK: - Splat dark variant
 
 extension Flavor {
-    /// Splat dark — panel is BLACK (not purple), purple is decoration only.
-    /// Lime-yellow (#c9ff00, leaning toward green per prototype squid color)
-    /// is the focus highlight + accent. Decorative splatter / squid mascot
-    /// elements layer on top via SplatDecorations.
-    ///
-    /// Focus styling matches the prototype's "neon highlight" — the focused
-    /// card stays mostly black, gets a thick lime border, and a lime drop-glow
-    /// outside the stroke. NOT a solid lime fill (which would obscure content).
+    /// Splat dark — matches `prototype/剪切板工具-2/themes/theme-splat.css`:
+    /// deep purple panel, purple idle cards, bright yellow focused cards,
+    /// yellow panel/card outlines, and purple offset shadow on focus.
     static let splatDarkTokens = FlavorTokens(
-        // Purple lives in decorations (splatter shapes), not in card chrome.
-        accent:           Color(red: 0.48, green: 0.17, blue: 1.00),  // #7a2bff for swatch
-        // #c9ff00 — lime yellow, matches squid mascot color
-        focusBgColor:     Color(red: 0.79, green: 1.00, blue: 0.00),
-        // 0 = no fill on focus — keep card body black, let stroke + glow do
-        // the work. Prototype focused card is BLACK with lime border, not
-        // yellow with black text.
-        focusBgIntensity: 0.0,
-        // No idle card tint — let the black panel show through naturally.
-        cardBgIdleColor:  nil,
-        cardBgIdleOpacity: 0,
-        // Near-black panel with a hint of warmth. 94% opacity keeps a tiny
-        // hint of vibrancy.
-        panelBgOverlay:   Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.94),
-        // Lime drop-glow outside the focused stroke — gives the prototype's
-        // "highlighted card pops out of the page" neon look.
-        focusGlowColor:   Color(red: 0.79, green: 1.00, blue: 0.00),
-        // Lime yellow outlines pop against black; thin idle / 4px focused
-        // gives the comic outline feel.
-        strokeColor:      Color(red: 0.79, green: 1.00, blue: 0.00),
-        strokeOpacity:    0.30,
-        strokeWidth:      1.0,
+        accent:           Color(red: 1.00, green: 0.91, blue: 0.00),  // #ffe900
+        focusBgColor:     Color(red: 1.00, green: 0.91, blue: 0.00),
+        focusBgIntensity: 0.98,
+        cardBgIdleColor:  Color(red: 0.13, green: 0.04, blue: 0.23),  // #220a3a
+        cardBgIdleOpacity: 0.94,
+        panelBgOverlay:   Color(red: 0.08, green: 0.02, blue: 0.12).opacity(0.98), // #14041f
+        focusGlowColor:   Color(red: 0.48, green: 0.17, blue: 1.00),  // #7a2bff
+        strokeColor:      Color(red: 1.00, green: 0.91, blue: 0.00),
+        focusStrokeColor: Color(red: 0.05, green: 0.05, blue: 0.06),
+        strokeOpacity:    0.95,
+        strokeWidth:      2.0,
         focusStrokeOpacity: 1.0,
-        focusStrokeWidth: 4.0,
+        focusStrokeWidth: 2.8,
         cardCornerRadius: 18,
         tileCornerRadius: 16
     )

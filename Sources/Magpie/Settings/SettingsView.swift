@@ -6,25 +6,27 @@ struct SettingsView: View {
     @Bindable var store: SettingsStore
 
     var body: some View {
+        let text = SettingsText(language: store.language)
+
         TabView {
             GeneralPane(store: store)
                 .tabItem {
-                    Label("General", systemImage: "gearshape")
+                    Label(text.generalTab, systemImage: "gearshape")
                 }
 
-            ShortcutsPane()
+            ShortcutsPane(language: store.language)
                 .tabItem {
-                    Label("Shortcuts", systemImage: "command")
+                    Label(text.shortcutsTab, systemImage: "command")
                 }
 
             HistoryPane(store: store)
                 .tabItem {
-                    Label("History", systemImage: "clock.arrow.circlepath")
+                    Label(text.historyTab, systemImage: "clock.arrow.circlepath")
                 }
 
             PrivacyPane(store: store)
                 .tabItem {
-                    Label("Privacy", systemImage: "lock.shield")
+                    Label(text.privacyTab, systemImage: "lock.shield")
                 }
         }
         .frame(width: 500, height: 480)

@@ -47,6 +47,7 @@ private struct GridTile: View {
 
     var body: some View {
         let t = settings.flavor.tokens(for: colorScheme)
+        let isSplat = settings.flavor == .splat
         VStack(alignment: .leading, spacing: 6) {
             header
             previewBody
@@ -54,40 +55,9 @@ private struct GridTile: View {
         }
         .padding(10)
         .frame(height: 170, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: t.tileCornerRadius)
-                .fill(.background.opacity(isFocused ? 0.45 : 0.32))
-        )
-        .background(
-            RoundedRectangle(cornerRadius: t.tileCornerRadius)
-                .fill(isFocused ? Color.clear : t.cardBgIdle)
-        )
-        .background(
-            RoundedRectangle(cornerRadius: t.tileCornerRadius)
-                .fill(isFocused ? t.focusBg : Color.clear)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: t.tileCornerRadius)
-                .strokeBorder(
-                    isFocused
-                        ? t.strokeColor.opacity(t.focusStrokeOpacity)
-                        : t.strokeColor.opacity(t.strokeOpacity),
-                    lineWidth: isFocused ? t.focusStrokeWidth : t.strokeWidth
-                )
-        )
-        .shadow(
-            color: Color.black.opacity(isFocused ? 0.10 : 0.03),
-            radius: isFocused ? 5 : 1,
-            x: 0,
-            y: isFocused ? 2 : 1
-        )
-        // Optional neon glow on focus (Splat dark uses lime).
-        .shadow(
-            color: (isFocused ? t.focusGlowColor : nil)?.opacity(0.55) ?? .clear,
-            radius: 12,
-            x: 0,
-            y: 0
-        )
+        .modifier(GridTileChrome(tokens: t, isFocused: isFocused, isSplat: isSplat))
+        .rotationEffect(isSplat ? splatRotation : .degrees(0))
+        .environment(\.colorScheme, isSplat && isFocused ? .light : colorScheme)
     }
 
     private var header: some View {
@@ -200,5 +170,67 @@ private struct GridTile: View {
         case .file:   return "doc"
         case .folder: return "folder"
         }
+    }
+
+    private var splatRotation: Angle {
+        if isFocused { return .degrees(-1.2) }
+        guard let shortcutNumber else { return .degrees(0.4) }
+        return .degrees(shortcutNumber.isMultiple(of: 2) ? 0.7 : -0.6)
+    }
+}
+
+private struct GridTileChrome: ViewModifier {
+    let tokens: FlavorTokens
+    let isFocused: Bool
+    let isSplat: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background(idleShape)
+            .background(focusShape)
+            .background(shadowShape)
+            .overlay(strokeShape)
+            .shadow(
+                color: isSplat ? .clear : Color.black.opacity(isFocused ? 0.10 : 0.03),
+                radius: isFocused ? 5 : 1,
+                x: 0,
+                y: isFocused ? 2 : 1
+            )
+    }
+
+    private var shadowShape: some View {
+        RoundedRectangle(cornerRadius: tokens.tileCornerRadius)
+            .fill(isSplat ? cardShadowColor : Color.clear)
+            .offset(
+                x: isSplat ? (isFocused ? 6 : 4) : 0,
+                y: isSplat ? (isFocused ? 8 : 5) : 0
+            )
+    }
+
+    private var idleShape: some View {
+        RoundedRectangle(cornerRadius: tokens.tileCornerRadius)
+            .fill(isFocused ? Color.clear : tokens.cardBgIdle)
+    }
+
+    private var focusShape: some View {
+        RoundedRectangle(cornerRadius: tokens.tileCornerRadius)
+            .fill(isFocused ? tokens.focusBg : Color.clear)
+    }
+
+    private var strokeShape: some View {
+        RoundedRectangle(cornerRadius: tokens.tileCornerRadius)
+            .strokeBorder(
+                isFocused
+                    ? (tokens.focusStrokeColor ?? tokens.strokeColor).opacity(tokens.focusStrokeOpacity)
+                    : tokens.strokeColor.opacity(tokens.strokeOpacity),
+                lineWidth: isFocused ? tokens.focusStrokeWidth : tokens.strokeWidth
+            )
+    }
+
+    private var cardShadowColor: Color {
+        if isFocused {
+            return (tokens.focusGlowColor ?? Color.black).opacity(0.95)
+        }
+        return Color.black.opacity(0.82)
     }
 }

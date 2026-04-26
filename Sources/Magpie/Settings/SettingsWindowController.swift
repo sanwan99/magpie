@@ -22,7 +22,7 @@ final class SettingsWindowController {
         // Lazy-create on first open so we don't pay for SettingsView until needed.
         let host = NSHostingController(rootView: SettingsView(store: SettingsStore.shared))
         let win = NSWindow(contentViewController: host)
-        win.title = "Magpie Settings"
+        win.title = SettingsText(language: SettingsStore.shared.language).windowTitle
         win.styleMask = [.titled, .closable, .miniaturizable]
         win.isReleasedWhenClosed = false
         win.center()
@@ -33,5 +33,21 @@ final class SettingsWindowController {
         NSApp.activate()
         win.makeKeyAndOrderFront(nil)
         self.window = win
+        observeSettingsTitle()
+    }
+
+    private func observeSettingsTitle() {
+        let store = SettingsStore.shared
+        func track() {
+            withObservationTracking {
+                _ = store.language
+            } onChange: { [weak self] in
+                Task { @MainActor in
+                    self?.window?.title = SettingsText(language: store.language).windowTitle
+                    track()
+                }
+            }
+        }
+        track()
     }
 }

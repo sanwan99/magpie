@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// Decorative overlay for the Splat flavor — purple ink splatter shapes
-/// at the corners and a yellow squid mascot floating in the lower-right.
-/// Rendered above the panel content but below interactive elements (search
-/// field, cards) — pointer events are disabled so it never blocks clicks.
+/// Decorative overlay for the Splat flavor.
+///
+/// The browser prototype draws the squids outside the panel via fixed DOM
+/// elements. A borderless NSPanel cannot render outside its own window frame,
+/// so this layer recreates the same visual priority inside the panel:
+/// top-corner squids and a few small splats that stay behind the UI.
 struct SplatDecorations: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var floatPhase: CGFloat = 0
@@ -11,57 +13,40 @@ struct SplatDecorations: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                // Splatters at all four corners. Each one is sized so it's
-                // mostly painted into the corner; the panel's cornerRadius
-                // clips out the curve, leaving the visible portion looking
-                // like ink leaking past the panel's rounded edge.
-                // (Real "outside the panel" needs a separate borderless
-                // window — out of scope; the corner-clip illusion is enough.)
-                SplatterBlob(color: splatterColor, seed: 0)
-                    .frame(width: 320, height: 300)
-                    .position(x: 0, y: 0)              // top-left
-                    .opacity(0.78)
+                SplatterBlob(color: purpleInk, seed: 1)
+                    .frame(width: 110, height: 52)
+                    .rotationEffect(.degrees(-8))
+                    .position(x: geo.size.width - 150, y: 102)
+                    .opacity(0.86)
 
-                SplatterBlob(color: splatterColor, seed: 1)
-                    .frame(width: 260, height: 240)
-                    .position(x: geo.size.width, y: 0) // top-right
-                    .opacity(0.72)
+                SplatterBlob(color: yellowInk, seed: 2)
+                    .frame(width: 126, height: 58)
+                    .rotationEffect(.degrees(7))
+                    .position(x: 90, y: geo.size.height - 78)
+                    .opacity(0.68)
 
-                SplatterBlob(color: splatterColor, seed: 2)
-                    .frame(width: 280, height: 260)
-                    .position(x: 0, y: geo.size.height) // bottom-left
-                    .opacity(0.70)
-
-                SplatterBlob(color: splatterColor, seed: 0)
-                    .frame(width: 240, height: 220)
-                    .position(x: geo.size.width, y: geo.size.height) // bottom-right
-                    .opacity(0.65)
-
-                // Mascots tucked into the bottom corners — out of the way of
-                // the top bar (search field + Magpie label + toggles) and out
-                // of the way of the card scroll body. They peek out of the
-                // bottom-padding strip with a slow float.
                 Image("SquidYellow")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 110, height: 110)
+                    .frame(width: 150, height: 150)
                     .rotationEffect(.degrees(-12))
                     .position(
-                        x: 50,
-                        y: geo.size.height - 30 + floatPhase
+                        x: 66,
+                        y: 48 + floatPhase
                     )
-                    .shadow(color: .black.opacity(0.5), radius: 8, x: 0, y: 4)
+                    .shadow(color: .black.opacity(0.35), radius: 8, x: 0, y: 5)
 
                 Image("SquidPurple")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 100, height: 100)
-                    .rotationEffect(.degrees(10))
+                    .frame(width: 146, height: 146)
+                    .scaleEffect(x: -1, y: 1)
+                    .rotationEffect(.degrees(9))
                     .position(
-                        x: geo.size.width - 50,
-                        y: geo.size.height - 30 - floatPhase
+                        x: geo.size.width - 64,
+                        y: 48 - floatPhase
                     )
-                    .shadow(color: .black.opacity(0.5), radius: 8, x: 0, y: 4)
+                    .shadow(color: .black.opacity(0.35), radius: 8, x: 0, y: 5)
             }
         }
         .allowsHitTesting(false)
@@ -72,13 +57,18 @@ struct SplatDecorations: View {
         }
     }
 
-    /// Splatter ink color — purple in dark mode (matches squid-purple variant
-    /// from prototype), white-tinted purple in light mode.
-    private var splatterColor: Color {
+    private var purpleInk: Color {
         colorScheme == .dark
-            ? Color(red: 0.48, green: 0.17, blue: 1.00)  // #7a2bff
-            : Color(red: 0.65, green: 0.40, blue: 1.00)  // softer lavender on paper bg
+            ? Color(red: 0.48, green: 0.17, blue: 1.00)
+            : Color(red: 0.61, green: 0.30, blue: 1.00)
     }
+
+    private var yellowInk: Color {
+        colorScheme == .dark
+            ? Color(red: 1.00, green: 0.91, blue: 0.00)
+            : Color(red: 1.00, green: 0.84, blue: 0.10)
+    }
+
 }
 
 /// An organic ink-splat shape built from a few overlapping circles + drips.

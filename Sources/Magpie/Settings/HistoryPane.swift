@@ -6,29 +6,31 @@ struct HistoryPane: View {
     @State private var newAppId: String = ""
 
     var body: some View {
+        let text = SettingsText(language: store.language)
+
         Form {
-            Section("Retention") {
-                Picker("Keep history for", selection: $store.keepHistoryDays) {
-                    Text("Forever").tag(0)
-                    Text("7 days").tag(7)
-                    Text("30 days").tag(30)
-                    Text("90 days").tag(90)
+            Section(text.retention) {
+                Picker(text.keepHistoryFor, selection: $store.keepHistoryDays) {
+                    Text(text.forever).tag(0)
+                    Text(text.days(7)).tag(7)
+                    Text(text.days(30)).tag(30)
+                    Text(text.days(90)).tag(90)
                 }
                 .pickerStyle(.menu)
 
                 HStack {
-                    Text("Max items")
+                    Text(text.maxItems)
                     Spacer()
-                    TextField("0 = unlimited", value: $store.maxItems, format: .number)
+                    TextField(text.unlimitedPlaceholder, value: $store.maxItems, format: .number)
                         .frame(width: 80)
                         .multilineTextAlignment(.trailing)
                 }
-                Text("Pinned clips are never auto-deleted, regardless of these limits.")
+                Text(text.pinnedNeverDeleted)
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
 
-            Section("Ignored apps") {
+            Section(text.ignoredApps) {
                 ForEach(store.ignoredApps, id: \.self) { app in
                     HStack {
                         Image(systemName: "app.dashed")
@@ -61,27 +63,27 @@ struct HistoryPane: View {
                     .disabled(newAppId.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 
-                Text("Bundle identifiers (e.g. `com.agilebits.onepassword`, `com.lastpass.macos`). Clipboard activity from these apps will not be ingested.")
+                Text(text.ignoredAppsDescription)
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
 
-            Section("Danger zone") {
+            Section(text.dangerZone) {
                 Button(role: .destructive) {
                     showClearAlert = true
                 } label: {
                     HStack {
                         Image(systemName: "trash")
-                        Text("Clear all clips")
+                        Text(text.clearAllClips)
                     }
                 }
-                .alert("Clear all clips?", isPresented: $showClearAlert) {
-                    Button("Cancel", role: .cancel) {}
-                    Button("Clear", role: .destructive) {
+                .alert(text.clearAllClipsQuestion, isPresented: $showClearAlert) {
+                    Button(text.cancel, role: .cancel) {}
+                    Button(text.clear, role: .destructive) {
                         HistoryReaper().clearAll()
                     }
                 } message: {
-                    Text("This permanently deletes all clips (pinned and unpinned) and the on-disk image cache. Cannot be undone.")
+                    Text(text.clearAllClipsMessage)
                 }
             }
         }

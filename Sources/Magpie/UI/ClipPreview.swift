@@ -13,6 +13,7 @@ struct ClipPreview: View {
 
     var body: some View {
         let t = settings.flavor.tokens(for: colorScheme)
+        let isSplat = settings.flavor == .splat
         VStack(alignment: .leading, spacing: 8) {
             header
             previewBody
@@ -21,44 +22,10 @@ struct ClipPreview: View {
         }
         .padding(12)
         .frame(width: 220, height: 220, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: t.cardCornerRadius)
-                .fill(.background.opacity(isFocused ? 0.45 : 0.32))
-        )
-        // Flavor-specific idle card tint (Splat: pale cream over the purple
-        // overlay). Default flavors leave this transparent.
-        .background(
-            RoundedRectangle(cornerRadius: t.cardCornerRadius)
-                .fill(isFocused ? Color.clear : t.cardBgIdle)
-        )
-        .background(
-            RoundedRectangle(cornerRadius: t.cardCornerRadius)
-                .fill(isFocused ? t.focusBg : Color.clear)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: t.cardCornerRadius)
-                .strokeBorder(
-                    isFocused
-                        ? t.strokeColor.opacity(t.focusStrokeOpacity)
-                        : t.strokeColor.opacity(t.strokeOpacity),
-                    lineWidth: isFocused ? t.focusStrokeWidth : t.strokeWidth
-                )
-        )
-        .shadow(
-            color: Color.black.opacity(isFocused ? 0.12 : 0.04),
-            radius: isFocused ? 6 : 2,
-            x: 0,
-            y: isFocused ? 2 : 1
-        )
-        // Optional neon glow on focus (Splat dark uses lime). Layered on top
-        // of the default black drop-shadow so cards still feel grounded.
-        .shadow(
-            color: (isFocused ? t.focusGlowColor : nil)?.opacity(0.55) ?? .clear,
-            radius: 14,
-            x: 0,
-            y: 0
-        )
+        .modifier(ClipCardChrome(tokens: t, isFocused: isFocused, isSplat: isSplat))
         .offset(y: isFocused ? -2 : 0)
+        .rotationEffect(isSplat ? splatRotation : .degrees(0))
+        .environment(\.colorScheme, isSplat && isFocused ? .light : colorScheme)
         // No SwiftUI animation modifier here — applying `.animation(value:)` to
         // every card causes all 9+ views to recompute styles on each focus
         // change, which compounds with ScrollViewReader's centering. The
@@ -242,5 +209,67 @@ struct ClipPreview: View {
     private func shortAppLabel(_ bundleId: String) -> String {
         // com.apple.dt.Xcode → Xcode; com.openai.codex → codex
         return bundleId.split(separator: ".").last.map(String.init) ?? bundleId
+    }
+
+    private var splatRotation: Angle {
+        if isFocused { return .degrees(-1.2) }
+        guard let shortcutNumber else { return .degrees(0.4) }
+        return .degrees(shortcutNumber.isMultiple(of: 2) ? 0.7 : -0.6)
+    }
+}
+
+private struct ClipCardChrome: ViewModifier {
+    let tokens: FlavorTokens
+    let isFocused: Bool
+    let isSplat: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background(idleShape)
+            .background(focusShape)
+            .background(shadowShape)
+            .overlay(strokeShape)
+            .shadow(
+                color: isSplat ? .clear : Color.black.opacity(isFocused ? 0.12 : 0.04),
+                radius: isFocused ? 6 : 2,
+                x: 0,
+                y: isFocused ? 2 : 1
+            )
+    }
+
+    private var shadowShape: some View {
+        RoundedRectangle(cornerRadius: tokens.cardCornerRadius)
+            .fill(isSplat ? cardShadowColor : Color.clear)
+            .offset(
+                x: isSplat ? (isFocused ? 6 : 4) : 0,
+                y: isSplat ? (isFocused ? 8 : 5) : 0
+            )
+    }
+
+    private var idleShape: some View {
+        RoundedRectangle(cornerRadius: tokens.cardCornerRadius)
+            .fill(isFocused ? Color.clear : tokens.cardBgIdle)
+    }
+
+    private var focusShape: some View {
+        RoundedRectangle(cornerRadius: tokens.cardCornerRadius)
+            .fill(isFocused ? tokens.focusBg : Color.clear)
+    }
+
+    private var strokeShape: some View {
+        RoundedRectangle(cornerRadius: tokens.cardCornerRadius)
+            .strokeBorder(
+                isFocused
+                    ? (tokens.focusStrokeColor ?? tokens.strokeColor).opacity(tokens.focusStrokeOpacity)
+                    : tokens.strokeColor.opacity(tokens.strokeOpacity),
+                lineWidth: isFocused ? tokens.focusStrokeWidth : tokens.strokeWidth
+            )
+    }
+
+    private var cardShadowColor: Color {
+        if isFocused {
+            return (tokens.focusGlowColor ?? Color.black).opacity(0.95)
+        }
+        return Color.black.opacity(0.82)
     }
 }

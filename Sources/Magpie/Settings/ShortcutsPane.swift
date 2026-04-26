@@ -1,20 +1,25 @@
 import SwiftUI
 
 struct ShortcutsPane: View {
-    private let entries: [Entry] = [
-        .init(keys: ["⌘", "P"],          action: "Show / hide panel",                               scope: "Global"),
-        .init(keys: ["⌘", ","],          action: "Open Settings",                                    scope: "Global"),
-        .init(keys: ["↵"],               action: "Paste focused clip",                               scope: "Panel"),
-        .init(keys: ["⌘", "1"],          action: "Quick paste clip 1 (also ⌘2…⌘9)",                  scope: "Panel"),
-        .init(keys: ["Click"],           action: "Focus + show Detail Pane",                         scope: "Panel"),
-        .init(keys: ["Double-click"],    action: "Focus + paste",                                    scope: "Panel"),
-        .init(keys: ["←", "↑"],          action: "Move focus toward older clips",                    scope: "Panel"),
-        .init(keys: ["→", "↓"],          action: "Move focus toward newer clips",                    scope: "Panel"),
-        .init(keys: ["⌘", "D"],          action: "Pin / unpin focused clip",                         scope: "Panel"),
-        .init(keys: ["⌘", "\\"],         action: "Cycle layout (Stripe → Stack → Grid)",             scope: "Panel"),
-        .init(keys: ["Space"],           action: "Toggle Detail Pane (when search field is empty)",  scope: "Panel"),
-        .init(keys: ["Esc"],             action: "Cancel cascade (clear search → filter → close)",   scope: "Panel"),
-    ]
+    let language: AppLanguage
+
+    private var entries: [Entry] {
+        let text = SettingsText(language: language)
+        return [
+            .init(keys: ["⌘", "P"],          action: text.shortcutShowHidePanel,      scope: text.scopeGlobal),
+            .init(keys: ["⌘", ","],          action: text.shortcutOpenSettings,       scope: text.scopeGlobal),
+            .init(keys: ["↵"],               action: text.shortcutPasteFocused,       scope: text.scopePanel),
+            .init(keys: ["⌘", "1"],          action: text.shortcutQuickPaste,         scope: text.scopePanel),
+            .init(keys: [text.keyClick],     action: text.shortcutClickFocus,         scope: text.scopePanel),
+            .init(keys: [text.keyDoubleClick], action: text.shortcutDoubleClickPaste, scope: text.scopePanel),
+            .init(keys: ["←", "↑"],          action: text.shortcutMoveOlder,          scope: text.scopePanel),
+            .init(keys: ["→", "↓"],          action: text.shortcutMoveNewer,          scope: text.scopePanel),
+            .init(keys: ["⌘", "D"],          action: text.shortcutPin,                scope: text.scopePanel),
+            .init(keys: ["⌘", "\\"],         action: text.shortcutCycleLayout,        scope: text.scopePanel),
+            .init(keys: [text.keySpace],     action: text.shortcutToggleDetail,       scope: text.scopePanel),
+            .init(keys: ["Esc"],             action: text.shortcutCancelCascade,      scope: text.scopePanel),
+        ]
+    }
 
     var body: some View {
         ScrollView {
