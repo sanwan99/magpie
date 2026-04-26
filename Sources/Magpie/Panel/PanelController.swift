@@ -7,6 +7,7 @@ import SwiftUI
 final class PanelController {
     private let panel: PanelWindow
     private let viewModel: ClipsViewModel
+    private let snippetsViewModel: SnippetsViewModel
     private let settings = SettingsStore.shared
     private let frontmost = FrontmostTracker()
     private var keyMonitor: Any?
@@ -21,8 +22,9 @@ final class PanelController {
     /// Distance from the bottom of the active screen.
     static let bottomInset: CGFloat = 24
 
-    init(viewModel: ClipsViewModel) {
+    init(viewModel: ClipsViewModel, snippetsViewModel: SnippetsViewModel) {
         self.viewModel = viewModel
+        self.snippetsViewModel = snippetsViewModel
         let frame = NSRect(origin: .zero, size: Self.panelSize)
         self.panel = PanelWindow(contentRect: frame)
         self.panel.contentView = makeContentView()
@@ -34,6 +36,52 @@ final class PanelController {
         viewModel.onPasteRequest = { [weak self] in
             self?.paste()
         }
+        snippetsViewModel.onPasteRequest = { [weak self] snippet in
+            self?.pasteSnippet(snippet)
+        }
+    }
+
+    // MARK: - Snippets paste flow
+
+    /// Paste a snippet's body into the previously frontmost app.
+    /// Same shape as `executePaste` but writes a string directly (no PreviewContent dispatch).
+    private func pasteSnippet(_ snippet: Snippet) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(snippet.body, forType: .string)
+        let target = frontmost.savedTarget
+        NSLog("[snippet] pasting %d chars into %@", snippet.body.count, target?.bundleIdentifier ?? "?")
+        snippetsViewModel.drawerVisible = false
+        afterHide = {
+            Paster.paste(into: target)
+        }
+        hide()
+    }
+
+    /// Open the snippet editor for a brand-new snippet.
+    fileprivate func openNewSnippetEditor() {
+        SnippetEditorWindowController.shared.open(
+            snippet: Snippet.newDraft(),
+            isNew: true,
+            onSave: { [weak self] s in
+                self?.snippetsViewModel.upsert(s)
+            },
+            onDelete: { /* no-op for brand-new snippets */ }
+        )
+    }
+
+    /// Open the editor on an existing snippet.
+    fileprivate func openEditor(for snippet: Snippet) {
+        SnippetEditorWindowController.shared.open(
+            snippet: snippet,
+            isNew: false,
+            onSave: { [weak self] s in
+                self?.snippetsViewModel.upsert(s)
+            },
+            onDelete: { [weak self] in
+                self?.snippetsViewModel.delete(id: snippet.id)
+            }
+        )
     }
 
     /// Subscribe to SettingsStore changes via Observation tracking. Each
@@ -247,6 +295,17 @@ final class PanelController {
                 SettingsWindowController.shared.show()
                 return nil
             }
+            // ⌘S toggle Snippets drawer
+            if chars == "s" {
+                NSLog("[snippets] ⌘S intercepted, toggling drawer (was visible=%d, count=%d)",
+                      snippetsViewModel.drawerVisible ? 1 : 0,
+                      snippetsViewModel.snippets.count)
+                withAnimation(.easeOut(duration: 0.18)) {
+                    snippetsViewModel.toggleDrawer()
+                }
+                NSLog("[snippets] drawer now visible=%d", snippetsViewModel.drawerVisible ? 1 : 0)
+                return nil
+            }
             // ⌘1…⌘9 quick paste at index
             if chars.count == 1,
                let scalar = chars.unicodeScalars.first,
@@ -324,7 +383,10 @@ final class PanelController {
     private func makeContentView() -> NSView {
         let host = NSHostingView(rootView: PanelContentView(
             viewModel: viewModel,
-            onPaste: { [weak self] in self?.paste() }
+            snippetsViewModel: snippetsViewModel,
+            onPaste: { [weak self] in self?.paste() },
+            onCreateSnippet: { [weak self] in self?.openNewSnippetEditor() },
+            onEditSnippet: { [weak self] s in self?.openEditor(for: s) }
         ))
         let container = NSView(frame: NSRect(origin: .zero, size: Self.panelSize))
         container.wantsLayer = true
@@ -351,20 +413,29 @@ final class PanelController {
 /// (active layout + optional Detail Pane).
 private struct PanelContentView: View {
     let viewModel: ClipsViewModel
+    let snippetsViewModel: SnippetsViewModel
     let onPaste: () -> Void
+    let onCreateSnippet: () -> Void
+    let onEditSnippet: (Snippet) -> Void
 
     private let settings = SettingsStore.shared
 
     var body: some View {
         ZStack {
-            // Decorative flavor overlay (e.g. Splat's purple-ink wash) sits
-            // between the NSVisualEffectView and the SwiftUI content. Default
-            // flavors leave this transparent so vibrancy shows through.
             if let overlay = settings.flavor.tokens.panelBgOverlay {
                 overlay.ignoresSafeArea()
             }
             VStack(spacing: 0) {
                 topBar
+                if snippetsViewModel.drawerVisible {
+                    Divider().opacity(0.4)
+                    SnippetsDrawer(
+                        viewModel: snippetsViewModel,
+                        onCreate: onCreateSnippet,
+                        onEdit: onEditSnippet
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 Divider().opacity(0.4)
                 body(for: viewModel.activeLayout)
             }
@@ -379,6 +450,7 @@ private struct PanelContentView: View {
                 Text("Magpie")
                     .font(.system(size: 13, weight: .bold))
                 SearchField(viewModel: viewModel)
+                SnippetsToggle(viewModel: snippetsViewModel)
                 LayoutSwitcher(viewModel: viewModel)
                 DetailPaneToggle(viewModel: viewModel)
             }
@@ -497,6 +569,32 @@ private struct LayoutSwitcher: View {
         case .stack:  return "list.bullet.rectangle"
         case .grid:   return "square.grid.2x2"
         }
+    }
+}
+
+// MARK: - Snippets toggle (top-bar control)
+
+private struct SnippetsToggle: View {
+    @Bindable var viewModel: SnippetsViewModel
+
+    var body: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.18)) {
+                viewModel.toggleDrawer()
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: viewModel.drawerVisible ? "doc.text.fill" : "doc.text")
+                    .font(.system(size: 11))
+                Text("⌘S")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.borderless)
+        .help("Toggle Snippets drawer (⌘S)")
     }
 }
 

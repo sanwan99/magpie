@@ -62,6 +62,20 @@ final class Database {
                 );
             """)
         }
+        // v0.3-b: snippets — user-defined templates (e.g. ;sig → signature).
+        migrator.registerMigration("v2_snippets") { db in
+            try db.execute(sql: """
+                CREATE TABLE snippets (
+                    id          TEXT PRIMARY KEY,
+                    shortcut    TEXT NOT NULL UNIQUE,
+                    title       TEXT NOT NULL,
+                    body        TEXT NOT NULL,
+                    created_at  REAL NOT NULL,
+                    updated_at  REAL NOT NULL
+                );
+            """)
+            try db.execute(sql: "CREATE INDEX idx_snippets_shortcut ON snippets(shortcut);")
+        }
         try migrator.migrate(queue)
     }
 }

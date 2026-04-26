@@ -7,11 +7,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var clipboardWatcher: ClipboardWatcher?
     private var repository: ClipRepository?
     private var viewModel: ClipsViewModel?
+    private var snippetsViewModel: SnippetsViewModel?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let repo = ClipRepository()
         let vm = ClipsViewModel(repository: repo)
-        let panel = PanelController(viewModel: vm)
+        let snippetsVM = SnippetsViewModel()
+        let panel = PanelController(viewModel: vm, snippetsViewModel: snippetsVM)
         let hotkeys = HotkeyCenter()
         hotkeys.onTogglePanel = { [weak panel] in
             panel?.toggle()
@@ -26,11 +28,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         self.repository = repo
         self.viewModel = vm
+        self.snippetsViewModel = snippetsVM
         self.panelController = panel
         self.hotkeyCenter = hotkeys
         self.clipboardWatcher = watcher
 
-        NSLog("[magpie] launched. ⌘P toggles panel, Esc hides it. clips=%d", vm.clips.count)
+        NSLog("[magpie] launched. ⌘P toggles panel, Esc hides it. clips=%d snippets=%d",
+              vm.clips.count, snippetsVM.snippets.count)
     }
 
     /// Detect type for the current pasteboard and write it to storage.
