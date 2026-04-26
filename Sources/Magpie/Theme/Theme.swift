@@ -56,7 +56,18 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
         }
     }
 
-    /// Full token set for this flavor.
+    /// ColorScheme-aware token resolution. Most flavors return the same
+    /// token set regardless of base theme; Splat returns a different palette
+    /// for dark mode (deep purple ink) vs light mode (paper-white).
+    func tokens(for scheme: ColorScheme) -> FlavorTokens {
+        if self == .splat && scheme == .dark {
+            return Flavor.splatDarkTokens
+        }
+        return tokens
+    }
+
+    /// Backwards-compatible default-light tokens. Used by previews and as the
+    /// fallback when no ColorScheme is available.
     var tokens: FlavorTokens {
         switch self {
         case .mono:
@@ -198,4 +209,33 @@ struct FlavorTokens: Sendable {
         guard let color = cardBgIdleColor else { return .clear }
         return color.opacity(cardBgIdleOpacity)
     }
+}
+
+// MARK: - Splat dark variant
+
+extension Flavor {
+    /// Splat in dark mode.
+    /// Yellow uses prototype's `--splat-y-2` (#fff85a) — the brighter,
+    /// lime-tinted variant — instead of the base #ffe900. The brighter
+    /// shade reads as the proper "Splatoon fluo" against deep purple.
+    static let splatDarkTokens = FlavorTokens(
+        // #fff85a — bright lime-yellow, prototype's splat-y-2
+        accent:           Color(red: 1.00, green: 0.97, blue: 0.35),
+        focusBgColor:     Color(red: 1.00, green: 0.97, blue: 0.35),
+        focusBgIntensity: 0.97,
+        // #4a0fa3 — clearly violet, not just "dark with tint". Higher opacity
+        // so the vibrancy doesn't dilute it back to grey.
+        cardBgIdleColor:  Color(red: 0.29, green: 0.06, blue: 0.64),
+        cardBgIdleOpacity: 0.96,
+        // #2a0a52 — deeper than card so cards float on it; 92% opacity keeps
+        // a hint of vibrancy without losing the purple identity.
+        panelBgOverlay:   Color(red: 0.16, green: 0.04, blue: 0.32).opacity(0.92),
+        strokeColor:      Color(red: 1.00, green: 0.97, blue: 0.35),
+        strokeOpacity:    0.75,
+        strokeWidth:      1.5,
+        focusStrokeOpacity: 1.0,
+        focusStrokeWidth: 2.5,
+        cardCornerRadius: 16,
+        tileCornerRadius: 14
+    )
 }

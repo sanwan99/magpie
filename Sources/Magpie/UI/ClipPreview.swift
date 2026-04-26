@@ -9,9 +9,10 @@ struct ClipPreview: View {
     var shortcutNumber: Int? = nil
 
     private let settings = SettingsStore.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let t = settings.flavor.tokens
+        let t = settings.flavor.tokens(for: colorScheme)
         VStack(alignment: .leading, spacing: 8) {
             header
             previewBody

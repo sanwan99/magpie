@@ -43,9 +43,10 @@ private struct GridTile: View {
     let shortcutNumber: Int?
 
     private let settings = SettingsStore.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let t = settings.flavor.tokens
+        let t = settings.flavor.tokens(for: colorScheme)
         VStack(alignment: .leading, spacing: 6) {
             header
             previewBody

@@ -40,8 +40,10 @@ private struct StackRow: View {
     let shortcutNumber: Int?
 
     private let settings = SettingsStore.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let tokens = settings.flavor.tokens(for: colorScheme)
         HStack(spacing: 12) {
             // Column 1 — ⌘N badge (fixed-width slot so columns align even when nil)
             shortcutBadge
@@ -84,7 +86,7 @@ private struct StackRow: View {
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 7)
-                .fill(isFocused ? settings.flavor.tokens.focusBg : Color.clear)
+                .fill(isFocused ? tokens.focusBg : Color.clear)
         )
     }
 

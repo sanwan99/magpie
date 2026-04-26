@@ -438,10 +438,11 @@ private struct PanelContentView: View {
     let onEditSnippet: (Snippet) -> Void
 
     private let settings = SettingsStore.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
-            if let overlay = settings.flavor.tokens.panelBgOverlay {
+            if let overlay = settings.flavor.tokens(for: colorScheme).panelBgOverlay {
                 overlay.ignoresSafeArea()
             }
             VStack(spacing: 0) {
