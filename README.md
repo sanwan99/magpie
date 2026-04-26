@@ -5,11 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black.svg)](#)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#)
-[![Version: 0.2.0](https://img.shields.io/badge/version-0.2.0-blue.svg)](#)
+[![Version: 0.3.0](https://img.shields.io/badge/version-0.3.0-blue.svg)](#)
 
 ## Status
 
-🐦 **Alpha 0.2.0**. v0.1 skeleton (clipboard capture, ⌘P panel, paste-back) and v0.2 detective (search, three layouts, Detail Pane, Settings, theme system) shipped. Track progress in [`md/codex/plan/tasks/`](md/codex/plan/tasks/) (symlinked notes). DMG in `dist/Magpie-0.2.0.dmg`.
+🐦 **Alpha 0.3.0**. Functional parity with the prototype reached. v0.1 (skeleton), v0.2 (detective), v0.3 (polish) all shipped. DMG in `dist/Magpie-0.3.0.dmg`. Decorative refinements (squid mascot, paste toast animation, hover transition), Sparkle auto-update with EdDSA signing, SQLCipher encryption, Homebrew distribution and the public release are queued for v1.0.
 
 ## What Magpie does
 
@@ -28,8 +28,9 @@ The full prototype spec lives at [`prototype/剪切板工具/Magpie 原型说明
 |---------|--------|-------|
 | v0.1 | ✅ shipped | Clipboard listener, ⌘P panel, Stripe layout, ↵/double-click paste, 4 types: text·code·url·folder |
 | v0.2 | ✅ shipped | Search (incl. `key:value` syntax), type filter, Pin, Stack & Grid layouts, Detail Pane, Settings (Theme/Vibrancy/Flavor + Shortcuts) |
-| v0.3 | next | Image/File full support, Snippets drawer, History/Privacy/Touch ID, Queue Mode, theme & motion polish |
-| Later | — | Regex search, URL sanitization, CLI tool |
+| v0.3 | ✅ shipped | Image clip support (capture + paste back), Snippets drawer + editor (manual), Settings History/Privacy + Queue Mode, ColorScheme-aware Splat dark theme |
+| v1.0 | next | Sparkle auto-update (EdDSA-signed), SQLCipher encrypted store, decorative theme refinements (squid mascot, paste toast), Homebrew Cask, public release |
+| Later | — | Regex search, URL sanitization, CLI tool, ;sig auto-expand via CGEventTap |
 
 ## Building
 
