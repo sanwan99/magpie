@@ -4,11 +4,12 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black.svg)](#)
-[![Status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-red.svg)](#)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#)
+[![Version: 0.2.0](https://img.shields.io/badge/version-0.2.0-blue.svg)](#)
 
 ## Status
 
-🚧 **Pre-alpha**. Active development on **v0.1 skeleton** (clipboard listener + Stripe layout + ⌘P invocation). Track progress in [`md/codex/plan/tasks/`](md/codex/plan/tasks/) (symlinked notes).
+🐦 **Alpha 0.2.0**. v0.1 skeleton (clipboard capture, ⌘P panel, paste-back) and v0.2 detective (search, three layouts, Detail Pane, Settings, theme system) shipped. Track progress in [`md/codex/plan/tasks/`](md/codex/plan/tasks/) (symlinked notes). DMG in `dist/Magpie-0.2.0.dmg`.
 
 ## What Magpie does
 
@@ -23,12 +24,12 @@ The full prototype spec lives at [`prototype/剪切板工具/Magpie 原型说明
 
 ## Roadmap
 
-| Version | Scope |
-|---------|-------|
-| v0.1 (in progress) | Clipboard listener, ⌘P panel, Stripe layout, ↵/double-click paste, 4 types: text·code·url·folder |
-| v0.2 | Search (incl. `key:value` syntax), type filter, Pin, Stack & Grid layouts, Detail Pane, Settings (General + Shortcuts) |
-| v0.3 | Image/File full support, Snippets drawer, History/Privacy/Touch ID, Queue Mode, theme & motion polish |
-| Later | Regex search, URL sanitization, CLI tool |
+| Version | Status | Scope |
+|---------|--------|-------|
+| v0.1 | ✅ shipped | Clipboard listener, ⌘P panel, Stripe layout, ↵/double-click paste, 4 types: text·code·url·folder |
+| v0.2 | ✅ shipped | Search (incl. `key:value` syntax), type filter, Pin, Stack & Grid layouts, Detail Pane, Settings (Theme/Vibrancy/Flavor + Shortcuts) |
+| v0.3 | next | Image/File full support, Snippets drawer, History/Privacy/Touch ID, Queue Mode, theme & motion polish |
+| Later | — | Regex search, URL sanitization, CLI tool |
 
 ## Building
 
