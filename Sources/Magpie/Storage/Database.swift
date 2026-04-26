@@ -21,6 +21,25 @@ final class Database {
         }
     }
 
+    /// Test-only initializer that wires up an in-memory queue with the same
+    /// migrations as production. Lets unit tests exercise repositories without
+    /// touching the user's real database.
+    private init(dbQueue: DatabaseQueue) throws {
+        self.dbQueue = dbQueue
+        try Self.migrate(dbQueue)
+    }
+
+    /// Returns a fresh in-memory Database — every call gets a new instance with
+    /// its own data, fully migrated. For tests only.
+    static func makeInMemoryForTests() -> Database {
+        do {
+            let queue = try DatabaseQueue()  // in-memory by default
+            return try Database(dbQueue: queue)
+        } catch {
+            fatalError("makeInMemoryForTests failed: \(error)")
+        }
+    }
+
     private static func databaseURL() -> URL {
         let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory,
