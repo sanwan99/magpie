@@ -445,6 +445,12 @@ private struct PanelContentView: View {
             if let overlay = settings.flavor.tokens(for: colorScheme).panelBgOverlay {
                 overlay.ignoresSafeArea()
             }
+            // Splat-only decorative chrome (purple splatters + yellow squid mascot).
+            // Sits above the overlay but below content, with hit testing off.
+            if settings.flavor == .splat {
+                SplatDecorations()
+                    .ignoresSafeArea()
+            }
             VStack(spacing: 0) {
                 topBar
                 if snippetsViewModel.drawerVisible {

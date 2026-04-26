@@ -78,6 +78,7 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 cardBgIdleColor:  nil,
                 cardBgIdleOpacity: 0,
                 panelBgOverlay:   nil,
+                focusGlowColor:   nil,
                 strokeColor:      .primary,
                 strokeOpacity:    0.06,
                 strokeWidth:      0.5,
@@ -94,6 +95,7 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 cardBgIdleColor:  nil,
                 cardBgIdleOpacity: 0,
                 panelBgOverlay:   nil,
+                focusGlowColor:   nil,
                 strokeColor:      .primary,
                 strokeOpacity:    0.06,
                 strokeWidth:      0.5,
@@ -110,6 +112,7 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 cardBgIdleColor:  nil,
                 cardBgIdleOpacity: 0,
                 panelBgOverlay:   nil,
+                focusGlowColor:   nil,
                 strokeColor:      .primary,
                 strokeOpacity:    0.06,
                 strokeWidth:      0.5,
@@ -126,6 +129,7 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 cardBgIdleColor:  nil,
                 cardBgIdleOpacity: 0,
                 panelBgOverlay:   nil,
+                focusGlowColor:   nil,
                 strokeColor:      .primary,
                 strokeOpacity:    0.06,
                 strokeWidth:      0.5,
@@ -153,6 +157,7 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 cardBgIdleColor:  Color(red: 1.00, green: 0.99, blue: 0.90),  // #fffce6 cream
                 cardBgIdleOpacity: 0.85,
                 panelBgOverlay:   nil,                                         // paper-light panel
+                focusGlowColor:   nil,
                 strokeColor:      .black,
                 strokeOpacity:    0.95,
                 strokeWidth:      1.5,
@@ -184,6 +189,10 @@ struct FlavorTokens: Sendable {
     /// and layout body). nil = transparent. Used by decorative flavors like
     /// Splat to swap the whole-panel mood.
     let panelBgOverlay: Color?
+    /// Optional neon-glow color for focused cards (drawn as a colored shadow
+    /// outside the stroke). nil = use the default black drop-shadow.
+    /// Splat dark uses lime to get the prototype's "highlight pop" effect.
+    let focusGlowColor: Color?
     /// Default card / tile border color.
     let strokeColor: Color
     /// Default border alpha when not focused.
@@ -214,28 +223,40 @@ struct FlavorTokens: Sendable {
 // MARK: - Splat dark variant
 
 extension Flavor {
-    /// Splat in dark mode.
-    /// Yellow uses prototype's `--splat-y-2` (#fff85a) — the brighter,
-    /// lime-tinted variant — instead of the base #ffe900. The brighter
-    /// shade reads as the proper "Splatoon fluo" against deep purple.
+    /// Splat dark — panel is BLACK (not purple), purple is decoration only.
+    /// Lime-yellow (#c9ff00, leaning toward green per prototype squid color)
+    /// is the focus highlight + accent. Decorative splatter / squid mascot
+    /// elements layer on top via SplatDecorations.
+    ///
+    /// Focus styling matches the prototype's "neon highlight" — the focused
+    /// card stays mostly black, gets a thick lime border, and a lime drop-glow
+    /// outside the stroke. NOT a solid lime fill (which would obscure content).
     static let splatDarkTokens = FlavorTokens(
-        // #fff85a — bright lime-yellow, prototype's splat-y-2
-        accent:           Color(red: 1.00, green: 0.97, blue: 0.35),
-        focusBgColor:     Color(red: 1.00, green: 0.97, blue: 0.35),
-        focusBgIntensity: 0.97,
-        // #4a0fa3 — clearly violet, not just "dark with tint". Higher opacity
-        // so the vibrancy doesn't dilute it back to grey.
-        cardBgIdleColor:  Color(red: 0.29, green: 0.06, blue: 0.64),
-        cardBgIdleOpacity: 0.96,
-        // #2a0a52 — deeper than card so cards float on it; 92% opacity keeps
-        // a hint of vibrancy without losing the purple identity.
-        panelBgOverlay:   Color(red: 0.16, green: 0.04, blue: 0.32).opacity(0.92),
-        strokeColor:      Color(red: 1.00, green: 0.97, blue: 0.35),
-        strokeOpacity:    0.75,
-        strokeWidth:      1.5,
+        // Purple lives in decorations (splatter shapes), not in card chrome.
+        accent:           Color(red: 0.48, green: 0.17, blue: 1.00),  // #7a2bff for swatch
+        // #c9ff00 — lime yellow, matches squid mascot color
+        focusBgColor:     Color(red: 0.79, green: 1.00, blue: 0.00),
+        // 0 = no fill on focus — keep card body black, let stroke + glow do
+        // the work. Prototype focused card is BLACK with lime border, not
+        // yellow with black text.
+        focusBgIntensity: 0.0,
+        // No idle card tint — let the black panel show through naturally.
+        cardBgIdleColor:  nil,
+        cardBgIdleOpacity: 0,
+        // Near-black panel with a hint of warmth. 94% opacity keeps a tiny
+        // hint of vibrancy.
+        panelBgOverlay:   Color(red: 0.04, green: 0.04, blue: 0.05).opacity(0.94),
+        // Lime drop-glow outside the focused stroke — gives the prototype's
+        // "highlighted card pops out of the page" neon look.
+        focusGlowColor:   Color(red: 0.79, green: 1.00, blue: 0.00),
+        // Lime yellow outlines pop against black; thin idle / 4px focused
+        // gives the comic outline feel.
+        strokeColor:      Color(red: 0.79, green: 1.00, blue: 0.00),
+        strokeOpacity:    0.30,
+        strokeWidth:      1.0,
         focusStrokeOpacity: 1.0,
-        focusStrokeWidth: 2.5,
-        cardCornerRadius: 16,
-        tileCornerRadius: 14
+        focusStrokeWidth: 4.0,
+        cardCornerRadius: 18,
+        tileCornerRadius: 16
     )
 }

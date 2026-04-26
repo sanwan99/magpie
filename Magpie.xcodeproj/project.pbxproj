@@ -38,6 +38,7 @@
 		92B835506ADC84F9B6B4E5FF /* Paster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D287871109F263ED4B4DEE3 /* Paster.swift */; };
 		93CAB35747D22B507FA98982 /* PanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F398B1B543EAF5ECC2796A64 /* PanelController.swift */; };
 		93DCDC75B68197CAFD9F9491 /* PanelWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D94EC00F5705180BF6D14410 /* PanelWindow.swift */; };
+		990EB70BB822C489B77DE868 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 28646F7CC9E9257BBD334324 /* Assets.xcassets */; };
 		9BFFC54969C5647DB43AA2FB /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */; };
 		A5F6F0BCAD923D8F7CC44757 /* MagpieTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */; };
 		A69A6CBB91841425509A8F23 /* SearchField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99558CB0522345CFDA5971AE /* SearchField.swift */; };
@@ -48,6 +49,7 @@
 		B6A848B91AF240167519F06B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = AA98C7501CBFBBFEBF52FBDE /* README.md */; };
 		B75A811423F9917876131551 /* ClipType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63304A665DC30BEA81E22EC7 /* ClipType.swift */; };
 		B84080E000DB51C976C921DF /* ClipRepository+search.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D29E5DA2DB926B811884389 /* ClipRepository+search.swift */; };
+		C228750A1DA6663D149E38E0 /* SplatDecorations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7BB971BDEFAFA9C42825525 /* SplatDecorations.swift */; };
 		C3F7B5C19733011640FB9E9D /* HistoryPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46823B5D99313FB1778199F4 /* HistoryPane.swift */; };
 		C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */; };
 		C6543E3D3B82B9BF2CF69A0F /* SnippetsDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DC264DB062FBB36F8833C7 /* SnippetsDrawer.swift */; };
@@ -87,6 +89,7 @@
 		1B7C6DDC7D71C97047AEDB8C /* Magpie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Magpie.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		239F5202686B3F8C16E7C56D /* BiometricGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricGate.swift; sourceTree = "<group>"; };
 		24C2F3724963E4EEC1724ACD /* FrontmostTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrontmostTracker.swift; sourceTree = "<group>"; };
+		28646F7CC9E9257BBD334324 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		28D52A08CCE57364B8E115C9 /* ClipDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipDetectorTests.swift; sourceTree = "<group>"; };
 		2C11B1A53D682102479BF26F /* CardTapHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardTapHandler.swift; sourceTree = "<group>"; };
 		3488C2B7829149351B25BD20 /* Snippet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Snippet.swift; sourceTree = "<group>"; };
@@ -125,6 +128,7 @@
 		B6C60B0692C6C4B737AFCC24 /* ImageStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageStorage.swift; sourceTree = "<group>"; };
 		BF41929E1EB9471A270E3BA5 /* SecretDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretDetector.swift; sourceTree = "<group>"; };
 		C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		C7BB971BDEFAFA9C42825525 /* SplatDecorations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplatDecorations.swift; sourceTree = "<group>"; };
 		C964694F290E166FFC03F031 /* SearchQueryParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchQueryParserTests.swift; sourceTree = "<group>"; };
 		D10FF51554DD113427C47F6E /* PrivacyPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPane.swift; sourceTree = "<group>"; };
 		D153EAF69D81ED1CA7FEEAA4 /* SnippetRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetRepository.swift; sourceTree = "<group>"; };
@@ -155,6 +159,7 @@
 			isa = PBXGroup;
 			children = (
 				AA98C7501CBFBBFEBF52FBDE /* README.md */,
+				C7BB971BDEFAFA9C42825525 /* SplatDecorations.swift */,
 				6D524858F3A63B88EAC4B5E0 /* Theme.swift */,
 			);
 			path = Theme;
@@ -201,6 +206,7 @@
 		6FA7DC1D53FD2BCF071E90B5 = {
 			isa = PBXGroup;
 			children = (
+				C138BF44FB52120612455EF7 /* Resources */,
 				3A93DB2858A70B0261D0F76E /* Sources */,
 				F8330C18FEF5E3C798654CA8 /* Tests */,
 				949197DB4BAEC6C4EFAC08F8 /* Products */,
@@ -289,6 +295,14 @@
 				A01B7D3741195A6BFD48D278 /* UI */,
 			);
 			path = Magpie;
+			sourceTree = "<group>";
+		};
+		C138BF44FB52120612455EF7 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				28646F7CC9E9257BBD334324 /* Assets.xcassets */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		C170F3EED4F1625334525E19 /* Search */ = {
@@ -457,6 +471,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				990EB70BB822C489B77DE868 /* Assets.xcassets in Resources */,
 				B6A848B91AF240167519F06B /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -526,6 +541,7 @@
 				1375778A46653DEE1382C75D /* SnippetRepository.swift in Sources */,
 				C6543E3D3B82B9BF2CF69A0F /* SnippetsDrawer.swift in Sources */,
 				76419734C4AD1C8684184DC2 /* SnippetsViewModel.swift in Sources */,
+				C228750A1DA6663D149E38E0 /* SplatDecorations.swift in Sources */,
 				5316872B4A83FB4AF3C50940 /* StackLayout.swift in Sources */,
 				692D7EC7B691C45C31E18125 /* StripeLayout.swift in Sources */,
 				AAE6AF84ED6F77B57795CC99 /* Theme.swift in Sources */,

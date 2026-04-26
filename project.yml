@@ -33,7 +33,6 @@ targets:
     platform: macOS
     sources:
       - path: Sources/Magpie
-    resources:
       - path: Resources/Assets.xcassets
     info:
       path: Resources/Info.plist

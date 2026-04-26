@@ -50,6 +50,14 @@ struct ClipPreview: View {
             x: 0,
             y: isFocused ? 2 : 1
         )
+        // Optional neon glow on focus (Splat dark uses lime). Layered on top
+        // of the default black drop-shadow so cards still feel grounded.
+        .shadow(
+            color: (isFocused ? t.focusGlowColor : nil)?.opacity(0.55) ?? .clear,
+            radius: 14,
+            x: 0,
+            y: 0
+        )
         .offset(y: isFocused ? -2 : 0)
         // No SwiftUI animation modifier here — applying `.animation(value:)` to
         // every card causes all 9+ views to recompute styles on each focus

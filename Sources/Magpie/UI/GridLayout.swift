@@ -81,6 +81,13 @@ private struct GridTile: View {
             x: 0,
             y: isFocused ? 2 : 1
         )
+        // Optional neon glow on focus (Splat dark uses lime).
+        .shadow(
+            color: (isFocused ? t.focusGlowColor : nil)?.opacity(0.55) ?? .clear,
+            radius: 12,
+            x: 0,
+            y: 0
+        )
     }
 
     private var header: some View {
