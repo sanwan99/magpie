@@ -49,6 +49,7 @@
 		C3F7B5C19733011640FB9E9D /* HistoryPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46823B5D99313FB1778199F4 /* HistoryPane.swift */; };
 		C4E4BD36D4EF1E471A76AF63 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */; };
 		C6543E3D3B82B9BF2CF69A0F /* SnippetsDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DC264DB062FBB36F8833C7 /* SnippetsDrawer.swift */; };
+		C768B7BA2F65D06E0C78C93A /* SecretDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FD7CBFC20F4FE4BAD2C068F /* SecretDetectorTests.swift */; };
 		C808016F30CDF702C8910131 /* ShortcutsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 359009EECF76C308845CBC3C /* ShortcutsPane.swift */; };
 		C8676C5EA0B1B00A5D8CBB79 /* SnippetExpander.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750E56CA85161A2000332237 /* SnippetExpander.swift */; };
 		CAC4AA3A605F21CC77F52B62 /* ClipsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10AF74F18089D297DAA78AAE /* ClipsViewModel.swift */; };
@@ -110,6 +111,7 @@
 		99558CB0522345CFDA5971AE /* SearchField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchField.swift; sourceTree = "<group>"; };
 		9D29E5DA2DB926B811884389 /* ClipRepository+search.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ClipRepository+search.swift"; sourceTree = "<group>"; };
 		9F9BDBF4E2C842646E6853A0 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		9FD7CBFC20F4FE4BAD2C068F /* SecretDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretDetectorTests.swift; sourceTree = "<group>"; };
 		A23930D0294DDD444CDEAD67 /* HotkeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyCenter.swift; sourceTree = "<group>"; };
 		A99D42DBEC580388631D90C1 /* ClipRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipRecord.swift; sourceTree = "<group>"; };
 		AA98C7501CBFBBFEBF52FBDE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -185,6 +187,7 @@
 				28D52A08CCE57364B8E115C9 /* ClipDetectorTests.swift */,
 				B6219EF5A7678FF7B1949CD8 /* MagpieTests.swift */,
 				C964694F290E166FFC03F031 /* SearchQueryParserTests.swift */,
+				9FD7CBFC20F4FE4BAD2C068F /* SecretDetectorTests.swift */,
 			);
 			path = MagpieTests;
 			sourceTree = "<group>";
@@ -462,6 +465,7 @@
 				34271B20EA6AA955524EBA0A /* ClipDetectorTests.swift in Sources */,
 				A5F6F0BCAD923D8F7CC44757 /* MagpieTests.swift in Sources */,
 				FBB76DA0FB1458CEF51D9374 /* SearchQueryParserTests.swift in Sources */,
+				C768B7BA2F65D06E0C78C93A /* SecretDetectorTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

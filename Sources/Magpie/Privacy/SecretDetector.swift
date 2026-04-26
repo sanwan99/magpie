@@ -11,18 +11,21 @@ enum SecretDetector {
     /// All matched case-insensitively, anchored at word boundaries on the key side.
     private static let regexes: [NSRegularExpression] = {
         let patterns: [String] = [
-            // key=value style: api_key=..., bearer ..., token: ...
-            #"(?i)\b(api[_-]?key|access[_-]?key|secret[_-]?key|secret|token|password|passwd|pwd|bearer|otp|2fa|mfa)\s*[:=]\s*\S+"#,
-            // Bearer auth header
+            // key=value / key:value style. Allow non-word chars (e.g. JSON's
+            // closing quote `"api_key":`) between keyword and the colon/equals.
+            #"(?i)\b(api[_-]?key|access[_-]?key|secret[_-]?key|secret|token|password|passwd|pwd|otp|2fa|mfa)\b\W*[:=]\s*\S+"#,
+            // Standalone "bearer <token>" — space-separated, not key=value.
+            #"(?i)\bbearer\s+[A-Za-z0-9_\-\.=]{8,}"#,
+            // Authorization header: Bearer …
             #"(?i)\b(authorization|auth)\s*:\s*bearer\s+\S+"#,
-            // Standalone JWT (3 base64 segments separated by dots, ~ ish length)
+            // Standalone JWT (3 base64 segments separated by dots).
             #"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b"#,
-            // GitHub fine-grained / classic tokens
+            // GitHub fine-grained / classic tokens.
             #"\bghp_[A-Za-z0-9]{30,}\b"#,
             #"\bgithub_pat_[A-Za-z0-9_]{60,}\b"#,
-            // AWS access keys
+            // AWS access keys.
             #"\bAKIA[0-9A-Z]{16}\b"#,
-            // 6-digit OTP next to "code" / "otp" wording
+            // 6-digit OTP next to "code" / "otp" wording.
             #"(?i)\b(otp|verification\s*code|one[-\s]?time)\b[^\d]{0,8}\d{6}\b"#,
         ]
         return patterns.compactMap { try? NSRegularExpression(pattern: $0) }
