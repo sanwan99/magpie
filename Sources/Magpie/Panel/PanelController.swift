@@ -97,10 +97,12 @@ final class PanelController {
             withObservationTracking {
                 _ = store.theme
                 _ = store.vibrancy
+                _ = store.panelOpacity
             } onChange: { [weak self] in
                 Task { @MainActor in
                     self?.applyAppearance()
                     self?.applyVibrancy()
+                    self?.applyOpacity()
                     track()
                 }
             }
@@ -115,6 +117,13 @@ final class PanelController {
     private func applyVibrancy() {
         guard let effect = visualEffectView else { return }
         effect.material = mapVibrancy(settings.vibrancy)
+    }
+
+    /// 面板可见时直接应用新的透明度。隐藏中不动 alphaValue（hide 动画自己负责
+    /// 把它降到 0），下次 show() 会用最新 panelOpacity 作为目标值。
+    private func applyOpacity() {
+        guard isVisible else { return }
+        panel.animator().alphaValue = settings.panelOpacity
     }
 
     /// 0…60 slider → NSVisualEffectView material.
@@ -162,7 +171,7 @@ final class PanelController {
             ctx.duration = 0.32
             ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.7, 0.2, 1.0)
             panel.animator().setFrame(target, display: true)
-            panel.animator().alphaValue = 1
+            panel.animator().alphaValue = settings.panelOpacity
         }
         isVisible = true
     }

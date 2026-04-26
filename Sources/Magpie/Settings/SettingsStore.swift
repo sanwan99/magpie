@@ -44,6 +44,12 @@ final class SettingsStore {
         didSet { UserDefaults.standard.set(vibrancy, forKey: Keys.vibrancy) }
     }
 
+    /// 面板整体透明度 0.60…1.00。1.0 = 完全不透明，越低后面应用越透出来。
+    /// 应用到 panel.alphaValue。0.60 是肉眼安全下限，再低关键内容会读不清。
+    var panelOpacity: Double = 1.0 {
+        didSet { UserDefaults.standard.set(panelOpacity, forKey: Keys.panelOpacity) }
+    }
+
     var flavor: Flavor = .mono {
         didSet { UserDefaults.standard.set(flavor.rawValue, forKey: Keys.flavor) }
     }
@@ -123,6 +129,10 @@ final class SettingsStore {
             // Clamp to valid range in case the user (or a stale write) put garbage in.
             self.vibrancy = max(0, min(60, stored))
         }
+        if defaults.object(forKey: Keys.panelOpacity) != nil {
+            let stored = defaults.double(forKey: Keys.panelOpacity)
+            self.panelOpacity = max(0.60, min(1.00, stored))
+        }
         if let raw = defaults.string(forKey: Keys.flavor),
            let restored = Flavor(rawValue: raw) {
             self.flavor = restored
@@ -165,6 +175,7 @@ final class SettingsStore {
         static let language = "magpie.settings.language"
         static let theme = "magpie.settings.theme"
         static let vibrancy = "magpie.settings.vibrancy"
+        static let panelOpacity = "magpie.settings.panelOpacity"
         static let flavor = "magpie.settings.flavor"
         static let launchAtLogin = "magpie.settings.launchAtLogin"
         static let showRecentFirst = "magpie.settings.showRecentFirst"
@@ -193,6 +204,7 @@ struct SettingsText {
     var languageLabel: String { language.pick(zh: "语言", en: "Language") }
     var theme: String { language.pick(zh: "主题", en: "Theme") }
     var vibrancy: String { language.pick(zh: "毛玻璃强度", en: "Vibrancy") }
+    var panelOpacity: String { language.pick(zh: "面板透明度", en: "Panel opacity") }
     var flavor: String { language.pick(zh: "风格", en: "Flavor") }
     var behavior: String { language.pick(zh: "行为", en: "Behavior") }
     var launchAtLogin: String { language.pick(zh: "开机时启动", en: "Launch at login") }

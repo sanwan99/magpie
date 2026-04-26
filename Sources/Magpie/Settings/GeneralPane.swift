@@ -32,6 +32,16 @@ struct GeneralPane: View {
                         .frame(width: 24, alignment: .trailing)
                 }
 
+                HStack {
+                    Text(text.panelOpacity)
+                    Slider(value: $store.panelOpacity, in: 0.60...1.00)
+                    Text("\(Int(store.panelOpacity * 100))%")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .frame(width: 36, alignment: .trailing)
+                }
+
                 HStack(alignment: .top, spacing: 8) {
                     Text(text.flavor)
                         .padding(.top, 6)
