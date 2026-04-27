@@ -53,6 +53,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSLog("[magpie] launched. ⌘P toggles panel, Esc hides it. clips=%d snippets=%d",
               vm.clips.count, snippetsVM.snippets.count)
+
+        // 辅助权限自检 — 没权限就 prompt=true 弹系统权限对话框。
+        // 没有这个权限 CGEvent.post 会静默失败 → 粘贴看似执行了实际啥也没发出去。
+        let prompt = "AXTrustedCheckOptionPrompt" as CFString
+        let opts = [prompt: true] as CFDictionary
+        let trusted = AXIsProcessTrustedWithOptions(opts)
+        NSLog("[ax] trusted=%d — 模拟 ⌘V 需要辅助功能权限", trusted ? 1 : 0)
     }
 
     /// React to user toggling autoExpandSnippets in Settings — start/stop the
