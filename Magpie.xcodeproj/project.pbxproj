@@ -33,6 +33,7 @@
 		76419734C4AD1C8684184DC2 /* SnippetsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DFEF231FF49D6D76121A766 /* SnippetsViewModel.swift */; };
 		7C2918D438C0FE75611A3BA3 /* ClipDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31C0A75C12ADACA05540F9D /* ClipDetector.swift */; };
 		8131DD75927F0719937F5FCA /* HotKey in Frameworks */ = {isa = PBXBuildFile; productRef = 9A34A7648A1DD0B8CBC3DC83 /* HotKey */; };
+		8377442465CB965D434946D0 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA322CD1FA215283E20C1124 /* StatusItemController.swift */; };
 		844501A380E09FEBFD31DD19 /* VisualEffectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5353797E132BD98E3CB79648 /* VisualEffectView.swift */; };
 		8A1DF8AC7F0C25A9101A56F8 /* ClipPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 896C3E8A869F36F73A524657 /* ClipPayload.swift */; };
 		90F15DB41562C4B14F476669 /* MagpieApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B7872BDF34770F79DAFD816 /* MagpieApp.swift */; };
@@ -132,6 +133,7 @@
 		C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		C7BB971BDEFAFA9C42825525 /* SplatDecorations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplatDecorations.swift; sourceTree = "<group>"; };
 		C964694F290E166FFC03F031 /* SearchQueryParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchQueryParserTests.swift; sourceTree = "<group>"; };
+		CA322CD1FA215283E20C1124 /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
 		D10FF51554DD113427C47F6E /* PrivacyPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyPane.swift; sourceTree = "<group>"; };
 		D153EAF69D81ED1CA7FEEAA4 /* SnippetRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetRepository.swift; sourceTree = "<group>"; };
 		D497D633DC96FD726772331F /* GeneralPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralPane.swift; sourceTree = "<group>"; };
@@ -188,6 +190,7 @@
 			children = (
 				C63F009E42EFAF55BD82E0FD /* AppDelegate.swift */,
 				0B7872BDF34770F79DAFD816 /* MagpieApp.swift */,
+				CA322CD1FA215283E20C1124 /* StatusItemController.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -547,6 +550,7 @@
 				76419734C4AD1C8684184DC2 /* SnippetsViewModel.swift in Sources */,
 				C228750A1DA6663D149E38E0 /* SplatDecorations.swift in Sources */,
 				5316872B4A83FB4AF3C50940 /* StackLayout.swift in Sources */,
+				8377442465CB965D434946D0 /* StatusItemController.swift in Sources */,
 				692D7EC7B691C45C31E18125 /* StripeLayout.swift in Sources */,
 				AAE6AF84ED6F77B57795CC99 /* Theme.swift in Sources */,
 				844501A380E09FEBFD31DD19 /* VisualEffectView.swift in Sources */,

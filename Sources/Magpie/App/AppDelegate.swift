@@ -4,6 +4,7 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panelController: PanelController?
     private var hotkeyCenter: HotkeyCenter?
+    private var statusItemController: StatusItemController?
     private var clipboardWatcher: ClipboardWatcher?
     private var repository: ClipRepository?
     private var viewModel: ClipsViewModel?
@@ -42,11 +43,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         observeAutoExpandToggle(expander: expander)
 
+        // 菜单栏图标：⌘P 失效时的兜底入口（也解决 LSUIElement 隐藏带来的可发现性问题）
+        let statusItem = StatusItemController(panelController: panel)
+
+        // 全局热键失效场景兜底 — 这些事件后 Carbon RegisterEventHotKey 可能丢
+        // 注册，统一调 hotkeyCenter.reregister() 续命。
+        // 已知触发场景：sleep/wake、切换 Space（多桌面）、屏幕睡眠唤醒。
+        let nc = NSWorkspace.shared.notificationCenter
+        nc.addObserver(self, selector: #selector(reregisterHotkeys(_:)),
+                       name: NSWorkspace.didWakeNotification, object: nil)
+        nc.addObserver(self, selector: #selector(reregisterHotkeys(_:)),
+                       name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)
+        nc.addObserver(self, selector: #selector(reregisterHotkeys(_:)),
+                       name: NSWorkspace.screensDidWakeNotification, object: nil)
+
         self.repository = repo
         self.viewModel = vm
         self.snippetsViewModel = snippetsVM
         self.panelController = panel
         self.hotkeyCenter = hotkeys
+        self.statusItemController = statusItem
         self.clipboardWatcher = watcher
         self.snippetExpander = expander
         self.historyReaper = reaper
@@ -60,6 +76,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let opts = [prompt: true] as CFDictionary
         let trusted = AXIsProcessTrustedWithOptions(opts)
         NSLog("[ax] trusted=%d — 模拟 ⌘V 需要辅助功能权限", trusted ? 1 : 0)
+    }
+
+    /// 系统事件后重新注册全局热键。Carbon RegisterEventHotKey 在 sleep/wake、
+    /// Space 切换、屏幕唤醒后偶发丢注册。无脑重新注册成本极低（释放旧 HotKey
+    /// 实例 + 新建一个），即便没失效也不会有副作用。
+    @objc private func reregisterHotkeys(_ notification: Notification) {
+        NSLog("[magpie] %@ — reregistering hotkeys", notification.name.rawValue)
+        hotkeyCenter?.reregister()
     }
 
     /// React to user toggling autoExpandSnippets in Settings — start/stop the
