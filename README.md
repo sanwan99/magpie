@@ -242,4 +242,3 @@ Pull requests welcome. 详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 - 灵感来自 [Maccy](https://github.com/p0deje/Maccy)、[Raycast Clipboard](https://www.raycast.com)、Deck
 - Splat 主题致敬任天堂 *Splatoon* — Inkling / Octoling 的喷射美学
-- 全程 [Claude Code](https://claude.com/claude-code) (Anthropic) 协作开发，从工程骨架到 v0.3 全部 6614 行 Swift 代码、82 个单元测试、22 篇 changelog 都是 AI agent 主导完成
