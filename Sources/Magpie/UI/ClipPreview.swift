@@ -136,7 +136,9 @@ struct ClipPreview: View {
 
         case .image(let path, let w, let h, let sizeKB):
             VStack(alignment: .leading, spacing: 4) {
-                if let nsimg = NSImage(contentsOfFile: path) {
+                // Stripe 卡片只显示 ~190pt 宽，加载 256px 缩略图就够，
+                // 比直接 NSImage(contentsOfFile:) 全分辨率解码省 ~30 倍内存。
+                if let nsimg = ImageThumbnail.load(path: path, maxPixelSize: 256) {
                     Image(nsImage: nsimg)
                         .resizable()
                         .aspectRatio(contentMode: .fit)

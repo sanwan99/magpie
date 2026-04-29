@@ -135,7 +135,8 @@ private struct GridTile: View {
             }
         case .image(let path, let w, let h, let sizeKB):
             VStack(alignment: .leading, spacing: 3) {
-                if let nsimg = NSImage(contentsOfFile: path) {
+                // Grid tile 比 Stripe 还小（~150pt），256 缩略图绰绰有余。
+                if let nsimg = ImageThumbnail.load(path: path, maxPixelSize: 256) {
                     Image(nsImage: nsimg)
                         .resizable()
                         .aspectRatio(contentMode: .fit)

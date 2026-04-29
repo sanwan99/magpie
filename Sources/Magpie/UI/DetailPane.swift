@@ -186,7 +186,9 @@ struct DetailPane: View {
 
         case .image(let path, let w, let h, let sizeKB):
             VStack(alignment: .leading, spacing: 8) {
-                if let nsimg = NSImage(contentsOfFile: path) {
+                // DetailPane 宽度 ~360-440pt，800 缩略图够清；想看原图按 ⌘O 走
+                // ExpandedPreview 加载全分辨率。
+                if let nsimg = ImageThumbnail.load(path: path, maxPixelSize: 800) {
                     Image(nsImage: nsimg)
                         .resizable()
                         .aspectRatio(contentMode: .fit)

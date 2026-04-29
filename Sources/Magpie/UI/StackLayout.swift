@@ -166,7 +166,8 @@ private struct StackRow: View {
             }
         case .image(let path, let w, let h, let sizeKB):
             HStack(spacing: 6) {
-                if let nsimg = NSImage(contentsOfFile: path) {
+                // Stack 行只显示 40×22 的小缩略图，128 已经过剩。
+                if let nsimg = ImageThumbnail.load(path: path, maxPixelSize: 128) {
                     Image(nsImage: nsimg)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
