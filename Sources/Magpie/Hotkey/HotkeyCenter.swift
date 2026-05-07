@@ -1,56 +1,305 @@
 import AppKit
-import HotKey
+import Carbon
 
 /// Owns the global hotkeys. v0.1 wires only ⌘P (toggle panel).
 /// Esc is handled inside the panel as a local key event, not a global hotkey.
 @MainActor
 final class HotkeyCenter {
-    private var togglePanelHotKey: HotKey?
-    private var keepAliveTimer: Timer?
+    private let driver: HotkeyRegistrationDriver
+    private let deferredRepairDelay: TimeInterval?
+    private var pendingDeferredRepair: DispatchWorkItem?
+    private var diagnostics = HotkeyDiagnostics()
 
     var onTogglePanel: (() -> Void)?
 
-    init() {
-        registerTogglePanel()
-        startKeepAliveTimer()
+    init(driver: HotkeyRegistrationDriver = CarbonHotkeyRegistration(),
+         deferredRepairDelay: TimeInterval? = 0.75) {
+        self.driver = driver
+        self.deferredRepairDelay = deferredRepairDelay
+        repair(reason: "launch")
     }
 
     deinit {
-        keepAliveTimer?.invalidate()
+        pendingDeferredRepair?.cancel()
     }
 
-    private func registerTogglePanel() {
-        let hotkey = HotKey(key: .p, modifiers: [.command])
-        hotkey.keyDownHandler = { [weak self] in
-            self?.onTogglePanel?()
-        }
-        self.togglePanelHotKey = hotkey
+    var diagnosticsSnapshot: HotkeyDiagnostics {
+        diagnostics
     }
 
-    /// 重新注册全局热键。AppDelegate 在 sleep/wake / Space 切换 / 屏幕唤醒
-    /// 后调用；此外内部 30s 心跳定时器主动调，盖系统通知没发出来的边缘情况。
-    /// 释放旧 HotKey 实例（HotKey 库 deinit 时调 UnregisterEventHotKey）再
-    /// 重建。无脑重注册成本极低（一次 Carbon API 调用），即便没失效也无副作用。
-    func reregister() {
-        NSLog("[hotkey] re-registering ⌘P (event-driven or keepAlive)")
-        togglePanelHotKey = nil
-        registerTogglePanel()
-    }
-
-    /// 心跳定时器：每 30s 主动重注册一次 ⌘P。
+    /// 系统生命周期事件后的热键修复入口。
     ///
-    /// 为什么需要：实测 NSWorkspace 的 didWake / activeSpaceDidChange /
-    /// screensDidWake 三类通知**并不能覆盖所有让 Carbon RegisterEventHotKey
-    /// 失效的场景**（尤其 macOS 14+ 在某些焦点切换 / 进程挂起恢复后），用户
-    /// 多次反馈"过一会就唤不醒"。心跳兜底虽然粗糙但 100% 有效，30s 间隔也
-    /// 不会有可观察的资源开销（单次重注册是 microsecond 级别）。
-    private func startKeepAliveTimer() {
-        let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
+    /// 这里做的是一次性 Carbon 链路重建：释放旧 `EventHotKeyRef`、重装事件
+    /// handler、重新注册 ⌘P。它替代旧的 30 秒心跳，不做周期性轮询。
+    func recover(after event: HotkeyLifecycleEvent) {
+        switch event {
+        case .willSleep:
+            pendingDeferredRepair?.cancel()
+            unregister(reason: event.rawValue)
+        default:
+            repair(reason: event.rawValue)
+            scheduleDeferredRepair(after: event)
+        }
+    }
+
+    private func scheduleDeferredRepair(after event: HotkeyLifecycleEvent) {
+        guard event.schedulesDeferredRepair, let deferredRepairDelay else { return }
+
+        pendingDeferredRepair?.cancel()
+        let reason = "deferred:\(event.rawValue)"
+        let work = DispatchWorkItem { [weak self] in
             Task { @MainActor in
-                self?.reregister()
+                self?.repair(reason: reason)
             }
         }
-        RunLoop.main.add(timer, forMode: .common)
-        keepAliveTimer = timer
+        pendingDeferredRepair = work
+        diagnostics.deferredRepairSchedules += 1
+        DispatchQueue.main.asyncAfter(deadline: .now() + deferredRepairDelay, execute: work)
+        NSLog("[hotkey] deferred repair scheduled reason=%@ delay=%.2fs", reason, deferredRepairDelay)
     }
+
+    private func repair(reason: String) {
+        diagnostics.repairAttempts += 1
+        diagnostics.lastReason = reason
+        NSLog("[hotkey] repair begin reason=%@ registered=%d repairs=%d",
+              reason, driver.isRegistered ? 1 : 0, diagnostics.repairAttempts)
+
+        if driver.isRegistered {
+            unregister(reason: "\(reason):replaceStaleRegistration")
+        }
+
+        diagnostics.eventHandlerRepairAttempts += 1
+        let handlerStatus = driver.reinstallEventHandler()
+        guard record(status: handlerStatus, operation: "reinstallEventHandler", reason: reason) else {
+            refreshRegisteredState()
+            return
+        }
+
+        diagnostics.registerAttempts += 1
+        let registerStatus = driver.register { [weak self] in
+            self?.handleKeyDown()
+        }
+        if record(status: registerStatus, operation: "register", reason: reason) {
+            diagnostics.registerSuccesses += 1
+            NSLog("[hotkey] register ok reason=%@ attempts=%d", reason, diagnostics.registerAttempts)
+        } else {
+            diagnostics.registerFailures += 1
+        }
+        refreshRegisteredState()
+    }
+
+    private func unregister(reason: String) {
+        guard driver.isRegistered else {
+            refreshRegisteredState()
+            return
+        }
+
+        diagnostics.unregisterAttempts += 1
+        let status = driver.unregister()
+        _ = record(status: status, operation: "unregister", reason: reason)
+        refreshRegisteredState()
+    }
+
+    private func handleKeyDown() {
+        diagnostics.keyDownEvents += 1
+        diagnostics.lastReason = "keyDown"
+        NSLog("[hotkey] keyDown ⌘P events=%d registered=%d",
+              diagnostics.keyDownEvents, driver.isRegistered ? 1 : 0)
+        onTogglePanel?()
+    }
+
+    @discardableResult
+    private func record(status: OSStatus, operation: String, reason: String) -> Bool {
+        diagnostics.lastOSStatus = status
+        guard status == noErr else {
+            let message = "\(operation) failed reason=\(reason) status=\(status)"
+            diagnostics.lastError = message
+            NSLog("[hotkey] %@", message)
+            return false
+        }
+        diagnostics.lastError = nil
+        return true
+    }
+
+    private func refreshRegisteredState() {
+        diagnostics.registered = driver.isRegistered
+    }
+}
+
+enum HotkeyLifecycleEvent: String, CaseIterable {
+    case willSleep
+    case didWake
+    case screensDidWake
+    case activeSpaceDidChange
+    case sessionDidBecomeActive
+    case applicationDidBecomeActive
+
+    var schedulesDeferredRepair: Bool {
+        self != .willSleep
+    }
+}
+
+struct HotkeyDiagnostics: Equatable {
+    var registerAttempts = 0
+    var registerSuccesses = 0
+    var registerFailures = 0
+    var unregisterAttempts = 0
+    var eventHandlerRepairAttempts = 0
+    var repairAttempts = 0
+    var deferredRepairSchedules = 0
+    var keyDownEvents = 0
+    var registered = false
+    var lastReason: String?
+    var lastOSStatus: OSStatus = noErr
+    var lastError: String?
+}
+
+protocol HotkeyRegistrationDriver: AnyObject {
+    var isRegistered: Bool { get }
+
+    func reinstallEventHandler() -> OSStatus
+    func register(keyDownHandler: @escaping @MainActor () -> Void) -> OSStatus
+    func unregister() -> OSStatus
+}
+
+private final class CarbonHotkeyRegistration: HotkeyRegistrationDriver {
+    private var eventHandlerRef: EventHandlerRef?
+    private var eventHotKeyRef: EventHotKeyRef?
+    private var keyDownHandler: (@MainActor () -> Void)?
+
+    var isRegistered: Bool {
+        eventHotKeyRef != nil
+    }
+
+    deinit {
+        _ = unregister()
+        removeEventHandler()
+    }
+
+    func reinstallEventHandler() -> OSStatus {
+        removeEventHandler()
+
+        let eventTypes = [
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
+                          eventKind: UInt32(kEventHotKeyPressed)),
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
+                          eventKind: UInt32(kEventHotKeyReleased))
+        ]
+
+        let userData = Unmanaged.passUnretained(self).toOpaque()
+        return eventTypes.withUnsafeBufferPointer { buffer in
+            InstallEventHandler(
+                GetApplicationEventTarget(),
+                magpieHotkeyEventHandler,
+                buffer.count,
+                buffer.baseAddress,
+                userData,
+                &eventHandlerRef
+            )
+        }
+    }
+
+    func register(keyDownHandler: @escaping @MainActor () -> Void) -> OSStatus {
+        self.keyDownHandler = keyDownHandler
+
+        if eventHandlerRef == nil {
+            let handlerStatus = reinstallEventHandler()
+            guard handlerStatus == noErr else { return handlerStatus }
+        }
+
+        var hotKeyRef: EventHotKeyRef?
+        let hotKeyID = EventHotKeyID(
+            signature: CarbonHotkeyConstants.signature,
+            id: CarbonHotkeyConstants.hotkeyID
+        )
+        let status = RegisterEventHotKey(
+            CarbonHotkeyConstants.keyCode,
+            CarbonHotkeyConstants.modifiers,
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &hotKeyRef
+        )
+
+        guard status == noErr, let hotKeyRef else {
+            eventHotKeyRef = nil
+            return status == noErr ? OSStatus(eventNotHandledErr) : status
+        }
+
+        eventHotKeyRef = hotKeyRef
+        return noErr
+    }
+
+    func unregister() -> OSStatus {
+        guard let eventHotKeyRef else { return noErr }
+        let status = UnregisterEventHotKey(eventHotKeyRef)
+        self.eventHotKeyRef = nil
+        return status
+    }
+
+    fileprivate func handle(event: EventRef?) -> OSStatus {
+        guard let event else {
+            return OSStatus(eventNotHandledErr)
+        }
+
+        var hotKeyID = EventHotKeyID()
+        let status = GetEventParameter(
+            event,
+            UInt32(kEventParamDirectObject),
+            UInt32(typeEventHotKeyID),
+            nil,
+            MemoryLayout<EventHotKeyID>.size,
+            nil,
+            &hotKeyID
+        )
+        guard status == noErr else { return status }
+
+        guard hotKeyID.signature == CarbonHotkeyConstants.signature,
+              hotKeyID.id == CarbonHotkeyConstants.hotkeyID
+        else {
+            return OSStatus(eventNotHandledErr)
+        }
+
+        switch GetEventKind(event) {
+        case UInt32(kEventHotKeyPressed):
+            let handler = keyDownHandler
+            Task { @MainActor in
+                handler?()
+            }
+            return noErr
+        case UInt32(kEventHotKeyReleased):
+            return noErr
+        default:
+            return OSStatus(eventNotHandledErr)
+        }
+    }
+
+    private func removeEventHandler() {
+        guard let eventHandlerRef else { return }
+        RemoveEventHandler(eventHandlerRef)
+        self.eventHandlerRef = nil
+    }
+}
+
+private enum CarbonHotkeyConstants {
+    static let signature: OSType = fourCharCode("MgHK")
+    static let hotkeyID: UInt32 = 1
+    static let keyCode = UInt32(kVK_ANSI_P)
+    static let modifiers = UInt32(cmdKey)
+
+    private static func fourCharCode(_ string: String) -> FourCharCode {
+        string.utf8.reduce(0) { code, byte in
+            (code << 8) + FourCharCode(byte)
+        }
+    }
+}
+
+private let magpieHotkeyEventHandler: EventHandlerUPP = { _, event, userData in
+    guard let userData else {
+        return OSStatus(eventNotHandledErr)
+    }
+    let registration = Unmanaged<CarbonHotkeyRegistration>
+        .fromOpaque(userData)
+        .takeUnretainedValue()
+    return registration.handle(event: event)
 }

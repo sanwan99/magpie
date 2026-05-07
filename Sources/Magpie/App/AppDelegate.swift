@@ -64,16 +64,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 菜单栏图标：⌘P 失效时的兜底入口（也解决 LSUIElement 隐藏带来的可发现性问题）
         let statusItem = StatusItemController(panelController: panel)
 
-        // 全局热键失效场景兜底 — 这些事件后 Carbon RegisterEventHotKey 可能丢
-        // 注册，统一调 hotkeyCenter.reregister() 续命。
-        // 已知触发场景：sleep/wake、切换 Space（多桌面）、屏幕睡眠唤醒。
-        let nc = NSWorkspace.shared.notificationCenter
-        nc.addObserver(self, selector: #selector(reregisterHotkeys(_:)),
-                       name: NSWorkspace.didWakeNotification, object: nil)
-        nc.addObserver(self, selector: #selector(reregisterHotkeys(_:)),
-                       name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)
-        nc.addObserver(self, selector: #selector(reregisterHotkeys(_:)),
-                       name: NSWorkspace.screensDidWakeNotification, object: nil)
+        // Carbon 热键恢复链路：sleep 前释放旧 ref，wake / Space / session
+        // active / app active 后做一次性重建，不再使用 30 秒心跳。
+        let workspaceNC = NSWorkspace.shared.notificationCenter
+        workspaceNC.addObserver(self, selector: #selector(handleHotkeyLifecycleNotification(_:)),
+                                name: NSWorkspace.willSleepNotification, object: nil)
+        workspaceNC.addObserver(self, selector: #selector(handleHotkeyLifecycleNotification(_:)),
+                                name: NSWorkspace.didWakeNotification, object: nil)
+        workspaceNC.addObserver(self, selector: #selector(handleHotkeyLifecycleNotification(_:)),
+                                name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)
+        workspaceNC.addObserver(self, selector: #selector(handleHotkeyLifecycleNotification(_:)),
+                                name: NSWorkspace.screensDidWakeNotification, object: nil)
+        workspaceNC.addObserver(self, selector: #selector(handleHotkeyLifecycleNotification(_:)),
+                                name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleHotkeyLifecycleNotification(_:)),
+                                               name: NSApplication.didBecomeActiveNotification, object: nil)
 
         self.repository = repo
         self.clipboardIngestor = ingestor
@@ -101,12 +106,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
-    /// 系统事件后重新注册全局热键。Carbon RegisterEventHotKey 在 sleep/wake、
-    /// Space 切换、屏幕唤醒后偶发丢注册。无脑重新注册成本极低（释放旧 HotKey
-    /// 实例 + 新建一个），即便没失效也不会有副作用。
-    @objc private func reregisterHotkeys(_ notification: Notification) {
-        NSLog("[magpie] %@ — reregistering hotkeys", notification.name.rawValue)
-        hotkeyCenter?.reregister()
+    @objc private func handleHotkeyLifecycleNotification(_ notification: Notification) {
+        guard let event = HotkeyLifecycleEvent(notificationName: notification.name) else {
+            NSLog("[hotkey] ignored lifecycle notification=%@", notification.name.rawValue)
+            return
+        }
+        NSLog("[hotkey] lifecycle notification=%@ event=%@",
+              notification.name.rawValue, event.rawValue)
+        hotkeyCenter?.recover(after: event)
     }
 
     /// React to user toggling autoExpandSnippets in Settings — start/stop the
@@ -130,4 +137,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         track()
     }
 
+}
+
+private extension HotkeyLifecycleEvent {
+    init?(notificationName: Notification.Name) {
+        switch notificationName {
+        case NSWorkspace.willSleepNotification:
+            self = .willSleep
+        case NSWorkspace.didWakeNotification:
+            self = .didWake
+        case NSWorkspace.screensDidWakeNotification:
+            self = .screensDidWake
+        case NSWorkspace.activeSpaceDidChangeNotification:
+            self = .activeSpaceDidChange
+        case NSWorkspace.sessionDidBecomeActiveNotification:
+            self = .sessionDidBecomeActive
+        case NSApplication.didBecomeActiveNotification:
+            self = .applicationDidBecomeActive
+        default:
+            return nil
+        }
+    }
 }

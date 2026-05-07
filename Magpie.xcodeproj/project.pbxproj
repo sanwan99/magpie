@@ -33,7 +33,6 @@
 		74A53AEB2996E0DC77D674F1 /* ImageThumbnail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55E4A14E0F9C1C2239057008 /* ImageThumbnail.swift */; };
 		76419734C4AD1C8684184DC2 /* SnippetsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DFEF231FF49D6D76121A766 /* SnippetsViewModel.swift */; };
 		7C2918D438C0FE75611A3BA3 /* ClipDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = B31C0A75C12ADACA05540F9D /* ClipDetector.swift */; };
-		8131DD75927F0719937F5FCA /* HotKey in Frameworks */ = {isa = PBXBuildFile; productRef = 9A34A7648A1DD0B8CBC3DC83 /* HotKey */; };
 		8377442465CB965D434946D0 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA322CD1FA215283E20C1124 /* StatusItemController.swift */; };
 		844501A380E09FEBFD31DD19 /* VisualEffectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5353797E132BD98E3CB79648 /* VisualEffectView.swift */; };
 		8A1DF8AC7F0C25A9101A56F8 /* ClipPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = 896C3E8A869F36F73A524657 /* ClipPayload.swift */; };
@@ -155,7 +154,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8131DD75927F0719937F5FCA /* HotKey in Frameworks */,
 				E03292AFE7689084A6BFCE1E /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -428,7 +426,6 @@
 			);
 			name = Magpie;
 			packageProductDependencies = (
-				9A34A7648A1DD0B8CBC3DC83 /* HotKey */,
 				ACB504EB59D9D3BB7935041D /* GRDB */,
 			);
 			productName = Magpie;
@@ -465,7 +462,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				E638DB312F3122FFF6660183 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
-				D2E7EE01B81AC142A0AD205F /* XCRemoteSwiftPackageReference "HotKey" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 949197DB4BAEC6C4EFAC08F8 /* Products */;
@@ -806,14 +802,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		D2E7EE01B81AC142A0AD205F /* XCRemoteSwiftPackageReference "HotKey" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/soffes/HotKey";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.2.1;
-			};
-		};
 		E638DB312F3122FFF6660183 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/groue/GRDB.swift";
@@ -825,11 +813,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		9A34A7648A1DD0B8CBC3DC83 /* HotKey */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D2E7EE01B81AC142A0AD205F /* XCRemoteSwiftPackageReference "HotKey" */;
-			productName = HotKey;
-		};
 		ACB504EB59D9D3BB7935041D /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E638DB312F3122FFF6660183 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
