@@ -3,8 +3,7 @@ import GRDB
 
 /// Owns the on-disk SQLite database and migrations.
 /// The database lives in `~/Library/Application Support/Magpie/clips.sqlite`.
-@MainActor
-final class Database {
+final class Database: @unchecked Sendable {
     static let shared = Database()
 
     let dbQueue: DatabaseQueue

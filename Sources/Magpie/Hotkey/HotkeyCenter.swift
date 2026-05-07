@@ -45,10 +45,12 @@ final class HotkeyCenter {
     /// 多次反馈"过一会就唤不醒"。心跳兜底虽然粗糙但 100% 有效，30s 间隔也
     /// 不会有可观察的资源开销（单次重注册是 microsecond 级别）。
     private func startKeepAliveTimer() {
-        keepAliveTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.reregister()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        keepAliveTimer = timer
     }
 }

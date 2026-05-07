@@ -6,12 +6,20 @@ import GRDB
 final class HistoryReaperTests: XCTestCase {
 
     private var db: Magpie.Database!
+    private var imageDirectoryURL: URL!
 
     override func setUp() async throws {
         db = Magpie.Database.makeInMemoryForTests()
+        imageDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("magpie-history-reaper-tests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: imageDirectoryURL, withIntermediateDirectories: true)
     }
 
     override func tearDown() async throws {
+        if let imageDirectoryURL {
+            try? FileManager.default.removeItem(at: imageDirectoryURL)
+        }
+        imageDirectoryURL = nil
         db = nil
     }
 
@@ -171,10 +179,13 @@ final class HistoryReaperTests: XCTestCase {
     func testClearAllRemovesEverything() throws {
         for _ in 0..<5 { try insertClip(createdAt: Date(), pinned: false) }
         try insertClip(createdAt: Date(), pinned: true)
+        let cachedImage = imageDirectoryURL.appendingPathComponent("cached.png")
+        try Data("png".utf8).write(to: cachedImage)
 
-        let reaper = HistoryReaper(database: db)
+        let reaper = HistoryReaper(database: db, imageDirectoryURL: imageDirectoryURL)
         reaper.clearAll()
 
         XCTAssertEqual(try clipCount(), 0, "clearAll deletes pinned + unpinned")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cachedImage.path))
     }
 }

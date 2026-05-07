@@ -30,12 +30,20 @@ enum ImageStorage {
     /// nil if encoding/writing fails.
     @discardableResult
     static func save(_ image: NSImage) -> SavedImage? {
-        guard
-            let tiff = image.tiffRepresentation,
-            let bitmap = NSBitmapImageRep(data: tiff),
-            let pngData = bitmap.representation(using: .png, properties: [:])
-        else {
+        guard let tiff = image.tiffRepresentation else {
             NSLog("[image] save: failed to encode PNG")
+            return nil
+        }
+        return save(imageData: tiff)
+    }
+
+    /// Persist pasteboard image bytes as PNG. This is safe to run off the main
+    /// thread and is the hot clipboard-ingest path.
+    @discardableResult
+    static func save(imageData data: Data) -> SavedImage? {
+        guard let bitmap = NSBitmapImageRep(data: data),
+              let pngData = bitmap.representation(using: .png, properties: [:]) else {
+            NSLog("[image] save: failed to decode image data")
             return nil
         }
 

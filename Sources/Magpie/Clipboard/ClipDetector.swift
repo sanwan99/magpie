@@ -10,15 +10,17 @@ import Foundation
 /// v0.3 will add image (NSImage / public.tiff / public.png) and richer file metadata.
 enum ClipDetector {
     /// Public entry point — inspects pasteboard and produces a clip if anything is recognized.
+    @MainActor
     static func detect(pasteboard: NSPasteboard, app: String?) -> DetectedClip? {
-        // 1. Real file URL items — Finder ⌘C, drag-and-drop set `.fileURL` explicitly.
-        //    pbcopy / NSString string copies do *not* set this type, so plain text
-        //    (including paths typed as strings) falls through to step 2 instead of
-        //    being mis-parsed as a fake URL by `readObjects(forClasses:[NSURL.self])`.
-        let hasFileURL = pasteboard.types?.contains(.fileURL) ?? false
-        if hasFileURL,
-           let nsurls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL],
-           let first = nsurls.first,
+        detect(snapshot: ClipboardSnapshot.capture(from: pasteboard), app: app)
+    }
+
+    /// Detect from a copied pasteboard snapshot. This path is safe to run off
+    /// MainActor and is used by `ClipboardIngestor`.
+    static func detect(snapshot: ClipboardSnapshot, app: String?) -> DetectedClip? {
+        // 1. Real file URL items — Finder ⌘C, drag-and-drop set `.fileURL`
+        // explicitly. Plain text paths fall through to string handling.
+        if let first = snapshot.fileURLs.first,
            first.isFileURL {
             return detectFromFileURL(first, app: app)
         }
@@ -27,20 +29,24 @@ enum ClipDetector {
         //    put both an image and a string-encoded fallback on the pasteboard
         //    (e.g. screencapture writes both ``public.png`` and a path string).
         //    Images go to ImageStorage; the DB only keeps a path reference.
-        if let image = NSImage(pasteboard: pasteboard),
-           image.size.width > 0, image.size.height > 0 {
-            return detectFromImage(image, app: app)
+        if let imageData = snapshot.imageData,
+           !imageData.isEmpty {
+            return detectFromImageData(imageData, app: app)
         }
 
         // 3. String content
-        guard let raw = pasteboard.string(forType: .string), !raw.isEmpty else {
+        guard let raw = snapshot.string, !raw.isEmpty else {
             return nil
         }
         return detectFromString(raw, app: app)
     }
 
-    private static func detectFromImage(_ image: NSImage, app: String?) -> DetectedClip? {
-        guard let saved = ImageStorage.save(image) else { return nil }
+    private static func detectFromImageData(_ data: Data, app: String?) -> DetectedClip? {
+        guard let saved = ImageStorage.save(imageData: data) else { return nil }
+        return makeImage(saved: saved, app: app)
+    }
+
+    private static func makeImage(saved: ImageStorage.SavedImage, app: String?) -> DetectedClip {
         let payload = ImagePayload(
             path: saved.path,
             width: saved.width,

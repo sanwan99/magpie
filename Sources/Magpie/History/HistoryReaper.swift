@@ -7,43 +7,88 @@ import GRDB
 final class HistoryReaper {
     let database: Database
     let store: SettingsStore
+    private let imageDirectoryURL: URL
 
     /// 各 type 独立 cap（pinned 不计入，无视全局 maxItems）。
     /// - image: 50 — 占磁盘 / 内存大，超出连 db 行 + Magpie 自存的 PNG 一起清
     /// - file:  50 — payload.path 指向用户真实文件，**只删 db 行，不动磁盘**
     /// - folder:50 — 同 file
-    static let imageCap  = 50
-    static let fileCap   = 50
-    static let folderCap = 50
+    nonisolated static let imageCap  = 50
+    nonisolated static let fileCap   = 50
+    nonisolated static let folderCap = 50
 
     private var pendingTask: Task<Void, Never>?
 
-    init(database: Database = .shared, store: SettingsStore = .shared) {
+    private struct RetentionPolicy: Sendable {
+        let keepHistoryDays: Int
+        let maxItems: Int
+    }
+
+    init(database: Database, store: SettingsStore, imageDirectoryURL: URL) {
         self.database = database
         self.store = store
+        self.imageDirectoryURL = imageDirectoryURL
+    }
+
+    convenience init(database: Database) {
+        self.init(database: database, store: .shared, imageDirectoryURL: ImageStorage.directoryURL)
+    }
+
+    convenience init(database: Database, imageDirectoryURL: URL) {
+        self.init(database: database, store: .shared, imageDirectoryURL: imageDirectoryURL)
+    }
+
+    convenience init() {
+        self.init(database: .shared, store: .shared, imageDirectoryURL: ImageStorage.directoryURL)
     }
 
     /// Schedule a reap. Coalesces bursts of ingests into one DELETE pass.
     func scheduleReap() {
         pendingTask?.cancel()
-        pendingTask = Task { @MainActor [weak self] in
+        let database = self.database
+        let policy = retentionPolicy()
+        pendingTask = Task {
             try? await Task.sleep(for: .seconds(2))
-            guard !Task.isCancelled, let self else { return }
-            self.reapNow()
+            guard !Task.isCancelled else { return }
+            await Task.detached(priority: .utility) {
+                Self.applyRetention(database: database, policy: policy)
+            }.value
         }
     }
 
     /// Apply retention immediately.
     func reapNow() {
+        Self.applyRetention(database: database, policy: retentionPolicy())
+    }
+
+    /// Apply retention without blocking MainActor. Used on app launch and from
+    /// clipboard-ingest debounce; tests still use `reapNow()` for deterministic
+    /// assertions.
+    func reapInBackground() {
+        let database = self.database
+        let policy = retentionPolicy()
+        Task.detached(priority: .utility) {
+            Self.applyRetention(database: database, policy: policy)
+        }
+    }
+
+    private func retentionPolicy() -> RetentionPolicy {
+        RetentionPolicy(
+            keepHistoryDays: store.keepHistoryDays,
+            maxItems: store.maxItems
+        )
+    }
+
+    nonisolated private static func applyRetention(database: Database, policy: RetentionPolicy) {
         do {
             // 先在事务里删数据库行 + 收集要清理的 image 文件路径，事务结束后
             // 再 rm 物理文件（FileManager.removeItem 不放写事务里，避免 IO
             // 长时间持锁）。
             var imageFilesToRemove: [String] = []
             try database.dbQueue.write { db in
-                if store.keepHistoryDays > 0 {
+                if policy.keepHistoryDays > 0 {
                     let cutoff = Date()
-                        .addingTimeInterval(-Double(store.keepHistoryDays) * 86_400)
+                        .addingTimeInterval(-Double(policy.keepHistoryDays) * 86_400)
                         .timeIntervalSince1970
                     // 提前捞超期 image 的路径（删行后就拿不到了）
                     imageFilesToRemove += try Self.fetchImagePaths(
@@ -56,7 +101,7 @@ final class HistoryReaper {
                         arguments: [cutoff]
                     )
                 }
-                if store.maxItems > 0 {
+                if policy.maxItems > 0 {
                     // maxItems 是针对所有 clip 的，超出的非 pinned 砍掉
                     imageFilesToRemove += try Self.fetchImagePaths(
                         db: db,
@@ -70,7 +115,7 @@ final class HistoryReaper {
                                    LIMIT ?
                                )
                         """,
-                        arguments: [store.maxItems]
+                        arguments: [policy.maxItems]
                     )
                     try db.execute(sql: """
                         DELETE FROM clips
@@ -81,7 +126,7 @@ final class HistoryReaper {
                               ORDER BY created_at DESC
                               LIMIT ?
                           );
-                    """, arguments: [store.maxItems])
+                    """, arguments: [policy.maxItems])
                 }
                 // image 类型独立 cap：non-pinned 保留最近 imageCap 条，更老的
                 // 连数据库行 + 磁盘 PNG 一起清。先 SELECT 收集要删的 path，
@@ -123,7 +168,7 @@ final class HistoryReaper {
     }
 
     /// 在写事务内查询 image clip 的磁盘路径列表（解码 payload JSON 取 path）。
-    private static func fetchImagePaths(
+    nonisolated private static func fetchImagePaths(
         db: GRDB.Database,
         sql: String,
         arguments: StatementArguments
@@ -135,7 +180,7 @@ final class HistoryReaper {
 
     /// 通用 type cap 删除：保留某类型 non-pinned 最近 cap 条，更老的删 db 行。
     /// 不动任何磁盘文件 — image 想清磁盘需在调用前自己 fetchImagePaths。
-    private static func trimTypeCap(
+    nonisolated private static func trimTypeCap(
         db: GRDB.Database,
         type: String,
         cap: Int
@@ -162,7 +207,7 @@ final class HistoryReaper {
             }
             // Clear image cache (no clips → orphaned files).
             if let urls = try? FileManager.default.contentsOfDirectory(
-                at: ImageStorage.directoryURL,
+                at: imageDirectoryURL,
                 includingPropertiesForKeys: nil
             ) {
                 for url in urls {

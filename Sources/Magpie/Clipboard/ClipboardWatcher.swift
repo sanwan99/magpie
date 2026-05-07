@@ -1,5 +1,43 @@
 import AppKit
 
+/// Sendable pasteboard snapshot captured on the main thread.
+///
+/// AppKit pasteboard objects are not a good boundary to hand to background
+/// work. The watcher copies out only the data Magpie needs, then detection and
+/// storage can run without holding the main run loop.
+struct ClipboardSnapshot: Sendable {
+    let changeCount: Int
+    let typeNames: [String]
+    let fileURLs: [URL]
+    let imageData: Data?
+    let imageTypeName: String?
+    let string: String?
+
+    var typesDescription: String {
+        typeNames.joined(separator: ", ")
+    }
+
+    @MainActor
+    static func capture(from pasteboard: NSPasteboard) -> ClipboardSnapshot {
+        let types = pasteboard.types ?? []
+        let hasFileURL = types.contains(.fileURL)
+        let fileURLs = hasFileURL
+            ? (pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL] ?? [])
+            : []
+        let imageType = pasteboard.availableType(from: [.png, .tiff])
+        let imageData = imageType.flatMap { pasteboard.data(forType: $0) }
+
+        return ClipboardSnapshot(
+            changeCount: pasteboard.changeCount,
+            typeNames: types.map(\.rawValue),
+            fileURLs: fileURLs,
+            imageData: imageData,
+            imageTypeName: imageType?.rawValue,
+            string: pasteboard.string(forType: .string)
+        )
+    }
+}
+
 /// Polls NSPasteboard.changeCount on a 400 ms cadence and fires `onChange`
 /// when the count moves. Initial pasteboard state is treated as already-seen
 /// so we don't dump existing user content into history at launch.
@@ -11,8 +49,9 @@ final class ClipboardWatcher {
     private let pollInterval: TimeInterval = 0.4
 
     /// Fired on the main thread whenever the pasteboard changes.
-    /// The closure receives the live pasteboard for inspection.
-    var onChange: ((NSPasteboard) -> Void)?
+    /// The closure receives a copied snapshot; expensive ingest work should
+    /// continue off the main thread.
+    var onChange: ((ClipboardSnapshot) -> Void)?
 
     init() {
         self.lastChangeCount = NSPasteboard.general.changeCount
@@ -39,6 +78,6 @@ final class ClipboardWatcher {
         let current = pasteboard.changeCount
         guard current != lastChangeCount else { return }
         lastChangeCount = current
-        onChange?(pasteboard)
+        onChange?(ClipboardSnapshot.capture(from: pasteboard))
     }
 }

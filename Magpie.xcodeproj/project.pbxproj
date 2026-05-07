@@ -64,6 +64,7 @@
 		DD559C5ECB8B996045AA47AB /* SnippetEditorWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4314E6F96AADE0BE3E680DF /* SnippetEditorWindowController.swift */; };
 		E03292AFE7689084A6BFCE1E /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = ACB504EB59D9D3BB7935041D /* GRDB */; };
 		E5C2F57B21B3A8BB60E611CC /* SnippetEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D5286EC8C01688226A7C0FD /* SnippetEditor.swift */; };
+		E8C08394B0C1B5D7633B9F03 /* ClipboardIngestor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B6CEF12A36BDAE8F664822C /* ClipboardIngestor.swift */; };
 		EB17B42439981FBE715839BF /* SearchQueryParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56BE257DA7D9647F2492AEBC /* SearchQueryParser.swift */; };
 		EE9D0AB07B8087BC462E55F8 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F9BDBF4E2C842646E6853A0 /* SettingsWindowController.swift */; };
 		F387E1F2079DA767A2C64F51 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA7174E5914D7E708396E0CE /* SettingsView.swift */; };
@@ -97,6 +98,7 @@
 		2C11B1A53D682102479BF26F /* CardTapHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardTapHandler.swift; sourceTree = "<group>"; };
 		3488C2B7829149351B25BD20 /* Snippet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Snippet.swift; sourceTree = "<group>"; };
 		359009EECF76C308845CBC3C /* ShortcutsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsPane.swift; sourceTree = "<group>"; };
+		3B6CEF12A36BDAE8F664822C /* ClipboardIngestor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardIngestor.swift; sourceTree = "<group>"; };
 		3D5286EC8C01688226A7C0FD /* SnippetEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetEditor.swift; sourceTree = "<group>"; };
 		3E244B107D038E4C5B21AA78 /* GridLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GridLayout.swift; sourceTree = "<group>"; };
 		3FA4F6D8D8FC56F745BC5BD7 /* HistoryReaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryReaper.swift; sourceTree = "<group>"; };
@@ -343,6 +345,7 @@
 		DFA52A3F6B19F299C5976270 /* Clipboard */ = {
 			isa = PBXGroup;
 			children = (
+				3B6CEF12A36BDAE8F664822C /* ClipboardIngestor.swift */,
 				FDA20D84DF416E6615B3E0DD /* ClipboardWatcher.swift */,
 				B31C0A75C12ADACA05540F9D /* ClipDetector.swift */,
 				896C3E8A869F36F73A524657 /* ClipPayload.swift */,
@@ -516,6 +519,7 @@
 				B84080E000DB51C976C921DF /* ClipRepository+search.swift in Sources */,
 				307E6291EEF83EFF3A518BD5 /* ClipRepository.swift in Sources */,
 				B75A811423F9917876131551 /* ClipType.swift in Sources */,
+				E8C08394B0C1B5D7633B9F03 /* ClipboardIngestor.swift in Sources */,
 				436274F322855B0C7DE73B77 /* ClipboardWatcher.swift in Sources */,
 				CAC4AA3A605F21CC77F52B62 /* ClipsViewModel.swift in Sources */,
 				A81C3B720FCE908B9ECB59BD /* ContentView.swift in Sources */,

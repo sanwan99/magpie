@@ -3,7 +3,7 @@ import GRDB
 
 /// CRUD facade over `Database`. v0.1 only needs `insert` and `recent`;
 /// search/Pin/delete land in v0.2.
-struct ClipRepository {
+struct ClipRepository: Sendable {
     let database: Database
 
     init(database: Database = .shared) {

@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import Magpie
 
@@ -133,5 +134,59 @@ final class ClipDetectorTests: XCTestCase {
         let payload = try JSONDecoder().decode(URLPayload.self, from: d.payload)
         XCTAssertEqual(payload.url, "https://example.com/x")
         XCTAssertEqual(payload.host, "example.com")
+    }
+
+    // MARK: - Snapshot detection
+
+    func testSnapshotStringUsesCopiedPasteboardData() {
+        let snapshot = ClipboardSnapshot(
+            changeCount: 42,
+            typeNames: [NSPasteboard.PasteboardType.string.rawValue],
+            fileURLs: [],
+            imageData: nil,
+            imageTypeName: nil,
+            string: "hello from snapshot"
+        )
+
+        let d = ClipDetector.detect(snapshot: snapshot, app: "com.example.Editor")
+        XCTAssertEqual(d?.type, .text)
+        XCTAssertEqual(d?.app, "com.example.Editor")
+    }
+
+    func testSnapshotImageDataIsDetectedAndPersisted() throws {
+        let imageData = try makePNGData(width: 2, height: 3)
+        let snapshot = ClipboardSnapshot(
+            changeCount: 43,
+            typeNames: [NSPasteboard.PasteboardType.png.rawValue],
+            fileURLs: [],
+            imageData: imageData,
+            imageTypeName: NSPasteboard.PasteboardType.png.rawValue,
+            string: nil
+        )
+
+        let d = try XCTUnwrap(ClipDetector.detect(snapshot: snapshot, app: nil))
+        XCTAssertEqual(d.type, .image)
+
+        let payload = try JSONDecoder().decode(ImagePayload.self, from: d.payload)
+        defer { try? FileManager.default.removeItem(atPath: payload.path) }
+        XCTAssertEqual(payload.width, 2)
+        XCTAssertEqual(payload.height, 3)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: payload.path))
+    }
+
+    private func makePNGData(width: Int, height: Int) throws -> Data {
+        let rep = try XCTUnwrap(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: width,
+            pixelsHigh: height,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ))
+        return try XCTUnwrap(rep.representation(using: .png, properties: [:]))
     }
 }

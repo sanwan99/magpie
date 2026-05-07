@@ -3,7 +3,7 @@ import Observation
 import SwiftUI
 
 /// View-side representation of a clip — one row in the panel layouts.
-struct ClipDisplayItem: Identifiable, Equatable {
+struct ClipDisplayItem: Identifiable, Equatable, Sendable {
     let id: String
     let type: ClipType
     let app: String?
@@ -12,7 +12,7 @@ struct ClipDisplayItem: Identifiable, Equatable {
     let title: String?
     let preview: PreviewContent
 
-    enum PreviewContent: Equatable {
+    enum PreviewContent: Equatable, Sendable {
         case text(String)
         case code(body: String, lang: String?)
         case url(URL, host: String?)
@@ -129,6 +129,8 @@ final class ClipsViewModel {
     @ObservationIgnored
     private var debounceTask: Task<Void, Never>?
     @ObservationIgnored
+    private var refreshTask: Task<Void, Never>?
+    @ObservationIgnored
     private let debounceInterval: Duration = .milliseconds(100)
     @ObservationIgnored
     private let repository: ClipRepository
@@ -169,16 +171,44 @@ final class ClipsViewModel {
     // MARK: - Refresh
 
     func refresh() {
-        do {
-            let query = currentQuery()
-            let records = try repository.search(query, limit: limit)
-            self.clips = records.compactMap { ClipDisplayItem(record: $0) }
-            self.totalClipCount = (try? repository.count()) ?? clips.count
-            if focusedIndex >= clips.count {
-                focusedIndex = clips.isEmpty ? 0 : 0
+        refresh(preferredFocusID: nil)
+    }
+
+    private func refresh(preferredFocusID: String?) {
+        refreshTask?.cancel()
+
+        let query = currentQuery()
+        let limit = self.limit
+        let repository = self.repository
+        let oldFocusedID = preferredFocusID ?? focusedClip?.id
+
+        refreshTask = Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                do {
+                    let records = try repository.search(query, limit: limit)
+                    let items = records.compactMap { ClipDisplayItem(record: $0) }
+                    let total = (try? repository.count()) ?? items.count
+                    return Result<([ClipDisplayItem], Int), Error>.success((items, total))
+                } catch {
+                    return Result<([ClipDisplayItem], Int), Error>.failure(error)
+                }
+            }.value
+
+            guard !Task.isCancelled, let self else { return }
+
+            switch result {
+            case .success(let (items, total)):
+                self.clips = items
+                self.totalClipCount = total
+                if let oldFocusedID,
+                   let idx = items.firstIndex(where: { $0.id == oldFocusedID }) {
+                    self.focusedIndex = idx
+                } else if self.focusedIndex >= items.count {
+                    self.focusedIndex = 0
+                }
+            case .failure(let error):
+                NSLog("[ui] refresh failed: %@", "\(error)")
             }
-        } catch {
-            NSLog("[ui] refresh failed: %@", "\(error)")
         }
     }
 
@@ -212,14 +242,21 @@ final class ClipsViewModel {
     func toggleFocusedPin() {
         guard let clip = focusedClip else { return }
         let targetId = clip.id
-        do {
-            try repository.togglePin(clipId: targetId)
-            refresh()
-            if let newIdx = clips.firstIndex(where: { $0.id == targetId }) {
-                focusedIndex = newIdx
+        let repository = self.repository
+        Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                Result<Void, Error> {
+                    try repository.togglePin(clipId: targetId)
+                }
+            }.value
+
+            guard let self else { return }
+            switch result {
+            case .success:
+                self.refresh(preferredFocusID: targetId)
+            case .failure(let error):
+                NSLog("[ui] togglePin failed: %@", "\(error)")
             }
-        } catch {
-            NSLog("[ui] togglePin failed: %@", "\(error)")
         }
     }
 

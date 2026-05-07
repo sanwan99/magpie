@@ -3,7 +3,7 @@ import GRDB
 
 /// Persistent representation of a clip. Mirrors the `clips` table 1:1.
 /// `tags` is JSON-encoded `[String]`; `payload` is the per-type JSON struct from `ClipPayload.swift`.
-struct ClipRecord: Codable, FetchableRecord, MutablePersistableRecord, Equatable {
+struct ClipRecord: Codable, FetchableRecord, MutablePersistableRecord, Equatable, Sendable {
     var id: String
     var type: String          // ClipType.rawValue
     var app: String?
