@@ -491,18 +491,29 @@ private struct PanelContentView: View {
         }
         .overlay {
             let tokens = settings.flavor.tokens(for: colorScheme)
-            if settings.flavor.isDecorative {
-                RoundedRectangle(cornerRadius: settings.flavor == .splat ? 22 : 18)
-                    .strokeBorder(
-                        settings.flavor == .splat ? splatYellow : tokens.accent.opacity(0.55),
-                        lineWidth: settings.flavor == .splat ? 3 : 1
-                    )
-                    .padding(settings.flavor == .splat ? 1.5 : 0.5)
+            // 主面板外框：splat 改用 hairline 灰，跟普通主题对齐 —— 用户反馈
+            // "黄色条纹太抢戏"。splat 身份感保留在焦点卡片黄底 + 章鱼装饰 +
+            // 紫 paste 按钮。其他装饰主题继续用 accent 1pt 描边。
+            if settings.flavor == .splat {
+                RoundedRectangle(cornerRadius: 18)
+                    .strokeBorder(regularPanelBorder, lineWidth: 0.5)
+                    .allowsHitTesting(false)
+            } else if settings.flavor.isDecorative {
+                RoundedRectangle(cornerRadius: 18)
+                    .strokeBorder(tokens.accent.opacity(0.55), lineWidth: 1)
+                    .padding(0.5)
                     .allowsHitTesting(false)
             } else {
                 RoundedRectangle(cornerRadius: 18)
                     .strokeBorder(regularPanelBorder, lineWidth: 0.5)
                     .allowsHitTesting(false)
+            }
+        }
+        // 主面板焦点变化时联动放大预览窗口（仅在窗口已打开时生效）。
+        // updateIfOpen 内部判断窗口可见性，关掉的窗口不会自己又被拉起来。
+        .onChange(of: viewModel.focusedClip?.id) { _, _ in
+            if let clip = viewModel.focusedClip {
+                ExpandedPreviewWindowController.shared.updateIfOpen(clip: clip)
             }
         }
     }
