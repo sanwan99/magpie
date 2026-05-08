@@ -57,6 +57,42 @@ final class HistoryReaperTests: XCTestCase {
         }
     }
 
+    @discardableResult
+    private func insertImageClip(
+        id: String,
+        path: String,
+        createdAt: Date = Date(),
+        pinned: Bool = false
+    ) throws -> String {
+        let payload = try JSONEncoder().encode(ImagePayload(
+            path: path,
+            width: 10,
+            height: 10,
+            sizeKB: 1
+        ))
+        try db.dbQueue.write { dbConn in
+            try dbConn.execute(sql: """
+                INSERT INTO clips (id, type, app, created_at, pinned, tags, title, payload)
+                VALUES (?, 'image', NULL, ?, ?, '[]', 'image', ?);
+            """, arguments: [id, createdAt.timeIntervalSince1970, pinned ? 1 : 0, payload])
+            try dbConn.execute(sql: """
+                INSERT INTO clips_fts (clip_id, title, body, tags)
+                VALUES (?, 'image', 'image 10x10 1KB', '');
+            """, arguments: [id])
+        }
+        return id
+    }
+
+    private func ftsCount(clipID: String) throws -> Int {
+        try db.dbQueue.read { dbConn in
+            try Int.fetchOne(
+                dbConn,
+                sql: "SELECT COUNT(*) FROM clips_fts WHERE clip_id = ?",
+                arguments: [clipID]
+            ) ?? 0
+        }
+    }
+
     /// Build a fresh SettingsStore-like config in a struct since SettingsStore.shared
     /// is a singleton and we don't want to mutate global state from tests.
     /// HistoryReaper takes a SettingsStore directly — we use the real one but
@@ -172,6 +208,26 @@ final class HistoryReaperTests: XCTestCase {
 
         XCTAssertEqual(try clipCount(pinnedOnly: true), 2, "Both pinned survive")
         XCTAssertEqual(try clipCount(pinnedOnly: false), 2, "Only 2 newest unpinned survive")
+    }
+
+    // MARK: - stale image cache rows
+
+    func testMissingImageCacheRowsAreRemovedWithFTS() throws {
+        let existingImage = imageDirectoryURL.appendingPathComponent("existing.png")
+        let missingImage = imageDirectoryURL.appendingPathComponent("missing.png")
+        try Data("not a real png, but it exists".utf8).write(to: existingImage)
+
+        try insertImageClip(id: "existing", path: existingImage.path)
+        try insertImageClip(id: "missing", path: missingImage.path)
+
+        HistoryReaper(database: db).reapNow()
+
+        let surviving = try db.dbQueue.read { dbConn in
+            try String.fetchAll(dbConn, sql: "SELECT id FROM clips ORDER BY id")
+        }
+        XCTAssertEqual(surviving, ["existing"])
+        XCTAssertEqual(try ftsCount(clipID: "existing"), 1)
+        XCTAssertEqual(try ftsCount(clipID: "missing"), 0)
     }
 
     // MARK: - clearAll

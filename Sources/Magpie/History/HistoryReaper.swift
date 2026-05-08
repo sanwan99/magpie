@@ -85,7 +85,13 @@ final class HistoryReaper {
             // 再 rm 物理文件（FileManager.removeItem 不放写事务里，避免 IO
             // 长时间持锁）。
             var imageFilesToRemove: [String] = []
+            var missingImageRowsRemoved = 0
             try database.dbQueue.write { db in
+                // 如果磁盘 cache 已经被外部清掉或历史版本留下了陈旧 path，
+                // UI 只能显示 photo 占位。这里在常规 retention 前先清 DB 行，
+                // 让 Image 筛选只展示仍可读取的图片。
+                missingImageRowsRemoved = try Self.removeMissingImageRows(db: db)
+
                 if policy.keepHistoryDays > 0 {
                     let cutoff = Date()
                         .addingTimeInterval(-Double(policy.keepHistoryDays) * 86_400)
@@ -162,9 +168,37 @@ final class HistoryReaper {
             if removed > 0 {
                 NSLog("[history] image cap → 清理 %d 个磁盘文件", removed)
             }
+            if missingImageRowsRemoved > 0 {
+                NSLog("[history] removed %d stale image rows with missing cache files",
+                      missingImageRowsRemoved)
+            }
         } catch {
             NSLog("[history] reap failed: %@", "\(error)")
         }
+    }
+
+    nonisolated private static func removeMissingImageRows(db: GRDB.Database) throws -> Int {
+        let rows = try Row.fetchAll(db, sql: "SELECT id, payload FROM clips WHERE type = 'image';")
+        let decoder = JSONDecoder()
+        var missingIDs: [String] = []
+
+        for row in rows {
+            let id: String = row["id"]
+            let payload: Data = row["payload"]
+            guard let image = try? decoder.decode(ImagePayload.self, from: payload) else {
+                missingIDs.append(id)
+                continue
+            }
+            if !FileManager.default.fileExists(atPath: image.path) {
+                missingIDs.append(id)
+            }
+        }
+
+        for id in missingIDs {
+            try db.execute(sql: "DELETE FROM clips_fts WHERE clip_id = ?;", arguments: [id])
+            try db.execute(sql: "DELETE FROM clips WHERE id = ?;", arguments: [id])
+        }
+        return missingIDs.count
     }
 
     /// 在写事务内查询 image clip 的磁盘路径列表（解码 payload JSON 取 path）。
