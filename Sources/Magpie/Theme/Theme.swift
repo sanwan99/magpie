@@ -49,6 +49,13 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
     case blue
     case olive
     case splat
+    case forest
+    case husk
+    case mist
+    case club
+    case unit
+    case ink
+    case gilt
 
     var displayName: String {
         displayName(language: .en)
@@ -61,6 +68,23 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
         case .blue:     return language.pick(zh: "蓝色", en: "Blue")
         case .olive:    return language.pick(zh: "橄榄", en: "Olive")
         case .splat:    return "Splat"
+        case .forest:   return language.pick(zh: "林克 / 塞尔达", en: "Link / Zelda")
+        case .husk:     return language.pick(zh: "小骑士 / 黄蜂女", en: "Knight / Hornet")
+        case .mist:     return language.pick(zh: "芙莉莲 / 菲伦", en: "Frieren / Fern")
+        case .club:     return language.pick(zh: "凉宫 / 长门", en: "Haruhi / Nagato")
+        case .unit:     return language.pick(zh: "明日香 / 绫波", en: "Asuka / Rei")
+        case .ink:      return language.pick(zh: "战场原 / 羽川", en: "Senjougahara / Hanekawa")
+        case .gilt:     return language.pick(zh: "大忍 / 小忍", en: "Kiss-Shot / Shinobu")
+        }
+    }
+
+    /// Decorative flavors render extra panel chrome in addition to tokens.
+    var isDecorative: Bool {
+        switch self {
+        case .splat, .forest, .husk, .mist, .club, .unit, .ink, .gilt:
+            return true
+        case .mono, .graphite, .blue, .olive:
+            return false
         }
     }
 
@@ -70,6 +94,9 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
     func tokens(for scheme: ColorScheme) -> FlavorTokens {
         if self == .splat {
             return scheme == .dark ? Flavor.splatDarkTokens : tokens
+        }
+        if let decorative = decorativeTokens(for: scheme) {
+            return decorative
         }
         return regularTokens(for: scheme)
     }
@@ -179,6 +206,8 @@ enum Flavor: String, Codable, Sendable, CaseIterable {
                 cardCornerRadius: 16,
                 tileCornerRadius: 14
             )
+        case .forest, .husk, .mist, .club, .unit, .ink, .gilt:
+            return decorativeTokens(for: .light) ?? Flavor.mono.tokens
         }
     }
 }
@@ -280,7 +309,199 @@ private extension Flavor {
                 lightFocusIntensity: 0.92,
                 lightFocusBorder: Color(red: 0.48, green: 0.17, blue: 1.00)
             )
+        case .forest, .husk, .mist, .club, .unit, .ink, .gilt:
+            return RegularThemePalette(
+                accent: decorativeTokens(for: .light)?.accent ?? Color(white: 0.55),
+                darkFocus: decorativeTokens(for: .dark)?.focusBgColor ?? Color(white: 0.30),
+                darkFocusIntensity: decorativeTokens(for: .dark)?.focusBgIntensity ?? 0.30,
+                darkFocusBorder: decorativeTokens(for: .dark)?.focusStrokeColor ?? Color(white: 0.65),
+                lightFocus: decorativeTokens(for: .light)?.focusBgColor ?? Color(white: 0.90),
+                lightFocusIntensity: decorativeTokens(for: .light)?.focusBgIntensity ?? 1.00,
+                lightFocusBorder: decorativeTokens(for: .light)?.focusStrokeColor ?? Color(white: 0.45)
+            )
         }
+    }
+}
+
+private extension Flavor {
+    func decorativeTokens(for scheme: ColorScheme) -> FlavorTokens? {
+        let dark = scheme == .dark
+        switch self {
+        case .forest:
+            return dark
+                ? Self.decorative(
+                    accent: Self.rgb(212, 175, 90),
+                    focus: (Self.rgb(70, 100, 68), 0.55),
+                    card: (Self.rgb(40, 60, 46), 0.45),
+                    panel: Self.rgb(20, 32, 24).opacity(0.78),
+                    stroke: (Self.rgb(212, 175, 90), 0.14),
+                    focusStroke: (Self.rgb(212, 175, 90), 0.55),
+                    glow: Self.rgb(212, 175, 90)
+                )
+                : Self.decorative(
+                    accent: Self.rgb(110, 82, 15),
+                    focus: (Self.rgb(220, 205, 150), 0.60),
+                    card: (Self.rgb(255, 250, 235), 0.60),
+                    panel: Self.rgb(252, 247, 232).opacity(0.86),
+                    stroke: (Self.rgb(80, 60, 28), 0.14),
+                    focusStroke: (Self.rgb(160, 110, 30), 0.55),
+                    glow: Self.rgb(160, 110, 30)
+                )
+        case .husk:
+            return dark
+                ? Self.decorative(
+                    accent: Self.rgb(236, 229, 216),
+                    focus: (Self.rgb(36, 44, 60), 0.85),
+                    card: (Self.rgb(22, 28, 40), 0.60),
+                    panel: Self.rgb(14, 18, 26).opacity(0.82),
+                    stroke: (Self.rgb(236, 229, 216), 0.10),
+                    focusStroke: (Self.rgb(196, 40, 40), 0.70),
+                    glow: Self.rgb(196, 40, 40)
+                )
+                : Self.decorative(
+                    accent: Self.rgb(24, 24, 27),
+                    focus: (Self.rgb(24, 24, 27), 0.12),
+                    card: (Self.rgb(255, 250, 240), 0.70),
+                    panel: Self.rgb(248, 243, 232).opacity(0.88),
+                    stroke: (Self.rgb(24, 24, 27), 0.10),
+                    focusStroke: (Self.rgb(196, 40, 40), 0.70),
+                    glow: Self.rgb(196, 40, 40)
+                )
+        case .mist:
+            return dark
+                ? Self.decorative(
+                    accent: Self.rgb(192, 178, 228),
+                    focus: (Self.rgb(80, 76, 118), 0.55),
+                    card: (Self.rgb(48, 56, 72), 0.45),
+                    panel: Self.rgb(28, 32, 38).opacity(0.82),
+                    stroke: (Self.rgb(208, 200, 232), 0.10),
+                    focusStroke: (Self.rgb(192, 178, 228), 0.60),
+                    glow: Self.rgb(192, 178, 228)
+                )
+                : Self.decorative(
+                    accent: Self.rgb(93, 72, 148),
+                    focus: (Self.rgb(220, 210, 242), 0.85),
+                    card: (Self.rgb(248, 246, 255), 0.70),
+                    panel: Self.rgb(252, 250, 255).opacity(0.88),
+                    stroke: (Self.rgb(96, 82, 128), 0.12),
+                    focusStroke: (Self.rgb(120, 96, 176), 0.55),
+                    glow: Self.rgb(140, 116, 196)
+                )
+        case .club:
+            return dark
+                ? Self.decorative(
+                    accent: Self.rgb(255, 210, 75),
+                    focus: (Self.rgb(216, 164, 40), 0.85),
+                    card: (Self.rgb(38, 52, 84), 0.55),
+                    panel: Self.rgb(20, 28, 46).opacity(0.82),
+                    stroke: (Self.rgb(255, 210, 75), 0.14),
+                    focusStroke: (Self.rgb(255, 210, 75), 1.00),
+                    glow: Self.rgb(255, 210, 75)
+                )
+                : Self.decorative(
+                    accent: Self.rgb(28, 78, 168),
+                    focus: (Self.rgb(255, 210, 75), 0.86),
+                    card: (Self.rgb(255, 255, 255), 0.70),
+                    panel: Self.rgb(252, 250, 242).opacity(0.90),
+                    stroke: (Self.rgb(0, 40, 90), 0.12),
+                    focusStroke: (Self.rgb(28, 34, 56), 0.70),
+                    glow: Self.rgb(28, 78, 168)
+                )
+        case .unit:
+            return dark
+                ? Self.decorative(
+                    accent: Self.rgb(214, 46, 54),
+                    focus: (Self.rgb(214, 46, 54), 0.18),
+                    card: (Self.rgb(36, 38, 46), 0.65),
+                    panel: Self.rgb(20, 21, 25).opacity(0.88),
+                    stroke: (Self.rgb(214, 46, 54), 0.14),
+                    focusStroke: (Self.rgb(214, 46, 54), 1.00),
+                    glow: Self.rgb(214, 46, 54)
+                )
+                : Self.decorative(
+                    accent: Self.rgb(180, 35, 43),
+                    focus: (Self.rgb(214, 46, 54), 0.10),
+                    card: (Self.rgb(255, 255, 255), 0.70),
+                    panel: Self.rgb(248, 246, 242).opacity(0.92),
+                    stroke: (Self.rgb(140, 18, 24), 0.10),
+                    focusStroke: (Self.rgb(180, 35, 43), 0.85),
+                    glow: Self.rgb(180, 35, 43)
+                )
+        case .ink:
+            return dark
+                ? Self.decorative(
+                    accent: Self.rgb(181, 166, 217),
+                    focus: (Self.rgb(118, 108, 160), 0.40),
+                    card: (Self.rgb(40, 38, 48), 0.55),
+                    panel: Self.rgb(22, 22, 28).opacity(0.85),
+                    stroke: (Self.rgb(220, 215, 232), 0.10),
+                    focusStroke: (Self.rgb(181, 166, 217), 1.00),
+                    glow: Self.rgb(181, 166, 217)
+                )
+                : Self.decorative(
+                    accent: Self.rgb(76, 63, 118),
+                    focus: (Self.rgb(24, 22, 30), 0.10),
+                    card: (Self.rgb(255, 255, 255), 0.65),
+                    panel: Self.rgb(252, 251, 252).opacity(0.92),
+                    stroke: (Self.rgb(45, 40, 68), 0.12),
+                    focusStroke: (Self.rgb(76, 63, 118), 0.85),
+                    glow: Self.rgb(76, 63, 118)
+                )
+        case .gilt:
+            return dark
+                ? Self.decorative(
+                    accent: Self.rgb(232, 198, 107),
+                    focus: (Self.rgb(214, 175, 72), 0.16),
+                    card: (Self.rgb(38, 30, 16), 0.65),
+                    panel: Self.rgb(20, 17, 10).opacity(0.86),
+                    stroke: (Self.rgb(214, 175, 72), 0.18),
+                    focusStroke: (Self.rgb(232, 198, 107), 1.00),
+                    glow: Self.rgb(232, 198, 107)
+                )
+                : Self.decorative(
+                    accent: Self.rgb(110, 82, 16),
+                    focus: (Self.rgb(232, 198, 107), 0.40),
+                    card: (Self.rgb(255, 250, 232), 0.70),
+                    panel: Self.rgb(252, 247, 232).opacity(0.92),
+                    stroke: (Self.rgb(120, 90, 18), 0.16),
+                    focusStroke: (Self.rgb(164, 127, 28), 0.85),
+                    glow: Self.rgb(164, 127, 28)
+                )
+        case .mono, .graphite, .blue, .olive, .splat:
+            return nil
+        }
+    }
+
+    static func decorative(
+        accent: Color,
+        focus: (Color, Double),
+        card: (Color, Double),
+        panel: Color,
+        stroke: (Color, Double),
+        focusStroke: (Color, Double),
+        glow: Color
+    ) -> FlavorTokens {
+        FlavorTokens(
+            accent: accent,
+            focusBgColor: focus.0,
+            focusBgIntensity: focus.1,
+            cardBgIdleColor: card.0,
+            cardBgIdleOpacity: card.1,
+            panelBgOverlay: panel,
+            focusGlowColor: glow,
+            strokeColor: stroke.0,
+            focusStrokeColor: focusStroke.0,
+            strokeOpacity: stroke.1,
+            strokeWidth: 0.5,
+            focusStrokeOpacity: focusStroke.1,
+            focusStrokeWidth: 1.5,
+            cardCornerRadius: 8,
+            tileCornerRadius: 8
+        )
+    }
+
+    static func rgb(_ r: Double, _ g: Double, _ b: Double) -> Color {
+        Color(red: r / 255.0, green: g / 255.0, blue: b / 255.0)
     }
 }
 

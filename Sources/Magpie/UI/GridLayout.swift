@@ -117,7 +117,7 @@ private struct GridTile: View {
                 Text((path as NSString).lastPathComponent)
                     .font(.system(size: 11, weight: .semibold))
                     .lineLimit(1)
-                Text("\(items) item\(items == 1 ? "" : "s")")
+                Text(itemCount(items))
                     .font(.system(size: 9))
                     .foregroundStyle(.tertiary)
             }
@@ -136,17 +136,16 @@ private struct GridTile: View {
         case .image(let path, let w, let h, let sizeKB):
             VStack(alignment: .leading, spacing: 3) {
                 // Grid tile 比 Stripe 还小（~150pt），256 缩略图绰绰有余。
-                if let nsimg = ImageThumbnail.load(path: path, maxPixelSize: 256) {
+                switch ImageThumbnail.loadResult(path: path, maxPixelSize: 256) {
+                case .loaded(let nsimg):
                     Image(nsImage: nsimg)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color.black.opacity(0.04))
                         .clipShape(RoundedRectangle(cornerRadius: 4))
-                } else {
-                    Image(systemName: "photo")
-                        .font(.system(size: 22))
-                        .foregroundStyle(.tertiary)
+                case .failed(let reason):
+                    ImageThumbnailPlaceholder(reason: reason, iconSize: 22, showLabel: false)
                 }
                 Text("\(w)×\(h) · \(sizeKB) KB")
                     .font(.system(size: 8, design: .monospaced))
@@ -155,7 +154,7 @@ private struct GridTile: View {
             }
 
         case .unsupported:
-            Text("(unsupported)")
+            Text(localized(zh: "暂不支持", en: "(unsupported)"))
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
                 .italic()
@@ -171,6 +170,14 @@ private struct GridTile: View {
         case .file:   return "doc"
         case .folder: return "folder"
         }
+    }
+
+    private func localized(zh: String, en: String) -> String {
+        settings.language.pick(zh: zh, en: en)
+    }
+
+    private func itemCount(_ count: Int) -> String {
+        localized(zh: "\(count) 项", en: "\(count) item\(count == 1 ? "" : "s")")
     }
 
     private var splatRotation: Angle {

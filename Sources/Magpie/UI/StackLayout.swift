@@ -150,7 +150,7 @@ private struct StackRow: View {
                     .font(.system(size: 11, design: .monospaced))
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
-                Text("· \(items)")
+                Text("· \(itemCount(items))")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
@@ -167,17 +167,17 @@ private struct StackRow: View {
         case .image(let path, let w, let h, let sizeKB):
             HStack(spacing: 6) {
                 // Stack 行只显示 40×22 的小缩略图，128 已经过剩。
-                if let nsimg = ImageThumbnail.load(path: path, maxPixelSize: 128) {
+                switch ImageThumbnail.loadResult(path: path, maxPixelSize: 128) {
+                case .loaded(let nsimg):
                     Image(nsImage: nsimg)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 40, height: 22)
                         .background(Color.black.opacity(0.04))
                         .clipShape(RoundedRectangle(cornerRadius: 3))
-                } else {
-                    Image(systemName: "photo")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.tertiary)
+                case .failed(let reason):
+                    ImageThumbnailPlaceholder(reason: reason, iconSize: 12, showLabel: false)
+                        .frame(width: 40, height: 22)
                 }
                 Text("\(w)×\(h) · \(sizeKB) KB")
                     .font(.system(size: 10, design: .monospaced))
@@ -186,7 +186,7 @@ private struct StackRow: View {
             }
 
         case .unsupported:
-            Text("(unsupported)")
+            Text(localized(zh: "暂不支持", en: "(unsupported)"))
                 .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
                 .italic()
@@ -207,7 +207,14 @@ private struct StackRow: View {
     }
 
     private var typeLabel: String {
-        clip.type.rawValue.capitalized
+        switch clip.type {
+        case .text:   return localized(zh: "文本", en: "Text")
+        case .code:   return localized(zh: "代码", en: "Code")
+        case .url:    return localized(zh: "链接", en: "URL")
+        case .image:  return localized(zh: "图片", en: "Image")
+        case .file:   return localized(zh: "文件", en: "File")
+        case .folder: return localized(zh: "文件夹", en: "Folder")
+        }
     }
 
     private var metaLine: String {
@@ -220,10 +227,18 @@ private struct StackRow: View {
 
     private var timeAgo: String {
         let secs = Date().timeIntervalSince(clip.createdAt)
-        if secs < 60     { return "now" }
-        if secs < 3600   { return "\(Int(secs / 60))m" }
-        if secs < 86_400 { return "\(Int(secs / 3600))h" }
-        return "\(Int(secs / 86_400))d"
+        if secs < 60     { return localized(zh: "刚刚", en: "now") }
+        if secs < 3600   { return localized(zh: "\(Int(secs / 60))分前", en: "\(Int(secs / 60))m") }
+        if secs < 86_400 { return localized(zh: "\(Int(secs / 3600))时前", en: "\(Int(secs / 3600))h") }
+        return localized(zh: "\(Int(secs / 86_400))天前", en: "\(Int(secs / 86_400))d")
+    }
+
+    private func localized(zh: String, en: String) -> String {
+        settings.language.pick(zh: zh, en: en)
+    }
+
+    private func itemCount(_ count: Int) -> String {
+        localized(zh: "\(count) 项", en: "\(count) item\(count == 1 ? "" : "s")")
     }
 
     private func shortAppLabel(_ bundleId: String) -> String {

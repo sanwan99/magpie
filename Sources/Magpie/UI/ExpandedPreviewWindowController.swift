@@ -36,7 +36,7 @@ final class ExpandedPreviewWindowController {
         // 自建 container：圆角 NSView + NSVisualEffectView 毛玻璃 + SwiftUI host。
         // 跟主面板 PanelController.makeContentView() 同模式，视觉一致。
         let host = NSHostingController(rootView: view)
-        let initialSize = NSSize(width: 920, height: 640)
+        let initialSize = NSSize(width: 860, height: 560)
         let container = NSView(frame: NSRect(origin: .zero, size: initialSize))
         container.wantsLayer = true
         container.layer?.cornerRadius = 18
@@ -65,7 +65,7 @@ final class ExpandedPreviewWindowController {
         win.backgroundColor = .clear
         win.isOpaque = false
         win.contentView = container
-        win.minSize = NSSize(width: 560, height: 380)
+        win.minSize = NSSize(width: 620, height: 420)
         win.isReleasedWhenClosed = false
         // 跟主面板一致：用户在 Settings 选了 dark 就强制 dark；选了 light
         // 就强制 light；Follow System 才让系统接管。否则系统是 light 时这个
@@ -106,6 +106,7 @@ private struct ExpandedPreviewView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private var isSplat: Bool { settings.flavor == .splat }
+    private var isDecorative: Bool { settings.flavor.isDecorative }
     private var tokens: FlavorTokens { settings.flavor.tokens(for: colorScheme) }
 
     var body: some View {
@@ -118,14 +119,16 @@ private struct ExpandedPreviewView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Color.clear.frame(height: 22)
                 header
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 14)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
                 divider
                 ScrollView(showsIndicators: true) {
                     fullPreview
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .frame(maxWidth: 760, alignment: .topLeading)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 22)
+                        .frame(maxWidth: .infinity, alignment: .top)
                 }
                 divider
                 footer
@@ -133,15 +136,18 @@ private struct ExpandedPreviewView: View {
         }
         .background(
             // 普通主题（mono/graphite/blue/olive）需要一个底色让毛玻璃别太"暗角"
-            Color.primary.opacity(isSplat ? 0 : (colorScheme == .dark ? 0.02 : 0.0))
+            Color.primary.opacity(isDecorative ? 0 : (colorScheme == .dark ? 0.02 : 0.0))
         )
         .overlay {
             // 外框：splat 黄 3px / 普通 hairline 0.5px。圆角统一 18 跟 NSView
             // container.layer.cornerRadius 一致，避免双层 mask 露白边。
-            if isSplat {
+            if isDecorative {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(SplatPalette.yellow, lineWidth: 3)
-                    .padding(1.5)
+                    .strokeBorder(
+                        isSplat ? SplatPalette.yellow : tokens.accent.opacity(0.55),
+                        lineWidth: isSplat ? 1.5 : 1
+                    )
+                    .padding(0.75)
                     .allowsHitTesting(false)
             } else {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -149,7 +155,7 @@ private struct ExpandedPreviewView: View {
                     .allowsHitTesting(false)
             }
         }
-        .frame(minWidth: 560, minHeight: 380)
+        .frame(minWidth: 620, minHeight: 420)
         // ⌘W / Esc 关窗 — 通过透明按钮挂快捷键
         .background(
             Group {
@@ -166,33 +172,34 @@ private struct ExpandedPreviewView: View {
     // MARK: Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                typeBadge
-                if clip.pinned {
-                    Image(systemName: "pin.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(isSplat ? SplatPalette.yellow : Color.secondary)
-                }
-                Spacer()
-                Text(timeAgo(clip.createdAt))
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(secondaryFg.opacity(0.7))
-                if let app = clip.app, !app.isEmpty {
-                    Text("·").foregroundStyle(.tertiary)
-                    Text(app)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(secondaryFg)
-                        .lineLimit(1)
-                }
-            }
-            if let title = clip.title, !title.isEmpty {
-                Text(title)
-                    .font(.system(size: isSplat ? 24 : 20, weight: .semibold))
+        HStack(alignment: .top, spacing: 12) {
+            typeBadge
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayTitle)
+                    .font(.system(size: isSplat ? 17 : 16, weight: .semibold))
                     .foregroundStyle(primaryFg)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 7) {
+                    if clip.pinned {
+                        Label(localized(zh: "已固定", en: "Pinned"), systemImage: "pin.fill")
+                            .foregroundStyle(isDecorative ? tokens.accent : secondaryFg)
+                    }
+                    Text(contentSummary)
+                    if let app = clip.app, !app.isEmpty {
+                        Text("·")
+                        Text(shortAppLabel(app))
+                    }
+                }
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundStyle(secondaryFg.opacity(0.78))
             }
+            Spacer(minLength: 16)
+            Text(timeAgo(clip.createdAt))
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(secondaryFg.opacity(0.7))
         }
     }
 
@@ -200,16 +207,15 @@ private struct ExpandedPreviewView: View {
         HStack(spacing: 6) {
             Image(systemName: typeIcon)
                 .font(.system(size: 12, weight: .medium))
-            Text(clip.type.rawValue.uppercased())
+            Text(typeDisplayName(clip.type))
                 .font(.system(size: 10, weight: .bold))
-                .tracking(0.8)
         }
-        .foregroundStyle(isSplat ? SplatPalette.cream(colorScheme) : Color.secondary)
-        .padding(.horizontal, isSplat ? 10 : 0)
-        .padding(.vertical, isSplat ? 4 : 0)
+        .foregroundStyle(isSplat ? SplatPalette.cream(colorScheme) : (isDecorative ? primaryFg : Color.secondary))
+        .padding(.horizontal, isDecorative ? 9 : 0)
+        .padding(.vertical, isDecorative ? 4 : 0)
         .background(
             RoundedRectangle(cornerRadius: 5)
-                .fill(isSplat ? SplatPalette.ink : Color.clear)
+                .fill(isSplat ? SplatPalette.ink.opacity(0.82) : (isDecorative ? tokens.accent.opacity(0.12) : Color.clear))
         )
     }
 
@@ -219,119 +225,110 @@ private struct ExpandedPreviewView: View {
     private var fullPreview: some View {
         switch clip.preview {
         case .text(let body):
-            Text(body)
-                .font(.system(size: 14))
-                .lineSpacing(3)
-                .foregroundStyle(primaryFg)
-                .textSelection(.enabled)
+            previewBlock {
+                Text(body)
+                    .font(.system(size: 13, weight: .regular))
+                    .lineSpacing(5)
+                    .foregroundStyle(primaryFg)
+                    .textSelection(.enabled)
+            }
 
         case .code(let body, let lang):
             VStack(alignment: .leading, spacing: 10) {
                 if let lang, !lang.isEmpty {
                     Text(lang.uppercased())
-                        .font(.system(size: 10, weight: .semibold))
-                        .tracking(0.8)
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
                         .foregroundStyle(secondaryFg)
                 }
-                Text(body)
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(primaryFg)
-                    .textSelection(.enabled)
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(codeBg)
-                    )
+                previewBlock {
+                    Text(body)
+                        .font(.system(size: 12.5, design: .monospaced))
+                        .lineSpacing(5)
+                        .foregroundStyle(primaryFg)
+                        .textSelection(.enabled)
+                }
             }
 
         case .url(let url, let host):
             VStack(alignment: .leading, spacing: 10) {
-                Text(host ?? url.host ?? "")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(primaryFg)
-                Text(url.absoluteString)
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(secondaryFg)
-                    .textSelection(.enabled)
+                HStack(spacing: 12) {
+                    favicon(letter: host ?? url.host ?? "URL")
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(host ?? url.host ?? "URL")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(primaryFg)
+                            .lineLimit(1)
+                        Text(localized(zh: "链接", en: "Link"))
+                            .font(.system(size: 11))
+                            .foregroundStyle(secondaryFg.opacity(0.78))
+                    }
+                }
+                previewBlock {
+                    Text(url.absoluteString)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(secondaryFg)
+                        .textSelection(.enabled)
+                        .lineLimit(6)
+                        .truncationMode(.middle)
+                }
                 Link(destination: url) {
-                    Label("在浏览器打开", systemImage: "safari")
+                    Label(localized(zh: "在浏览器打开", en: "Open in Browser"), systemImage: "safari")
                         .font(.system(size: 12, weight: .medium))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
                         .background(
-                            Capsule().fill(isSplat ? SplatPalette.yellow : Color.accentColor.opacity(0.18))
+                            Capsule().fill(isDecorative ? tokens.accent.opacity(isSplat ? 1 : 0.18) : Color.accentColor.opacity(0.18))
                         )
-                        .foregroundStyle(isSplat ? SplatPalette.ink : Color.accentColor)
+                        .foregroundStyle(isSplat ? SplatPalette.ink : (isDecorative ? tokens.accent : Color.accentColor))
                 }
                 .buttonStyle(.plain)
                 .padding(.top, 4)
             }
 
         case .folder(let path, let items):
-            VStack(alignment: .leading, spacing: 14) {
-                Image(systemName: "folder.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(isSplat ? SplatPalette.yellow : Color.secondary)
-                Text((path as NSString).lastPathComponent)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(primaryFg)
-                Text("\(items) item\(items == 1 ? "" : "s")")
-                    .font(.system(size: 13))
-                    .foregroundStyle(secondaryFg)
-                Text(path)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(secondaryFg)
-                    .textSelection(.enabled)
-            }
+            fileLikePreview(
+                icon: "folder.fill",
+                title: (path as NSString).lastPathComponent,
+                meta: itemCount(items),
+                path: path
+            )
 
         case .file(let path, let kind, let sizeKB):
-            VStack(alignment: .leading, spacing: 14) {
-                Image(systemName: "doc.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(isSplat ? SplatPalette.yellow : Color.secondary)
-                Text((path as NSString).lastPathComponent)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(primaryFg)
-                Text("\(kind.uppercased()) · \(sizeKB) KB")
-                    .font(.system(size: 13))
-                    .foregroundStyle(secondaryFg)
-                Text(path)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(secondaryFg)
-                    .textSelection(.enabled)
-            }
+            fileLikePreview(
+                icon: "doc.fill",
+                title: (path as NSString).lastPathComponent,
+                meta: "\(kind.uppercased()) · \(sizeKB) KB",
+                path: path
+            )
 
         case .image(let path, let w, let h, let sizeKB):
             VStack(alignment: .leading, spacing: 14) {
                 if let nsimg = NSImage(contentsOfFile: path) {
-                    Image(nsImage: nsimg)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.black.opacity(0.05))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .strokeBorder(
-                                    isSplat ? SplatPalette.yellow.opacity(0.5) : Color.primary.opacity(0.08),
-                                    lineWidth: isSplat ? 1.5 : 0.5
-                                )
-                        )
+                    ZStack {
+                        ExpandedCheckerboardBackground()
+                        Image(nsImage: nsimg)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .padding(10)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(ruleColor, lineWidth: 0.5)
+                    )
                 } else {
-                    HStack {
-                        Spacer()
+                    previewBlock {
                         VStack(spacing: 10) {
                             Image(systemName: "photo")
                                 .font(.system(size: 48))
                                 .foregroundStyle(.tertiary)
-                            Text("图片文件丢失")
+                            Text(localized(zh: "图片文件丢失", en: "Image file missing"))
                                 .font(.system(size: 12))
                                 .foregroundStyle(secondaryFg)
                         }
-                        Spacer()
+                        .frame(maxWidth: .infinity, minHeight: 180)
                     }
-                    .padding(60)
                 }
                 HStack(spacing: 18) {
                     Label("\(w) × \(h)", systemImage: "ruler")
@@ -348,7 +345,7 @@ private struct ExpandedPreviewView: View {
             }
 
         case .unsupported:
-            Text("Unsupported clip type")
+            Text(localized(zh: "暂不支持这种剪切板类型", en: "Unsupported clip type"))
                 .font(.system(size: 13))
                 .foregroundStyle(secondaryFg)
                 .italic()
@@ -359,11 +356,11 @@ private struct ExpandedPreviewView: View {
 
     private var footer: some View {
         HStack(spacing: 14) {
-            Text("选中后 ⌘C 复制 · ⌘W / Esc 关闭")
+            Text(localized(zh: "选中后 ⌘C 复制 · ⌘W / Esc 关闭", en: "⌘C copies selected · ⌘W / Esc closes"))
                 .font(.system(size: 11))
                 .foregroundStyle(secondaryFg.opacity(0.85))
             Spacer()
-            keyHint(["⌘", "W"], "关闭")
+            keyHint(["⌘", "W"], localized(zh: "关闭", en: "Close"))
         }
         .padding(.horizontal, 22)
         .frame(height: 38)
@@ -384,8 +381,8 @@ private struct ExpandedPreviewView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 3)
                                 .strokeBorder(
-                                    isSplat ? SplatPalette.yellow : Color.primary.opacity(0.14),
-                                    lineWidth: isSplat ? 1.2 : 0.5
+                                    isDecorative ? tokens.accent.opacity(isSplat ? 1 : 0.28) : Color.primary.opacity(0.14),
+                                    lineWidth: isDecorative ? (isSplat ? 1.2 : 0.6) : 0.5
                                 )
                         )
                 }
@@ -400,8 +397,8 @@ private struct ExpandedPreviewView: View {
 
     private var divider: some View {
         Rectangle()
-            .fill(isSplat ? SplatPalette.yellow.opacity(0.35) : Color.primary.opacity(0.10))
-            .frame(height: isSplat ? 1.0 : 0.5)
+            .fill(ruleColor)
+            .frame(height: 0.5)
     }
 
     private var primaryFg: Color {
@@ -412,10 +409,18 @@ private struct ExpandedPreviewView: View {
         isSplat ? SplatPalette.cream(colorScheme).opacity(0.65) : Color.secondary
     }
 
-    private var codeBg: Color {
-        isSplat
-            ? SplatPalette.ink.opacity(0.55)
-            : Color.primary.opacity(colorScheme == .dark ? 0.06 : 0.04)
+    private var blockBg: Color {
+        if isSplat {
+            return Color(red: 0.13, green: 0.04, blue: 0.23).opacity(0.54)
+        }
+        return colorScheme == .dark ? Color.white.opacity(0.045) : Color.black.opacity(0.03)
+    }
+
+    private var ruleColor: Color {
+        if isDecorative {
+            return tokens.accent.opacity(isSplat ? 0.24 : 0.16)
+        }
+        return Color.primary.opacity(0.10)
     }
 
     private var regularBorder: Color {
@@ -435,11 +440,155 @@ private struct ExpandedPreviewView: View {
         }
     }
 
+    private func localized(zh: String, en: String) -> String {
+        settings.language.pick(zh: zh, en: en)
+    }
+
+    private func typeDisplayName(_ type: ClipType) -> String {
+        switch type {
+        case .text:   return localized(zh: "文本", en: "TEXT")
+        case .code:   return localized(zh: "代码", en: "CODE")
+        case .url:    return localized(zh: "链接", en: "URL")
+        case .image:  return localized(zh: "图片", en: "IMAGE")
+        case .file:   return localized(zh: "文件", en: "FILE")
+        case .folder: return localized(zh: "文件夹", en: "FOLDER")
+        }
+    }
+
+    private func itemCount(_ count: Int) -> String {
+        localized(zh: "\(count) 项", en: "\(count) item\(count == 1 ? "" : "s")")
+    }
+
+    private var displayTitle: String {
+        if let title = clip.title, !title.isEmpty {
+            return title
+        }
+        switch clip.preview {
+        case .url(_, let host):
+            return host ?? "URL"
+        case .file(let path, _, _), .folder(let path, _):
+            return (path as NSString).lastPathComponent
+        case .image(_, let w, let h, _):
+            return localized(zh: "图片 · \(w)×\(h)", en: "Image · \(w)×\(h)")
+        default:
+            return typeDisplayName(clip.type)
+        }
+    }
+
+    private var contentSummary: String {
+        switch clip.preview {
+        case .text(let body):
+            return localized(zh: "\(body.count) 字符", en: "\(body.count) chars")
+        case .code(let body, let lang):
+            let language = lang?.uppercased() ?? "CODE"
+            let lines = body.split(separator: "\n", omittingEmptySubsequences: false).count
+            return "\(language) · \(localized(zh: "\(lines) 行", en: "\(lines) lines"))"
+        case .url:
+            return localized(zh: "可在浏览器打开", en: "Openable URL")
+        case .folder(_, let items):
+            return itemCount(items)
+        case .file(_, let kind, let sizeKB):
+            return "\(kind.uppercased()) · \(sizeKB) KB"
+        case .image(_, let w, let h, let sizeKB):
+            return "\(w)×\(h) · \(sizeKB) KB"
+        case .unsupported:
+            return localized(zh: "暂不支持", en: "Unsupported")
+        }
+    }
+
+    private func shortAppLabel(_ bundleId: String) -> String {
+        bundleId.split(separator: ".").last.map(String.init) ?? bundleId
+    }
+
+    private func previewBlock<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            content()
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(blockBg)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(ruleColor, lineWidth: 0.5)
+        )
+    }
+
+    private func favicon(letter: String) -> some View {
+        Text(letter.prefix(1).uppercased())
+            .font(.system(size: 17, weight: .bold, design: .rounded))
+            .foregroundStyle(isDecorative ? tokens.accent : primaryFg)
+            .frame(width: 42, height: 42)
+            .background(blockBg)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(ruleColor, lineWidth: 0.5)
+            )
+    }
+
+    private func fileLikePreview(icon: String, title: String, meta: String, path: String) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 28))
+                    .foregroundStyle(isDecorative ? tokens.accent : Color.secondary)
+                    .frame(width: 44, height: 44)
+                    .background(blockBg)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(primaryFg)
+                        .lineLimit(2)
+                    Text(meta)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(secondaryFg)
+                }
+            }
+            previewBlock {
+                Text(path)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(secondaryFg)
+                    .textSelection(.enabled)
+                    .lineLimit(4)
+                    .truncationMode(.middle)
+            }
+        }
+    }
+
     private func timeAgo(_ date: Date) -> String {
         let secs = Date().timeIntervalSince(date)
-        if secs < 60      { return "\(Int(secs))s 前" }
-        if secs < 3600    { return "\(Int(secs / 60))m 前" }
-        if secs < 86400   { return "\(Int(secs / 3600))h 前" }
-        return "\(Int(secs / 86400))d 前"
+        if secs < 60      { return localized(zh: "刚刚", en: "just now") }
+        if secs < 3600    { return localized(zh: "\(Int(secs / 60)) 分钟前", en: "\(Int(secs / 60))m ago") }
+        if secs < 86400   { return localized(zh: "\(Int(secs / 3600)) 小时前", en: "\(Int(secs / 3600))h ago") }
+        return localized(zh: "\(Int(secs / 86400)) 天前", en: "\(Int(secs / 86400))d ago")
+    }
+}
+
+private struct ExpandedCheckerboardBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Canvas { context, size in
+            let tile: CGFloat = 14
+            let rows = Int(ceil(size.height / tile))
+            let cols = Int(ceil(size.width / tile))
+            let base = colorScheme == .dark ? Color.white.opacity(0.035) : Color.black.opacity(0.035)
+            let alt = colorScheme == .dark ? Color.white.opacity(0.070) : Color.black.opacity(0.065)
+
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(base))
+            for row in 0...rows {
+                for col in 0...cols where (row + col).isMultiple(of: 2) {
+                    let rect = CGRect(
+                        x: CGFloat(col) * tile,
+                        y: CGFloat(row) * tile,
+                        width: tile,
+                        height: tile
+                    )
+                    context.fill(Path(rect), with: .color(alt))
+                }
+            }
+        }
     }
 }

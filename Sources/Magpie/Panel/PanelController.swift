@@ -466,10 +466,10 @@ private struct PanelContentView: View {
             if let overlay = settings.flavor.tokens(for: colorScheme).panelBgOverlay {
                 overlay.ignoresSafeArea()
             }
-            // Splat-only decorative chrome (purple splatters + yellow squid mascot).
-            // Sits above the overlay but below content, with hit testing off.
-            if settings.flavor == .splat {
-                SplatDecorations()
+            // Decorative flavor chrome sits above the overlay but below
+            // content, with hit testing off.
+            if settings.flavor.isDecorative {
+                FlavorDecorations(flavor: settings.flavor)
                     .ignoresSafeArea()
             }
             VStack(spacing: 0) {
@@ -490,10 +490,14 @@ private struct PanelContentView: View {
             }
         }
         .overlay {
-            if settings.flavor == .splat {
-                RoundedRectangle(cornerRadius: 22)
-                    .strokeBorder(splatYellow, lineWidth: 3)
-                    .padding(1.5)
+            let tokens = settings.flavor.tokens(for: colorScheme)
+            if settings.flavor.isDecorative {
+                RoundedRectangle(cornerRadius: settings.flavor == .splat ? 22 : 18)
+                    .strokeBorder(
+                        settings.flavor == .splat ? splatYellow : tokens.accent.opacity(0.55),
+                        lineWidth: settings.flavor == .splat ? 3 : 1
+                    )
+                    .padding(settings.flavor == .splat ? 1.5 : 0.5)
                     .allowsHitTesting(false)
             } else {
                 RoundedRectangle(cornerRadius: 18)
@@ -567,6 +571,11 @@ private struct PanelContentView: View {
             VerticalDashedLine()
                 .stroke(splatYellow, style: StrokeStyle(lineWidth: 2, dash: [6, 7]))
                 .frame(width: 16)
+                .padding(.vertical, 18)
+        } else if settings.flavor.isDecorative {
+            Rectangle()
+                .fill(settings.flavor.tokens(for: colorScheme).accent.opacity(0.18))
+                .frame(width: 0.7)
                 .padding(.vertical, 18)
         } else {
             Divider().opacity(0.4)
