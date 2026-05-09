@@ -210,19 +210,28 @@ final class PanelController {
     /// Paste the currently focused clip into the previously frontmost app.
     private func paste() {
         guard let clip = viewModel.focusedClip else { return }
-        executePaste(clip)
+        executePaste(clip, writePasteboard: { Paster.writeToPasteboard($0) })
+    }
+
+    /// Paste the focused file/folder path as plain text.
+    private func pastePath() {
+        guard let clip = viewModel.focusedClip else { return }
+        executePaste(clip, writePasteboard: { Paster.writePathToPasteboard($0) })
     }
 
     /// Paste the Nth clip directly (⌘1…⌘9).
     private func pasteAt(_ index: Int) {
         guard let clip = viewModel.clip(at: index) else { return }
         viewModel.focusedIndex = index
-        executePaste(clip)
+        executePaste(clip, writePasteboard: { Paster.writeToPasteboard($0) })
     }
 
-    private func executePaste(_ clip: ClipDisplayItem) {
+    private func executePaste(
+        _ clip: ClipDisplayItem,
+        writePasteboard: @MainActor (ClipDisplayItem) -> String?
+    ) {
         let target = frontmost.savedTarget
-        guard let written = Paster.writeToPasteboard(clip), !written.isEmpty else {
+        guard let written = writePasteboard(clip), !written.isEmpty else {
             NSLog("[paste] clip has no pasteable content (id=%@ type=%@)", clip.id, clip.type.rawValue)
             return
         }
@@ -425,6 +434,7 @@ final class PanelController {
             viewModel: viewModel,
             snippetsViewModel: snippetsViewModel,
             onPaste: { [weak self] in self?.paste() },
+            onPastePath: { [weak self] in self?.pastePath() },
             onCreateSnippet: { [weak self] in self?.openNewSnippetEditor() },
             onEditSnippet: { [weak self] s in self?.openEditor(for: s) }
         ))
@@ -455,6 +465,7 @@ private struct PanelContentView: View {
     let viewModel: ClipsViewModel
     let snippetsViewModel: SnippetsViewModel
     let onPaste: () -> Void
+    let onPastePath: () -> Void
     let onCreateSnippet: () -> Void
     let onEditSnippet: (Snippet) -> Void
 
@@ -589,6 +600,7 @@ private struct PanelContentView: View {
                     DetailPane(
                         clip: viewModel.focusedClip,
                         onPaste: onPaste,
+                        onPastePath: onPastePath,
                         onTogglePin: { viewModel.toggleFocusedPin() },
                         onExpand: {
                             guard let clip = viewModel.focusedClip else { return }

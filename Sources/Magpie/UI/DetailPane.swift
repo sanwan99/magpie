@@ -24,6 +24,7 @@ import SwiftUI
 struct DetailPane: View {
     let clip: ClipDisplayItem?
     let onPaste: () -> Void
+    let onPastePath: () -> Void
     let onTogglePin: () -> Void
     /// 点击 header 右上 ⌘O 按钮时调用 — 由 PanelController 转发到
     /// ExpandedPreviewWindowController.shared.show(clip:)。
@@ -71,7 +72,8 @@ struct DetailPane: View {
 
             DetailFooter(
                 clip: clip,
-                onPaste: onPaste
+                onPaste: onPaste,
+                onPastePath: onPastePath
             )
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -850,6 +852,7 @@ struct CheckerBg: View {
 private struct DetailFooter: View {
     let clip: ClipDisplayItem
     let onPaste: () -> Void
+    let onPastePath: () -> Void
 
     private let settings = SettingsStore.shared
     @Environment(\.colorScheme) private var colorScheme
@@ -932,6 +935,7 @@ private struct DetailFooter: View {
                     label: settings.language.pick(zh: "在 Finder 显示", en: "Reveal"),
                     action: { revealInFinder(path: path) }
                 )
+                pathButton
                 pasteButton
             }
         case .folder(let path, _):
@@ -941,6 +945,7 @@ private struct DetailFooter: View {
                     label: settings.language.pick(zh: "打开", en: "Open"),
                     action: { openFolder(path: path) }
                 )
+                pathButton
                 pasteButton
             }
         case .unsupported:
@@ -954,6 +959,14 @@ private struct DetailFooter: View {
             action: onPaste
         )
         .keyboardShortcut(.return, modifiers: [])
+    }
+
+    private var pathButton: some View {
+        SecondaryActionButton(
+            icon: "text.quote",
+            label: settings.language.pick(zh: "路径", en: "Path"),
+            action: onPastePath
+        )
     }
 
     // MARK: side effects

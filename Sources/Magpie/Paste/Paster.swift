@@ -31,13 +31,8 @@ enum Paster {
             pb.setString(s, forType: .string)
             return s
 
-        case .folder(let path, _):
-            pb.setString(path, forType: .string)
-            return path
-
-        case .file(let path, _, _):
-            pb.setString(path, forType: .string)
-            return path
+        case .folder(let path, _), .file(let path, _, _):
+            return writeFileURLToPasteboard(path: path, pasteboard: pb)
 
         case .image(let path, let w, let h, _):
             // Write both .tiff (preferred by image apps) and .png (broader support).
@@ -60,6 +55,31 @@ enum Paster {
         case .unsupported:
             return nil
         }
+    }
+
+    /// Writes the file/folder path as plain text. Used by the explicit
+    /// "路径" action so it does not change the normal file/folder paste path.
+    @discardableResult
+    static func writePathToPasteboard(_ clip: ClipDisplayItem) -> String? {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+
+        switch clip.preview {
+        case .folder(let path, _), .file(let path, _, _):
+            pb.setString(path, forType: .string)
+            return path
+        default:
+            return writeToPasteboard(clip)
+        }
+    }
+
+    private static func writeFileURLToPasteboard(path: String, pasteboard: NSPasteboard) -> String? {
+        let url = URL(fileURLWithPath: path)
+        guard pasteboard.writeObjects([url as NSURL]) else {
+            NSLog("[paste] failed to write file URL: %@", path)
+            return nil
+        }
+        return path
     }
 
     /// Activates the target app and posts a ⌘V keystroke. Honors a tiny activation

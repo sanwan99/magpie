@@ -1,3 +1,4 @@
+import AppKit
 import Carbon
 import XCTest
 @testable import Magpie
@@ -5,6 +6,82 @@ import XCTest
 final class MagpieTests: XCTestCase {
     func testPlaceholder() {
         XCTAssertTrue(true, "Phase 0b skeleton compiles and runs.")
+    }
+}
+
+@MainActor
+final class PasterTests: XCTestCase {
+    func testFileAndFolderDefaultPasteWritesFileURLs() throws {
+        let tempRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("magpie-paster-tests-\(UUID().uuidString)", isDirectory: true)
+        let folderURL = tempRoot.appendingPathComponent("Folder", isDirectory: true)
+        let fileURL = tempRoot.appendingPathComponent("report.pdf", isDirectory: false)
+        try FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: fileURL.path, contents: Data("pdf".utf8))
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        let fileClip = ClipDisplayItem(
+            id: "file",
+            type: .file,
+            app: "Finder",
+            createdAt: Date(),
+            pinned: false,
+            title: "report.pdf",
+            preview: .file(path: fileURL.path, kind: "PDF", sizeKB: 32)
+        )
+        let folderClip = ClipDisplayItem(
+            id: "folder",
+            type: .folder,
+            app: "Finder",
+            createdAt: Date(),
+            pinned: false,
+            title: "Magpie",
+            preview: .folder(path: folderURL.path, items: 12)
+        )
+
+        Paster.writeToPasteboard(fileClip)
+        XCTAssertEqual(readFileURLFromPasteboard()?.path, fileURL.path)
+
+        Paster.writeToPasteboard(folderClip)
+        XCTAssertEqual(readFileURLFromPasteboard()?.path, folderURL.path)
+    }
+
+    func testFileAndFolderPathActionWritesPathStringToPasteboard() {
+        let filePath = "/Users/example/Desktop/report.pdf"
+        let folderPath = "/Users/example/Projects/Magpie"
+
+        let fileClip = ClipDisplayItem(
+            id: "file",
+            type: .file,
+            app: "Finder",
+            createdAt: Date(),
+            pinned: false,
+            title: "report.pdf",
+            preview: .file(path: filePath, kind: "PDF", sizeKB: 32)
+        )
+        let folderClip = ClipDisplayItem(
+            id: "folder",
+            type: .folder,
+            app: "Finder",
+            createdAt: Date(),
+            pinned: false,
+            title: "Magpie",
+            preview: .folder(path: folderPath, items: 12)
+        )
+
+        Paster.writePathToPasteboard(fileClip)
+        XCTAssertEqual(NSPasteboard.general.string(forType: .string), filePath)
+
+        Paster.writePathToPasteboard(folderClip)
+        XCTAssertEqual(NSPasteboard.general.string(forType: .string), folderPath)
+    }
+
+    private func readFileURLFromPasteboard() -> URL? {
+        let objects = NSPasteboard.general.readObjects(
+            forClasses: [NSURL.self],
+            options: nil
+        ) as? [URL]
+        return objects?.first
     }
 }
 
