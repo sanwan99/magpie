@@ -533,11 +533,43 @@ private struct PanelContentView: View {
                 LayoutSwitcher(viewModel: viewModel)
                 DetailPaneToggle(viewModel: viewModel)
             }
-            FilterRail(viewModel: viewModel)
+            filterRail
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 10)
+    }
+
+    private var filterRail: some View {
+        FilterRail(viewModel: viewModel)
+            .background(alignment: .center) {
+                if filterRailMistVisible {
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0.00),
+                            .init(color: filterRailMistFill, location: 0.24),
+                            .init(color: filterRailMistFill, location: 0.76),
+                            .init(color: .clear, location: 1.00),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 42)
+                    .padding(.horizontal, -18)
+                    .blur(radius: 5)
+                    .allowsHitTesting(false)
+                }
+            }
+    }
+
+    private var filterRailMistVisible: Bool {
+        settings.flavor.isDecorative && settings.flavor != .splat
+    }
+
+    private var filterRailMistFill: Color {
+        colorScheme == .dark
+            ? Color.black.opacity(0.26)
+            : Color.white.opacity(0.62)
     }
 
     // MARK: - Body
