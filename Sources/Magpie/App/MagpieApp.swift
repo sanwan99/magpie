@@ -8,5 +8,15 @@ struct MagpieApp: App {
         Settings {
             EmptyView()
         }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("设置…") {
+                    Task { @MainActor in
+                        SettingsWindowController.shared.show()
+                    }
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
     }
 }
