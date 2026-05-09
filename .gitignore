@@ -30,6 +30,8 @@ xcuserdata/
 Packages/
 Package.resolved
 .swiftpm/
+__pycache__/
+*.py[cod]
 
 # CocoaPods (defensive; not used)
 Pods/

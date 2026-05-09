@@ -77,7 +77,7 @@ private struct FilterPillStyle: ButtonStyle {
             .foregroundStyle(foregroundColor)
             .overlay(
                 Capsule()
-                    .strokeBorder(isSplat && isSelected ? splatInk : Color.clear, lineWidth: isSplat && isSelected ? 1.5 : 0)
+                    .strokeBorder(borderColor, lineWidth: borderWidth)
             )
             .rotationEffect(isSplat && isSelected ? .degrees(-2) : .degrees(0))
             .contentShape(Capsule())
@@ -86,7 +86,7 @@ private struct FilterPillStyle: ButtonStyle {
 
     private var backgroundColor: Color {
         if !isSplat {
-            return isSelected ? Color.primary : Color.clear
+            return isSelected ? selectedSoftFill : Color.clear
         }
         if isSelected {
             return colorScheme == .dark ? splatYellow : splatPurple
@@ -96,15 +96,30 @@ private struct FilterPillStyle: ButtonStyle {
 
     private var foregroundColor: Color {
         if !isSplat {
-            if isSelected {
-                return colorScheme == .dark ? Color(red: 0.10, green: 0.10, blue: 0.11) : Color.white
-            }
-            return Color.secondary
+            return isSelected ? Color.primary.opacity(0.86) : Color.secondary
         }
         if isSelected {
             return colorScheme == .dark ? splatInk : splatCream
         }
         return colorScheme == .dark ? splatCream.opacity(0.82) : splatInk.opacity(0.72)
+    }
+
+    private var borderColor: Color {
+        if isSplat && isSelected {
+            return splatInk
+        }
+        return isSelected ? Color.primary.opacity(colorScheme == .dark ? 0.22 : 0.14) : Color.clear
+    }
+
+    private var borderWidth: CGFloat {
+        if isSplat && isSelected {
+            return 1.5
+        }
+        return isSelected ? 0.7 : 0
+    }
+
+    private var selectedSoftFill: Color {
+        Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.075)
     }
 
     private var splatYellow: Color { Color(red: 1.00, green: 0.91, blue: 0.00) }
@@ -131,7 +146,7 @@ private struct PinnedToggleStyle: ToggleStyle {
                 .foregroundStyle(foregroundColor(configuration.isOn))
                 .overlay(
                     Capsule()
-                        .strokeBorder(isSplat && configuration.isOn ? splatInk : Color.clear, lineWidth: isSplat && configuration.isOn ? 1.5 : 0)
+                        .strokeBorder(borderColor(configuration.isOn), lineWidth: borderWidth(configuration.isOn))
                 )
                 .contentShape(Capsule())
         }
@@ -140,22 +155,37 @@ private struct PinnedToggleStyle: ToggleStyle {
 
     private func backgroundColor(_ isOn: Bool) -> Color {
         if !isSplat {
-            return isOn ? Color.primary : Color.clear
+            return isOn ? selectedSoftFill : Color.clear
         }
         return isOn ? (colorScheme == .dark ? splatYellow : splatPurple) : Color.clear
     }
 
     private func foregroundColor(_ isOn: Bool) -> Color {
         if !isSplat {
-            if isOn {
-                return colorScheme == .dark ? Color(red: 0.10, green: 0.10, blue: 0.11) : Color.white
-            }
-            return Color.secondary
+            return isOn ? Color.primary.opacity(0.86) : Color.secondary
         }
         if isOn {
             return colorScheme == .dark ? splatInk : splatCream
         }
         return colorScheme == .dark ? splatCream.opacity(0.82) : splatInk.opacity(0.72)
+    }
+
+    private func borderColor(_ isOn: Bool) -> Color {
+        if isSplat && isOn {
+            return splatInk
+        }
+        return isOn ? Color.primary.opacity(colorScheme == .dark ? 0.22 : 0.14) : Color.clear
+    }
+
+    private func borderWidth(_ isOn: Bool) -> CGFloat {
+        if isSplat && isOn {
+            return 1.5
+        }
+        return isOn ? 0.7 : 0
+    }
+
+    private var selectedSoftFill: Color {
+        Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.075)
     }
 
     private var splatYellow: Color { Color(red: 1.00, green: 0.91, blue: 0.00) }

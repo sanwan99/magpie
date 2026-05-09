@@ -694,34 +694,52 @@ enum JSONFormatter {
     }
 }
 
-// MARK: - JSON tree hero — 可折叠节点视图
+// MARK: - JSON tree hero — 扁平化 + LazyVStack（性能关键）
 
-/// JSON 折叠树主区。点 ▼/▶ 折叠/展开任一 object 或 array；折叠时显示 `{ ... 5 keys }`
-/// 摘要。颜色按 SyntaxHighlighter.Palette 渲染：key 蓝、string 棕、number 绿、
-/// bool/null 紫、括号/逗号灰。
+/// JSON 折叠树主区。
+///
+/// **为什么扁平化？** 早期实现是递归 `JSONNodeView`，每个 object/array 节点的
+/// `body` 内嵌一个 ForEach 渲染所有子节点 —— SwiftUI 在 view 树构建期会一次性
+/// 实例化整棵树。对几千节点的 JSON，主线程被压几百毫秒到几秒，hotkey 在这期间
+/// 响应不了，看起来像"假死叫不出来"（用户实测命中）。
+///
+/// 改法：把 JSON 整棵树扁平成 `[JSONRow]`，每行一个 row（叶子 / open-brace /
+/// close-brace 三种），用 `LazyVStack` 渲染 —— 只构建可视区的子 view，几万行
+/// JSON 也只渲染屏幕上的 ~50 行，主线程压力常数级。
+///
+/// **折叠**：collapsed Set<path>。flatten 时遇到折叠节点跳过子树、改 emit 一个
+/// 带 summary 的"折叠合并行"。点 chevron 修改 Set，触发重 flatten + 重渲染。
 private struct JSONTreeHero: View {
     let root: Any
 
-    /// path → 是否折叠。默认全部展开（空集合）；用户点 chevron 把对应 path 加进来。
-    /// path 写法：`$` 是根；`$.users[0].name` 是嵌套 — 唯一定位 + 切 clip 时
-    /// 通过 onChange(of: clip.id) 重置。
+    /// path → 是否折叠。默认全部展开（空集合）。path 写法：`$` 根；`$.users[0].name`
+    /// 嵌套。切 clip 时由父 view 通过 onChange(of: clip.id) 重置（State 在 view
+    /// 重建时清空）。
     @State private var collapsed: Set<String> = []
 
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        // 每次 collapsed 变化重新 flatten。flatten 是 O(n) 一次扫描，对几万行
+        // JSON 也是毫秒级；真正的性能瓶颈是 SwiftUI view 实例化，懒渲染解决。
+        let rows = JSONFlattener.flatten(root: root, collapsed: collapsed)
         let palette = SyntaxHighlighter.Palette.mono(colorScheme)
+
         ScrollView([.horizontal, .vertical], showsIndicators: true) {
-            VStack(alignment: .leading, spacing: 0) {
-                JSONNodeView(
-                    value: root,
-                    key: nil,
-                    path: "$",
-                    depth: 0,
-                    isLast: true,
-                    collapsed: $collapsed,
-                    palette: palette
-                )
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(rows) { row in
+                    JSONRowView(
+                        row: row,
+                        palette: palette,
+                        onToggle: { path in
+                            if collapsed.contains(path) {
+                                collapsed.remove(path)
+                            } else {
+                                collapsed.insert(path)
+                            }
+                        }
+                    )
+                }
             }
             .padding(EdgeInsets(top: 22, leading: 20, bottom: 22, trailing: 20))
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -730,199 +748,265 @@ private struct JSONTreeHero: View {
     }
 }
 
-/// 单个 JSON 节点视图。递归 — object / array 节点会内嵌一个 ForEach 渲染子节点。
-/// 性能上：对一两千个节点的 JSON 也吃得消（实测 macOS 14+），更大就要考虑 lazy。
-private struct JSONNodeView: View {
-    let value: Any
-    /// 这个节点在父对象中的 key（数组元素 / 根节点是 nil）。
-    let key: String?
-    /// 唯一 path 标识，用来挂折叠状态。
-    let path: String
-    let depth: Int
-    /// 是否是父集合的最后一个子节点 — 决定要不要在末尾加逗号。
-    let isLast: Bool
-    @Binding var collapsed: Set<String>
+/// 单行渲染。三种 kind：openBrace（折叠时合并 close 和 summary）/ closeBrace / leaf。
+/// 单行 SwiftUI view 复杂度恒定，是 LazyVStack 子项的最佳形态。
+private struct JSONRowView: View {
+    let row: JSONRow
     let palette: SyntaxHighlighter.Palette
+    let onToggle: (String) -> Void
 
     private let fontSize: CGFloat = 13
     private let indentUnit: CGFloat = 16
 
     var body: some View {
-        switch valueKind {
-        case .object(let dict):
-            objectView(dict: dict)
-        case .array(let arr):
-            arrayView(arr: arr)
-        case .string(let s):
-            leafRow(text: stringLiteral(s), color: palette.string)
-        case .number(let s):
-            leafRow(text: s, color: palette.number)
-        case .boolOrNull(let s):
-            leafRow(text: s, color: palette.keyword)
+        HStack(spacing: 0) {
+            // 缩进
+            Color.clear.frame(width: CGFloat(row.depth) * indentUnit, height: 1)
+            // chevron / 占位（保持 close brace 跟 open brace 列对齐）
+            switch row.kind {
+            case .openBrace(let path, _, _, _, let isCollapsed, _, _):
+                Button(action: { onToggle(path) }) {
+                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(palette.plain.opacity(0.55))
+                        .frame(width: 14, height: 14)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 4)
+            case .closeBrace, .leaf:
+                Color.clear.frame(width: 18, height: 1) // 14 + 4 trailing
+            }
+
+            // 内容
+            content
+        }
+        .font(.system(size: fontSize, design: .monospaced))
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch row.kind {
+        case .openBrace(_, let key, let isObject, let count, let isCollapsed, let isLast, _):
+            keyPrefix(key)
+            Text(isObject ? "{" : "[").foregroundStyle(palette.plain)
+            if isCollapsed {
+                Text(" \(count) \(isObject ? (count == 1 ? "key" : "keys") : (count == 1 ? "item" : "items")) ")
+                    .foregroundStyle(palette.comment)
+                    .italic()
+                Text(isObject ? "}" : "]").foregroundStyle(palette.plain)
+                if !isLast { Text(",").foregroundStyle(palette.plain) }
+            }
+        case .closeBrace(let isObject, let isLast):
+            Text(isObject ? "}" : "]").foregroundStyle(palette.plain)
+            if !isLast { Text(",").foregroundStyle(palette.plain) }
+        case .leaf(let key, let value, let color, let isLast):
+            keyPrefix(key)
+            Text(value)
+                .foregroundStyle(colorFor(color))
+                .textSelection(.enabled)
+            if !isLast { Text(",").foregroundStyle(palette.plain) }
         }
     }
 
-    // MARK: object
-
     @ViewBuilder
-    private func objectView(dict: [String: Any]) -> some View {
-        let keys = dict.keys.sorted()
-        let isCollapsed = collapsed.contains(path)
-        VStack(alignment: .leading, spacing: 0) {
-            // 开行：[indent] [chevron] [key:] {
-            HStack(spacing: 0) {
-                indent
-                chevron(isCollapsed: isCollapsed)
-                keyPrefix
-                bracket("{")
-                if isCollapsed {
-                    summary(label: "\(keys.count) \(keys.count == 1 ? "key" : "keys")")
-                    bracket(" }")
-                    if !isLast { comma }
-                }
-            }
-            .font(.system(size: fontSize, design: .monospaced))
+    private func keyPrefix(_ key: String?) -> some View {
+        if let key {
+            Text(JSONFlattener.stringLiteral(key))
+                .foregroundStyle(palette.function)
+            Text(": ").foregroundStyle(palette.plain)
+        }
+    }
 
-            if !isCollapsed {
-                ForEach(0..<keys.count, id: \.self) { i in
-                    let k = keys[i]
-                    JSONNodeView(
+    private func colorFor(_ tag: JSONRow.ColorTag) -> Color {
+        switch tag {
+        case .string:  return palette.string
+        case .number:  return palette.number
+        case .keyword: return palette.keyword
+        }
+    }
+}
+
+/// 单行结构体。`id` 必须稳定 + 唯一，LazyVStack 才能正确 diff。
+private struct JSONRow: Identifiable {
+    let id: String
+    let depth: Int
+    let kind: Kind
+
+    enum Kind {
+        /// 开括号行。折叠时这一行同时承担"折叠摘要 + close 括号"，下面不再 emit
+        /// 子行和 close 行。
+        ///   - path: 折叠用 path
+        ///   - key: 父 key（数组元素或根为 nil）
+        ///   - isObject: true 是 `{`，false 是 `[`
+        ///   - childCount: 用于折叠摘要 "5 keys" / "12 items"
+        ///   - isCollapsed: 当前是否折叠
+        ///   - isLast: 是否是父集合的最后一个 — 折叠态决定要不要尾逗号
+        ///   - hasChildren: 没有子节点（空对象/数组）时不画 chevron
+        case openBrace(
+            path: String,
+            key: String?,
+            isObject: Bool,
+            childCount: Int,
+            isCollapsed: Bool,
+            isLast: Bool,
+            hasChildren: Bool
+        )
+        case closeBrace(isObject: Bool, isLast: Bool)
+        case leaf(key: String?, value: String, color: ColorTag, isLast: Bool)
+    }
+
+    enum ColorTag {
+        case string
+        case number
+        case keyword  // bool / null
+    }
+}
+
+/// 把 Foundation JSON 树（NSDictionary / NSArray / NSNumber / NSNull / NSString）
+/// 扁平化成行序列。collapsed 集合命中时跳过子树并把摘要合并到 openBrace 行。
+private enum JSONFlattener {
+    static func flatten(root: Any, collapsed: Set<String>) -> [JSONRow] {
+        var rows: [JSONRow] = []
+        rows.reserveCapacity(64)
+        emit(value: root, key: nil, path: "$", depth: 0, isLast: true,
+             collapsed: collapsed, into: &rows)
+        return rows
+    }
+
+    private static func emit(
+        value: Any,
+        key: String?,
+        path: String,
+        depth: Int,
+        isLast: Bool,
+        collapsed: Set<String>,
+        into rows: inout [JSONRow]
+    ) {
+        // null
+        if value is NSNull {
+            rows.append(JSONRow(
+                id: path,
+                depth: depth,
+                kind: .leaf(key: key, value: "null", color: .keyword, isLast: isLast)
+            ))
+            return
+        }
+        // object
+        if let dict = value as? [String: Any] {
+            let keys = dict.keys.sorted()
+            let isCollapsedNow = collapsed.contains(path)
+            rows.append(JSONRow(
+                id: path + "#open",
+                depth: depth,
+                kind: .openBrace(
+                    path: path,
+                    key: key,
+                    isObject: true,
+                    childCount: keys.count,
+                    isCollapsed: isCollapsedNow,
+                    isLast: isLast,
+                    hasChildren: !keys.isEmpty
+                )
+            ))
+            if !isCollapsedNow && !keys.isEmpty {
+                for (i, k) in keys.enumerated() {
+                    emit(
                         value: dict[k] ?? NSNull(),
                         key: k,
                         path: "\(path).\(escapeForPath(k))",
                         depth: depth + 1,
                         isLast: i == keys.count - 1,
-                        collapsed: $collapsed,
-                        palette: palette
+                        collapsed: collapsed,
+                        into: &rows
                     )
                 }
-                HStack(spacing: 0) {
-                    indent
-                    // chevron 占位 —— 让 close brace 跟 open brace 列对齐
-                    chevronPlaceholder
-                    bracket("}")
-                    if !isLast { comma }
-                }
-                .font(.system(size: fontSize, design: .monospaced))
+                rows.append(JSONRow(
+                    id: path + "#close",
+                    depth: depth,
+                    kind: .closeBrace(isObject: true, isLast: isLast)
+                ))
             }
+            return
         }
-    }
-
-    // MARK: array
-
-    @ViewBuilder
-    private func arrayView(arr: [Any]) -> some View {
-        let isCollapsed = collapsed.contains(path)
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 0) {
-                indent
-                chevron(isCollapsed: isCollapsed)
-                keyPrefix
-                bracket("[")
-                if isCollapsed {
-                    summary(label: "\(arr.count) \(arr.count == 1 ? "item" : "items")")
-                    bracket(" ]")
-                    if !isLast { comma }
-                }
-            }
-            .font(.system(size: fontSize, design: .monospaced))
-
-            if !isCollapsed {
-                ForEach(0..<arr.count, id: \.self) { i in
-                    JSONNodeView(
+        // array
+        if let arr = value as? [Any] {
+            let isCollapsedNow = collapsed.contains(path)
+            rows.append(JSONRow(
+                id: path + "#open",
+                depth: depth,
+                kind: .openBrace(
+                    path: path,
+                    key: key,
+                    isObject: false,
+                    childCount: arr.count,
+                    isCollapsed: isCollapsedNow,
+                    isLast: isLast,
+                    hasChildren: !arr.isEmpty
+                )
+            ))
+            if !isCollapsedNow && !arr.isEmpty {
+                for i in 0..<arr.count {
+                    emit(
                         value: arr[i],
                         key: nil,
                         path: "\(path)[\(i)]",
                         depth: depth + 1,
                         isLast: i == arr.count - 1,
-                        collapsed: $collapsed,
-                        palette: palette
+                        collapsed: collapsed,
+                        into: &rows
                     )
                 }
-                HStack(spacing: 0) {
-                    indent
-                    chevronPlaceholder
-                    bracket("]")
-                    if !isLast { comma }
-                }
-                .font(.system(size: fontSize, design: .monospaced))
+                rows.append(JSONRow(
+                    id: path + "#close",
+                    depth: depth,
+                    kind: .closeBrace(isObject: false, isLast: isLast)
+                ))
             }
+            return
         }
-    }
-
-    // MARK: leaf (string / number / bool / null)
-
-    private func leafRow(text: String, color: Color) -> some View {
-        HStack(spacing: 0) {
-            indent
-            chevronPlaceholder
-            keyPrefix
-            Text(text)
-                .foregroundStyle(color)
-                .textSelection(.enabled)
-            if !isLast { comma }
+        // string
+        if let s = value as? String {
+            rows.append(JSONRow(
+                id: path,
+                depth: depth,
+                kind: .leaf(key: key, value: stringLiteral(s), color: .string, isLast: isLast)
+            ))
+            return
         }
-        .font(.system(size: fontSize, design: .monospaced))
-    }
-
-    // MARK: cells
-
-    private var indent: some View {
-        Color.clear.frame(width: CGFloat(depth) * indentUnit, height: 1)
-    }
-
-    private func chevron(isCollapsed: Bool) -> some View {
-        Button(action: { toggle() }) {
-            Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(palette.plain.opacity(0.55))
-                .frame(width: 14, height: 14)
-                .contentShape(Rectangle())
+        // number / bool
+        if let n = value as? NSNumber {
+            // NSNumber 同时承担 Bool / Int / Double — 用 objCType 区分 Bool。
+            // CFNumberGetType 对 Bool 返回 charType `c`。
+            let type = String(cString: n.objCType)
+            if type == "c" {
+                rows.append(JSONRow(
+                    id: path,
+                    depth: depth,
+                    kind: .leaf(key: key, value: n.boolValue ? "true" : "false",
+                                color: .keyword, isLast: isLast)
+                ))
+            } else {
+                rows.append(JSONRow(
+                    id: path,
+                    depth: depth,
+                    kind: .leaf(key: key, value: n.stringValue,
+                                color: .number, isLast: isLast)
+                ))
+            }
+            return
         }
-        .buttonStyle(.plain)
-        .padding(.trailing, 4)
+        // 未识别类型兜底
+        rows.append(JSONRow(
+            id: path,
+            depth: depth,
+            kind: .leaf(key: key, value: String(describing: value),
+                        color: .string, isLast: isLast)
+        ))
     }
 
-    private var chevronPlaceholder: some View {
-        Color.clear.frame(width: 18, height: 1)  // 14 + 4 trailing
-    }
-
-    @ViewBuilder
-    private var keyPrefix: some View {
-        if let key {
-            Text(stringLiteral(key))
-                .foregroundStyle(palette.function)
-            Text(": ")
-                .foregroundStyle(palette.plain)
-        }
-    }
-
-    private func bracket(_ s: String) -> some View {
-        Text(s).foregroundStyle(palette.plain)
-    }
-
-    private var comma: some View {
-        Text(",").foregroundStyle(palette.plain)
-    }
-
-    private func summary(label: String) -> some View {
-        Text(" \(label) ")
-            .foregroundStyle(palette.comment)
-            .italic()
-    }
-
-    // MARK: helpers
-
-    private func toggle() {
-        if collapsed.contains(path) {
-            collapsed.remove(path)
-        } else {
-            collapsed.insert(path)
-        }
-    }
-
-    /// 把字符串字面量转成 JSON 双引号包裹形式，转义控制字符。
-    private func stringLiteral(_ s: String) -> String {
+    /// 转义控制字符 + 包双引号，模拟 JSON 字符串字面量。
+    static func stringLiteral(_ s: String) -> String {
         var out = "\""
         for c in s.unicodeScalars {
             switch c {
@@ -943,36 +1027,10 @@ private struct JSONNodeView: View {
         return out
     }
 
-    /// path 段里有 `.` 或 `[` 等会破坏寻址 — 简单转义即可，仅为了 collapsed Set 唯一性。
-    private func escapeForPath(_ k: String) -> String {
+    /// path 段含 `.` 或 `[` 时简单转义，仅为了 collapsed Set 唯一性。
+    private static func escapeForPath(_ k: String) -> String {
         k.replacingOccurrences(of: ".", with: "\\.")
          .replacingOccurrences(of: "[", with: "\\[")
-    }
-
-    // MARK: 类型分流
-
-    private enum NodeKind {
-        case object([String: Any])
-        case array([Any])
-        case string(String)
-        case number(String)        // 保留原始字面量
-        case boolOrNull(String)    // "true" / "false" / "null"
-    }
-
-    private var valueKind: NodeKind {
-        if value is NSNull { return .boolOrNull("null") }
-        if let dict = value as? [String: Any] { return .object(dict) }
-        if let arr = value as? [Any] { return .array(arr) }
-        if let s = value as? String { return .string(s) }
-        if let n = value as? NSNumber {
-            // NSNumber 同时承担 Bool / Int / Double — 用 objCType 区分 Bool。
-            // (CFNumberGetType 对 Bool 返回 charType `c`)
-            let type = String(cString: n.objCType)
-            if type == "c" { return .boolOrNull(n.boolValue ? "true" : "false") }
-            return .number(n.stringValue)
-        }
-        // 未识别类型兜底：用 description。
-        return .string(String(describing: value))
     }
 }
 
