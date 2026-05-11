@@ -6,6 +6,7 @@ import Foundation
 ///   - whitespace-separated tokens, AND-ed together
 ///   - tokens with `key:value` shape are facets — recognized keys: `type`, `app`, `tag`
 ///   - everything else is a free-text term, matched against the FTS index
+///     (CJK terms also get a storage-layer substring fallback)
 ///
 /// Example:
 ///   `type:code react hook app:vscode`
@@ -17,10 +18,7 @@ enum SearchQueryParser {
         var tags: [String] = []
         var terms: [String] = []
 
-        // Split on whitespace; tokens are short, no need for a real tokenizer.
-        let tokens = input
-            .split(whereSeparator: { $0.isWhitespace })
-            .map(String.init)
+        let tokens = tokenize(input)
 
         for token in tokens {
             if let colon = token.firstIndex(of: ":") {
@@ -54,5 +52,38 @@ enum SearchQueryParser {
             tags: tags,
             pinnedOnly: pinnedOnly
         )
+    }
+
+    /// Tokenizes the raw search box input while preserving quoted phrases.
+    /// Examples:
+    /// - `foo bar` -> [`foo`, `bar`]
+    /// - `"foo bar"` -> [`foo bar`]
+    /// - `app:"Visual Studio Code"` -> [`app:Visual Studio Code`]
+    private static func tokenize(_ input: String) -> [String] {
+        var tokens: [String] = []
+        var current = ""
+        var inQuotes = false
+
+        func flushCurrent() {
+            guard !current.isEmpty else { return }
+            tokens.append(current)
+            current.removeAll(keepingCapacity: true)
+        }
+
+        for char in input {
+            if char == "\"" {
+                inQuotes.toggle()
+                continue
+            }
+
+            if char.isWhitespace && !inQuotes {
+                flushCurrent()
+            } else {
+                current.append(char)
+            }
+        }
+
+        flushCurrent()
+        return tokens
     }
 }
