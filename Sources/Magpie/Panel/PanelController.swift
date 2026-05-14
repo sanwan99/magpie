@@ -139,7 +139,7 @@ final class PanelController {
     // MARK: - Show / Hide
 
     func toggle() {
-        if isVisible {
+        if isVisible, panel.isVisible, panel.isKeyWindow, NSApp.isActive {
             hide()
         } else {
             // Auth gate is async (Touch ID may prompt); wrap in Task.
@@ -154,7 +154,6 @@ final class PanelController {
     }
 
     func show() {
-        guard !isVisible else { return }
         // Snapshot the frontmost app *before* the panel becomes key, so paste
         // can target the correct app even if .nonactivatingPanel ever flakes.
         frontmost.snapshot()
@@ -162,10 +161,18 @@ final class PanelController {
 
         positionAtBottomCenter()
         let target = panel.frame
+        if isVisible {
+            panel.alphaValue = settings.panelOpacity
+            panel.makeKeyAndOrderFront(nil)
+            panel.orderFrontRegardless()
+            return
+        }
+
         let start = target.offsetBy(dx: 0, dy: -target.height - 16)
         panel.setFrame(start, display: false)
         panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
+        panel.orderFrontRegardless()
 
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.32
@@ -257,12 +264,19 @@ final class PanelController {
     // MARK: - Layout
 
     private func positionAtBottomCenter() {
-        guard let screen = NSScreen.main else { return }
+        guard let screen = activeScreen() else { return }
         let visible = screen.visibleFrame
         let size = Self.panelSize
         let x = visible.midX - size.width / 2
         let y = visible.minY + Self.bottomInset
         panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: false)
+    }
+
+    private func activeScreen() -> NSScreen? {
+        let mouse = NSEvent.mouseLocation
+        return NSScreen.screens.first { $0.frame.contains(mouse) }
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
     }
 
     // MARK: - Keyboard wiring

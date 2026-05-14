@@ -10,6 +10,19 @@ final class MagpieTests: XCTestCase {
 }
 
 @MainActor
+final class PanelWindowTests: XCTestCase {
+    func testPanelMovesToActiveSpaceWhenOrderedFront() {
+        let panel = PanelWindow(contentRect: NSRect(x: 0, y: 0, width: 100, height: 100))
+        defer { panel.close() }
+
+        XCTAssertTrue(panel.collectionBehavior.contains(.moveToActiveSpace))
+        XCTAssertTrue(panel.collectionBehavior.contains(.fullScreenAuxiliary))
+        XCTAssertFalse(panel.collectionBehavior.contains(.canJoinAllSpaces))
+        XCTAssertFalse(panel.collectionBehavior.contains(.stationary))
+    }
+}
+
+@MainActor
 final class PasterTests: XCTestCase {
     func testFileAndFolderDefaultPasteWritesFileURLs() throws {
         let tempRoot = FileManager.default.temporaryDirectory
