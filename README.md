@@ -153,9 +153,10 @@ Magpie 设计上就是**永不联网**：
 git clone https://github.com/sanwan99/magpie.git
 cd magpie
 xcodegen generate          # 从 project.yml 生成 Magpie.xcodeproj
-xcodebuild -project Magpie.xcodeproj -scheme Magpie -configuration Debug build
-open build/Build/Products/Debug/Magpie.app
+Scripts/install-release.sh # 构建 Release，安装到 /Applications/Magpie.app，并清理 Debug app
 ```
+
+不要从 `build/Build/Products/Debug/Magpie.app` 启动 Magpie。启动器会索引项目内 Debug app，导致同时出现 `Magpie` 和 `Magpie Debug` 两个入口。
 
 依赖（SPM 自动拉取）：
 
@@ -167,10 +168,12 @@ open build/Build/Products/Debug/Magpie.app
 ## 🧪 测试
 
 ```bash
-xcodebuild -project Magpie.xcodeproj -scheme Magpie test
+Scripts/test.sh
 ```
 
-当前 **82 个 XCTest 单元测试**：
+测试脚本使用工作区外的 `/private/tmp/magpie-derived` 作为 DerivedData，并复用 `/private/tmp/magpie-source-packages` 包缓存；结束后会清理临时 Debug app，避免启动器出现第二个 Magpie 入口。
+
+当前 **98 个 XCTest 单元测试**：
 
 - `SecretDetectorTests` — 27 个（8 种 secret 模式 + 阴性样本）
 - `SnippetRepositoryTests` — 10 个（CRUD + 触发器索引）
