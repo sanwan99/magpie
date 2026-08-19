@@ -7,33 +7,56 @@ struct GridLayout: View {
     let viewModel: ClipsViewModel
     @State private var tapState = TapState()
 
+    private static let minimumTileWidth: CGFloat = 170
+    private static let maximumTileWidth: CGFloat = 220
+    private static let columnSpacing: CGFloat = 8
+    private static let horizontalPadding: CGFloat = 12
+
     private let columns = [
-        GridItem(.adaptive(minimum: 170, maximum: 220), spacing: 8)
+        GridItem(
+            .adaptive(minimum: GridLayout.minimumTileWidth, maximum: GridLayout.maximumTileWidth),
+            spacing: GridLayout.columnSpacing
+        )
     ]
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.vertical, showsIndicators: false) {
-                LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(Array(viewModel.clips.enumerated()), id: \.element.id) { index, clip in
-                        GridTile(
-                            clip: clip,
-                            isFocused: index == viewModel.focusedIndex,
-                            shortcutNumber: index < 9 ? index + 1 : nil
-                        )
-                            .id(clip.id)
-                            .onTapGesture {
-                                handleTap(index: index, viewModel: viewModel, state: tapState)
-                            }
+        GeometryReader { geometry in
+            let columnCount = Self.columnCount(for: geometry.size.width)
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVGrid(columns: columns, spacing: Self.columnSpacing) {
+                        ForEach(Array(viewModel.clips.enumerated()), id: \.element.id) { index, clip in
+                            GridTile(
+                                clip: clip,
+                                isFocused: index == viewModel.focusedIndex,
+                                shortcutNumber: index < 9 ? index + 1 : nil
+                            )
+                                .id(clip.id)
+                                .onTapGesture {
+                                    handleTap(index: index, viewModel: viewModel, state: tapState)
+                                }
+                        }
                     }
+                    .padding(Self.horizontalPadding)
                 }
-                .padding(12)
-            }
-            .onChange(of: viewModel.focusedIndex) { _, newIndex in
-                guard let id = viewModel.clip(at: newIndex)?.id else { return }
-                proxy.scrollTo(id, anchor: nil)
+                .onAppear {
+                    viewModel.updateGridColumnCount(columnCount)
+                }
+                .onChange(of: columnCount) { _, newColumnCount in
+                    viewModel.updateGridColumnCount(newColumnCount)
+                }
+                .onChange(of: viewModel.focusedIndex) { _, newIndex in
+                    guard let id = viewModel.clip(at: newIndex)?.id else { return }
+                    proxy.scrollTo(id, anchor: nil)
+                }
             }
         }
+    }
+
+    private static func columnCount(for width: CGFloat) -> Int {
+        let contentWidth = max(0, width - horizontalPadding * 2)
+        let count = Int((contentWidth + columnSpacing) / (minimumTileWidth + columnSpacing))
+        return max(1, count)
     }
 }
 

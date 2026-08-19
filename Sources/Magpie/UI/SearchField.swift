@@ -4,6 +4,7 @@ import SwiftUI
 /// Auto-focuses on appear so ⌘P → typing immediately filters.
 struct SearchField: View {
     @Bindable var viewModel: ClipsViewModel
+    let onEditingChanged: (Bool) -> Void
     @FocusState private var focused: Bool
     private let settings = SettingsStore.shared
     @Environment(\.colorScheme) private var colorScheme
@@ -53,6 +54,10 @@ struct SearchField: View {
         .onAppear {
             // Focus the field on first show; subsequent ⌘P calls also reset focus.
             focused = true
+            onEditingChanged(true)
+        }
+        .onChange(of: focused) { _, isFocused in
+            onEditingChanged(isFocused)
         }
     }
 

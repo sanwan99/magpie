@@ -7,10 +7,8 @@ final class PanelWindow: NSPanel {
     var onCancel: (() -> Void)?
     /// Invoked when ↵ is pressed — paste the focused clip.
     var onPaste: (() -> Void)?
-    /// Invoked when ←/↑ is pressed — move focus toward older clips.
-    var onMoveBack: (() -> Void)?
-    /// Invoked when →/↓ is pressed — move focus toward newer clips.
-    var onMoveForward: (() -> Void)?
+    /// Invoked when an arrow key is pressed — focus movement is layout-aware.
+    var onMoveFocus: ((FocusNavigationDirection) -> Void)?
     /// Invoked when ⌘1…⌘9 is pressed — paste the Nth clip directly.
     var onPasteAtIndex: ((Int) -> Void)?
     /// Invoked when ⌘D is pressed — toggle pinned for the focused clip.
@@ -42,6 +40,11 @@ final class PanelWindow: NSPanel {
     }
 
     override func keyDown(with event: NSEvent) {
+        if isTextInputActive {
+            super.keyDown(with: event)
+            return
+        }
+
         let cmdOnly = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
 
         if cmdOnly, let chars = event.charactersIgnoringModifiers {
@@ -64,16 +67,27 @@ final class PanelWindow: NSPanel {
         case 36, 76:           // Return, Numpad Enter
             onPaste?()
             return
-        case 123, 126:          // Left, Up
-            onMoveBack?()
+        case 123:               // Left
+            onMoveFocus?(.left)
             return
-        case 124, 125:          // Right, Down
-            onMoveForward?()
+        case 124:               // Right
+            onMoveFocus?(.right)
+            return
+        case 126:               // Up
+            onMoveFocus?(.up)
+            return
+        case 125:               // Down
+            onMoveFocus?(.down)
             return
         default:
             break
         }
 
         super.keyDown(with: event)
+    }
+
+    private var isTextInputActive: Bool {
+        guard let responder = firstResponder else { return false }
+        return responder is NSTextView || responder is NSTextField || responder is NSSearchField
     }
 }

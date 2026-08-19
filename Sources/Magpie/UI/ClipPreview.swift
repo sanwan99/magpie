@@ -58,6 +58,11 @@ struct ClipPreview: View {
                     .font(.system(size: 9))
                     .foregroundStyle(accentText)
             }
+            if clip.pinned, !clip.note.isEmpty {
+                Image(systemName: "note.text")
+                    .font(.system(size: 9))
+                    .foregroundStyle(accentText)
+            }
             Text(timeAgo)
                 .font(.system(size: 10))
                 .foregroundStyle(tertiaryText)

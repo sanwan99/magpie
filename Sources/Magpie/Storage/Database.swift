@@ -94,6 +94,11 @@ final class Database: @unchecked Sendable {
             """)
             try db.execute(sql: "CREATE INDEX idx_snippets_shortcut ON snippets(shortcut);")
         }
+        // Pinned clip notes. Kept on the clip row so notes survive unpin/re-pin,
+        // while UI still exposes editing only for pinned clips.
+        migrator.registerMigration("v3_clip_notes") { db in
+            try db.execute(sql: "ALTER TABLE clips ADD COLUMN note TEXT NOT NULL DEFAULT '';")
+        }
         try migrator.migrate(queue)
     }
 }

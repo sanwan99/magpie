@@ -89,15 +89,27 @@ enum Paster {
             NSLog("[paste] no frontmost target — skipping ⌘V (just wrote pasteboard)")
             return
         }
+        guard accessibilityTrusted(prompt: true) else {
+            NSLog("[paste] Accessibility permission missing — skipping ⌘V (just wrote pasteboard)")
+            return
+        }
         let bid = target.bundleIdentifier ?? "?"
         NSLog("[paste] activating target=%@ active=%d", bid, target.isActive ? 1 : 0)
         target.activate()
-        // Small delay to let the activation propagate before posting the keystroke.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+        // Give Electron/WebView-backed editors such as Typora enough time to
+        // restore the key text view before posting the synthetic paste event.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
             let frontNow = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?"
             NSLog("[paste] firing ⌘V (frontmost now=%@)", frontNow)
             simulateCmdV()
         }
+    }
+
+    private static func accessibilityTrusted(prompt: Bool) -> Bool {
+        guard prompt else { return AXIsProcessTrusted() }
+        let promptKey = "AXTrustedCheckOptionPrompt" as CFString
+        let options = [promptKey: true] as CFDictionary
+        return AXIsProcessTrustedWithOptions(options)
     }
 
     /// Posts a full ⌘V key sequence: ⌘ down → V down → V up → ⌘ up.

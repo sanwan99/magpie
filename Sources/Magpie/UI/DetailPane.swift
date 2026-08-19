@@ -26,6 +26,8 @@ struct DetailPane: View {
     let onPaste: () -> Void
     let onPastePath: () -> Void
     let onTogglePin: () -> Void
+    let onUpdateNote: (String) -> Void
+    let onNoteEditingChanged: (Bool) -> Void
     /// 点击 header 右上 ⌘O 按钮时调用 — 由 PanelController 转发到
     /// ExpandedPreviewWindowController.shared.show(clip:)。
     var onExpand: (() -> Void)? = nil
@@ -53,6 +55,8 @@ struct DetailPane: View {
             DetailHeader(
                 clip: clip,
                 onTogglePin: onTogglePin,
+                onUpdateNote: onUpdateNote,
+                onNoteEditingChanged: onNoteEditingChanged,
                 onExpand: onExpand
             )
             .padding(.horizontal, 16)
@@ -155,9 +159,13 @@ struct DetailPane: View {
 private struct DetailHeader: View {
     let clip: ClipDisplayItem
     let onTogglePin: () -> Void
+    let onUpdateNote: (String) -> Void
+    let onNoteEditingChanged: (Bool) -> Void
     let onExpand: (() -> Void)?
 
     private let settings = SettingsStore.shared
+    @State private var notePopoverVisible = false
+    @State private var noteDraft = ""
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -166,6 +174,9 @@ private struct DetailHeader: View {
                 eyebrow
                 title
                 meta
+                if clip.pinned, !clip.note.isEmpty {
+                    noteSummary
+                }
             }
             tools
                 .padding(.top, -2)
@@ -261,6 +272,36 @@ private struct DetailHeader: View {
                     : settings.language.pick(zh: "固定 (⌘D)", en: "Pin (⌘D)"),
                 action: onTogglePin
             )
+            if clip.pinned {
+                ToolButton(
+                    systemName: "note.text",
+                    tint: clip.note.isEmpty ? nil : MagpieColors.pin(colorScheme),
+                    helpText: clip.note.isEmpty
+                        ? settings.language.pick(zh: "添加备注", en: "Add note")
+                        : settings.language.pick(zh: "编辑备注", en: "Edit note"),
+                    action: {
+                        noteDraft = clip.note
+                        notePopoverVisible = true
+                    }
+                )
+                .popover(isPresented: $notePopoverVisible, arrowEdge: .top) {
+                    PinnedNoteEditor(
+                        note: $noteDraft,
+                        onCancel: {
+                            noteDraft = clip.note
+                            notePopoverVisible = false
+                        },
+                        onSave: {
+                            onUpdateNote(noteDraft)
+                            notePopoverVisible = false
+                        }
+                    )
+                    .frame(width: 280, height: 190)
+                }
+                .onChange(of: notePopoverVisible) { _, visible in
+                    onNoteEditingChanged(visible)
+                }
+            }
             if let onExpand {
                 ToolButton(
                     systemName: "arrow.up.left.and.arrow.down.right",
@@ -271,6 +312,33 @@ private struct DetailHeader: View {
                 .keyboardShortcut("o", modifiers: .command)
             }
         }
+    }
+
+    private var noteSummary: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "note.text")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(MagpieColors.pin(colorScheme))
+                .padding(.top, 2)
+            Text(clip.note)
+                .font(.system(size: 11.5))
+                .lineLimit(2)
+                .lineSpacing(2)
+                .foregroundStyle(Color.secondary.opacity(0.92))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(MagpieColors.blockBg(colorScheme))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .strokeBorder(MagpieColors.pin(colorScheme).opacity(0.18), lineWidth: 0.5)
+        )
+        .padding(.top, 2)
+        .padding(.trailing, 60)
     }
 
     private var eyebrowText: String {
@@ -335,6 +403,60 @@ private struct DetailBody: View {
                 .foregroundStyle(.tertiary)
                 .italic()
         }
+    }
+}
+
+private struct PinnedNoteEditor: View {
+    @Binding var note: String
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    private let settings = SettingsStore.shared
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 7) {
+                Image(systemName: "note.text")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(MagpieColors.pin(colorScheme))
+                Text(settings.language.pick(zh: "Pinned 备注", en: "Pinned note"))
+                    .font(.system(size: 12.5, weight: .semibold))
+                Spacer()
+            }
+
+            TextEditor(text: $note)
+                .font(.system(size: 12))
+                .scrollContentBackground(.hidden)
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(MagpieColors.blockBg(colorScheme))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(MagpieColors.rule(colorScheme), lineWidth: 0.5)
+                )
+
+            HStack(spacing: 8) {
+                Button(settings.language.pick(zh: "清空", en: "Clear")) {
+                    note = ""
+                    onSave()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.secondary)
+
+                Spacer()
+
+                Button(settings.language.pick(zh: "取消", en: "Cancel"), action: onCancel)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.secondary)
+                Button(settings.language.pick(zh: "保存", en: "Save"), action: onSave)
+                    .buttonStyle(.borderedProminent)
+            }
+            .font(.system(size: 11.5, weight: .medium))
+        }
+        .padding(12)
     }
 }
 

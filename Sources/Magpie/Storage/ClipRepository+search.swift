@@ -35,21 +35,27 @@ extension ClipRepository {
                                    OR LOWER(COALESCE(body, '')) LIKE ? ESCAPE '\\'
                                    OR LOWER(COALESCE(tags, '')) LIKE ? ESCAPE '\\'
                             )
+                            OR LOWER(COALESCE(clips.note, '')) LIKE ? ESCAPE '\\'
                         )
                         """)
                     args.append(sanitizeFTSTerm(term))
+                    args.append(pattern)
                     args.append(pattern)
                     args.append(pattern)
                     args.append(pattern)
                 } else {
                     wheres.append("""
-                        clips.id IN (
-                            SELECT clip_id
-                            FROM clips_fts
-                            WHERE clips_fts MATCH ?
+                        (
+                            clips.id IN (
+                                SELECT clip_id
+                                FROM clips_fts
+                                WHERE clips_fts MATCH ?
+                            )
+                            OR LOWER(COALESCE(clips.note, '')) LIKE ? ESCAPE '\\'
                         )
                         """)
                     args.append(sanitizeFTSTerm(term))
+                    args.append(likePattern(for: term))
                 }
             }
 
@@ -94,6 +100,18 @@ extension ClipRepository {
             try db.execute(
                 sql: "UPDATE clips SET pinned = 1 - pinned WHERE id = ?",
                 arguments: [clipId]
+            )
+        }
+    }
+
+    /// Updates the user note attached to a clip. The UI exposes this only for
+    /// pinned clips, but the data is intentionally kept if the clip is unpinned.
+    func updateNote(clipId: String, note: String) throws {
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        try database.dbQueue.write { db in
+            try db.execute(
+                sql: "UPDATE clips SET note = ? WHERE id = ?",
+                arguments: [trimmed, clipId]
             )
         }
     }

@@ -9,6 +9,7 @@ struct ClipDisplayItem: Identifiable, Equatable, Sendable {
     let app: String?
     let createdAt: Date
     let pinned: Bool
+    let note: String
     let title: String?
     let preview: PreviewContent
 
@@ -21,6 +22,13 @@ struct ClipDisplayItem: Identifiable, Equatable, Sendable {
         case image(path: String, width: Int, height: Int, sizeKB: Int)
         case unsupported
     }
+}
+
+enum FocusNavigationDirection: Sendable {
+    case left
+    case right
+    case up
+    case down
 }
 
 extension ClipDisplayItem {
@@ -54,6 +62,7 @@ extension ClipDisplayItem {
         self.app = record.app
         self.createdAt = record.createdAtDate
         self.pinned = record.pinned
+        self.note = record.note
         self.title = record.title
         self.preview = preview
     }
@@ -140,6 +149,9 @@ final class ClipsViewModel {
     @ObservationIgnored
     private static let activeLayoutKey = "magpie.activeLayout"
 
+    @ObservationIgnored
+    private var gridColumnCount: Int = 1
+
     init(repository: ClipRepository, limit: Int = 200) {
         self.repository = repository
         self.limit = limit
@@ -171,16 +183,24 @@ final class ClipsViewModel {
     // MARK: - Refresh
 
     func refresh() {
-        refresh(preferredFocusID: nil)
+        refresh(preferredFocusID: nil, preserveFocus: true)
     }
 
-    private func refresh(preferredFocusID: String?) {
+    /// Refresh used when the panel is summoned. A newly copied clip should be
+    /// the visible/focused default instead of leaving the user at an old
+    /// scroll position from a previous panel session.
+    func refreshForPanelShow() {
+        refresh(preferredFocusID: nil, preserveFocus: false)
+    }
+
+    private func refresh(preferredFocusID: String?, preserveFocus: Bool) {
         refreshTask?.cancel()
 
         let query = currentQuery()
         let limit = self.limit
         let repository = self.repository
-        let oldFocusedID = preferredFocusID ?? focusedClip?.id
+        let shouldPreserveFocus = preserveFocus
+        let oldFocusedID = preserveFocus ? (preferredFocusID ?? focusedClip?.id) : preferredFocusID
 
         refreshTask = Task { [weak self] in
             let result = await Task.detached(priority: .userInitiated) {
@@ -200,9 +220,12 @@ final class ClipsViewModel {
             case .success(let (items, total)):
                 self.clips = items
                 self.totalClipCount = total
-                if let oldFocusedID,
+                if shouldPreserveFocus,
+                   let oldFocusedID,
                    let idx = items.firstIndex(where: { $0.id == oldFocusedID }) {
                     self.focusedIndex = idx
+                } else if !shouldPreserveFocus {
+                    self.focusedIndex = 0
                 } else if self.focusedIndex >= items.count {
                     self.focusedIndex = 0
                 }
@@ -253,9 +276,30 @@ final class ClipsViewModel {
             guard let self else { return }
             switch result {
             case .success:
-                self.refresh(preferredFocusID: targetId)
+                self.refresh(preferredFocusID: targetId, preserveFocus: true)
             case .failure(let error):
                 NSLog("[ui] togglePin failed: %@", "\(error)")
+            }
+        }
+    }
+
+    func updateFocusedNote(_ note: String) {
+        guard let clip = focusedClip else { return }
+        let targetId = clip.id
+        let repository = self.repository
+        Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                Result<Void, Error> {
+                    try repository.updateNote(clipId: targetId, note: note)
+                }
+            }.value
+
+            guard let self else { return }
+            switch result {
+            case .success:
+                self.refresh(preferredFocusID: targetId, preserveFocus: true)
+            case .failure(let error):
+                NSLog("[ui] updateNote failed: %@", "\(error)")
             }
         }
     }
@@ -270,6 +314,58 @@ final class ClipsViewModel {
     func moveForward() {
         guard !clips.isEmpty else { return }
         focusedIndex = min(clips.count - 1, focusedIndex + 1)
+    }
+
+    func updateGridColumnCount(_ count: Int) {
+        gridColumnCount = max(1, count)
+    }
+
+    func moveFocus(_ direction: FocusNavigationDirection) {
+        guard !clips.isEmpty else { return }
+
+        switch activeLayout {
+        case .grid:
+            moveGridFocus(direction)
+        case .stripe, .stack:
+            switch direction {
+            case .left, .up:
+                moveBack()
+            case .right, .down:
+                moveForward()
+            }
+        }
+    }
+
+    private func moveGridFocus(_ direction: FocusNavigationDirection) {
+        switch direction {
+        case .left:
+            moveBack()
+        case .right:
+            moveForward()
+        case .up:
+            moveGridFocusVertically(rowDelta: -1)
+        case .down:
+            moveGridFocusVertically(rowDelta: 1)
+        }
+    }
+
+    private func moveGridFocusVertically(rowDelta: Int) {
+        let columns = max(1, gridColumnCount)
+        let target = focusedIndex + rowDelta * columns
+        guard target >= 0 else { return }
+
+        if clips.indices.contains(target) {
+            focusedIndex = target
+            return
+        }
+
+        guard rowDelta > 0 else { return }
+        let lastRowStart = ((clips.count - 1) / columns) * columns
+        let sameColumnInLastRow = lastRowStart + (focusedIndex % columns)
+        let clamped = min(sameColumnInLastRow, clips.count - 1)
+        if clamped > focusedIndex {
+            focusedIndex = clamped
+        }
     }
 
     var focusedClip: ClipDisplayItem? {
