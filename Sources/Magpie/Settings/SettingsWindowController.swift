@@ -13,7 +13,7 @@ final class SettingsWindowController {
     private init() {}
 
     func show() {
-        if let existing = window, existing.isVisible {
+        if let existing = window {
             NSApp.activate()
             existing.makeKeyAndOrderFront(nil)
             return

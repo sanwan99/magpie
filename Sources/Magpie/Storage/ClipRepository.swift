@@ -10,13 +10,14 @@ struct ClipRepository: Sendable {
         self.database = database
     }
 
-    /// Inserts a freshly-detected clip — 但如果库里已有相同 type + payload 的
-    /// 记录，**只把它的 `created_at` 刷到现在**（排到最前）而不是再插一条。
+    /// Inserts a freshly-detected clip — 但如果库里已有相同 type + payload + app
+    /// 的记录，**只把它的 `created_at` 刷到现在**（排到最前）而不是再插一条。
     ///
     /// 场景：
     /// - 用户从 Magpie 粘贴一条 clip → Magpie 写回 pasteboard → ClipboardWatcher
     ///   监听到变化又试图 ingest 同样内容。去重避免历史里出现 2 份 / N 份相同。
-    /// - 用户在外部 app 重复复制同一段文本，行为同上。
+    /// - 用户在同一个外部 app 重复复制同一段文本，行为同上；不同 app
+    ///   保留独立来源，保证 `app:` facet 结果可信。
     ///
     /// 注意：image 类型每次保存到新文件，payload 里的 path 不同，不会被去重 —
     /// 是预期行为（不同时刻截屏也是不同图片，即使内容看着像）。
@@ -25,9 +26,15 @@ struct ClipRepository: Sendable {
             let existingId = try String.fetchOne(db, sql: """
                 SELECT id FROM clips
                  WHERE type = ? AND payload = ?
+                   AND ((app IS NULL AND ? IS NULL) OR app = ?)
                  ORDER BY created_at DESC
                  LIMIT 1;
-            """, arguments: [detected.type.rawValue, detected.payload])
+            """, arguments: [
+                detected.type.rawValue,
+                detected.payload,
+                detected.app,
+                detected.app
+            ])
 
             let now = Date().timeIntervalSince1970
 

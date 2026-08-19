@@ -56,9 +56,8 @@ final class StatusItemController: NSObject {
 
         menu.addItem(NSMenuItem.separator())
 
-        let quit = NSMenuItem(title: "退出 Magpie", action: #selector(quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "退出 Magpie", action: #selector(quit), keyEquivalent: "")
         quit.target = self
-        quit.keyEquivalentModifierMask = [.command]
         menu.addItem(quit)
 
         statusItem.menu = menu

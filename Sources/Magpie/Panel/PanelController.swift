@@ -13,6 +13,8 @@ final class PanelController {
     private let biometric = BiometricGate()
     private var keyMonitor: Any?
     private var afterHide: (() -> Void)?
+    private var noteEditorActive = false
+    private var searchFieldActive = false
     private var settingsObservationTask: Task<Void, Never>?
     private weak var visualEffectView: NSVisualEffectView?
     private(set) var isVisible: Bool = false
@@ -139,7 +141,7 @@ final class PanelController {
     // MARK: - Show / Hide
 
     func toggle() {
-        if isVisible {
+        if isVisible, panel.isVisible, panel.isKeyWindow, NSApp.isActive {
             hide()
         } else {
             // Auth gate is async (Touch ID may prompt); wrap in Task.
@@ -154,18 +156,25 @@ final class PanelController {
     }
 
     func show() {
-        guard !isVisible else { return }
         // Snapshot the frontmost app *before* the panel becomes key, so paste
         // can target the correct app even if .nonactivatingPanel ever flakes.
         frontmost.snapshot()
-        viewModel.refresh()
+        viewModel.refreshForPanelShow()
 
         positionAtBottomCenter()
         let target = panel.frame
+        if isVisible {
+            panel.alphaValue = settings.panelOpacity
+            panel.makeKeyAndOrderFront(nil)
+            panel.orderFrontRegardless()
+            return
+        }
+
         let start = target.offsetBy(dx: 0, dy: -target.height - 16)
         panel.setFrame(start, display: false)
         panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
+        panel.orderFrontRegardless()
 
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.32
@@ -184,6 +193,8 @@ final class PanelController {
             afterHide = nil
             return
         }
+        noteEditorActive = false
+        searchFieldActive = false
         let target = panel.frame.offsetBy(dx: 0, dy: -panel.frame.height - 16)
         // Drop SwiftUI's first responder (the SearchField) immediately, otherwise
         // a fast follow-up CGEvent ⌘V would land on the panel's text field
@@ -210,19 +221,28 @@ final class PanelController {
     /// Paste the currently focused clip into the previously frontmost app.
     private func paste() {
         guard let clip = viewModel.focusedClip else { return }
-        executePaste(clip)
+        executePaste(clip, writePasteboard: { Paster.writeToPasteboard($0) })
+    }
+
+    /// Paste the focused file/folder path as plain text.
+    private func pastePath() {
+        guard let clip = viewModel.focusedClip else { return }
+        executePaste(clip, writePasteboard: { Paster.writePathToPasteboard($0) })
     }
 
     /// Paste the Nth clip directly (⌘1…⌘9).
     private func pasteAt(_ index: Int) {
         guard let clip = viewModel.clip(at: index) else { return }
         viewModel.focusedIndex = index
-        executePaste(clip)
+        executePaste(clip, writePasteboard: { Paster.writeToPasteboard($0) })
     }
 
-    private func executePaste(_ clip: ClipDisplayItem) {
+    private func executePaste(
+        _ clip: ClipDisplayItem,
+        writePasteboard: @MainActor (ClipDisplayItem) -> String?
+    ) {
         let target = frontmost.savedTarget
-        guard let written = Paster.writeToPasteboard(clip), !written.isEmpty else {
+        guard let written = writePasteboard(clip), !written.isEmpty else {
             NSLog("[paste] clip has no pasteable content (id=%@ type=%@)", clip.id, clip.type.rawValue)
             return
         }
@@ -248,12 +268,19 @@ final class PanelController {
     // MARK: - Layout
 
     private func positionAtBottomCenter() {
-        guard let screen = NSScreen.main else { return }
+        guard let screen = activeScreen() else { return }
         let visible = screen.visibleFrame
         let size = Self.panelSize
         let x = visible.midX - size.width / 2
         let y = visible.minY + Self.bottomInset
         panel.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: false)
+    }
+
+    private func activeScreen() -> NSScreen? {
+        let mouse = NSEvent.mouseLocation
+        return NSScreen.screens.first { $0.frame.contains(mouse) }
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
     }
 
     // MARK: - Keyboard wiring
@@ -265,11 +292,8 @@ final class PanelController {
         panel.onPaste = { [weak self] in
             self?.paste()
         }
-        panel.onMoveBack = { [weak self] in
-            self?.viewModel.moveBack()
-        }
-        panel.onMoveForward = { [weak self] in
-            self?.viewModel.moveForward()
+        panel.onMoveFocus = { [weak self] direction in
+            self?.viewModel.moveFocus(direction)
         }
         panel.onPasteAtIndex = { [weak self] index in
             self?.pasteAt(index)
@@ -285,12 +309,19 @@ final class PanelController {
         // before SwiftUI sees them, but only while the panel is the key window.
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
-            guard self.panel.isKeyWindow else { return event }
+            guard self.panel.isKeyWindow || self.noteEditorActive else { return event }
             return self.handleLocalKey(event)
         }
     }
 
     private func handleLocalKey(_ event: NSEvent) -> NSEvent? {
+        if noteEditorActive {
+            return event
+        }
+        if searchFieldActive, shouldLetSearchFieldHandle(event) {
+            return event
+        }
+
         let cmd = event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command
 
         // Esc — clear-cascade (always wins, even while typing in the search field).
@@ -374,17 +405,40 @@ final class PanelController {
         // Arrow keys: always navigate cards. The search field is short enough
         // that ceding caret movement to it isn't worth losing primary nav.
         switch event.keyCode {
-        case 123, 126: // Left, Up
-            viewModel.moveBack()
+        case 123:
+            viewModel.moveFocus(.left)
             return nil
-        case 124, 125: // Right, Down
-            viewModel.moveForward()
+        case 124:
+            viewModel.moveFocus(.right)
+            return nil
+        case 126:
+            viewModel.moveFocus(.up)
+            return nil
+        case 125:
+            viewModel.moveFocus(.down)
             return nil
         default:
             break
         }
 
         return event
+    }
+
+    private func shouldLetSearchFieldHandle(_ event: NSEvent) -> Bool {
+        guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == [] else {
+            return false
+        }
+        return activeTextInputHasMarkedText
+    }
+
+    private var activeTextInputHasMarkedText: Bool {
+        if let textView = panel.firstResponder as? NSTextView {
+            return textView.hasMarkedText()
+        }
+        if let textView = NSApp.keyWindow?.firstResponder as? NSTextView {
+            return textView.hasMarkedText()
+        }
+        return false
     }
 
     /// True while a SwiftUI TextField (or similar) is actively editing.
@@ -425,6 +479,9 @@ final class PanelController {
             viewModel: viewModel,
             snippetsViewModel: snippetsViewModel,
             onPaste: { [weak self] in self?.paste() },
+            onPastePath: { [weak self] in self?.pastePath() },
+            onNoteEditingChanged: { [weak self] editing in self?.noteEditorActive = editing },
+            onSearchEditingChanged: { [weak self] editing in self?.searchFieldActive = editing },
             onCreateSnippet: { [weak self] in self?.openNewSnippetEditor() },
             onEditSnippet: { [weak self] s in self?.openEditor(for: s) }
         ))
@@ -455,6 +512,9 @@ private struct PanelContentView: View {
     let viewModel: ClipsViewModel
     let snippetsViewModel: SnippetsViewModel
     let onPaste: () -> Void
+    let onPastePath: () -> Void
+    let onNoteEditingChanged: (Bool) -> Void
+    let onSearchEditingChanged: (Bool) -> Void
     let onCreateSnippet: () -> Void
     let onEditSnippet: (Snippet) -> Void
 
@@ -525,7 +585,10 @@ private struct PanelContentView: View {
             HStack(spacing: 12) {
                 Text("Magpie")
                     .font(.system(size: 13, weight: .bold))
-                SearchField(viewModel: viewModel)
+                SearchField(
+                    viewModel: viewModel,
+                    onEditingChanged: onSearchEditingChanged
+                )
                 if viewModel.queueMode {
                     QueueIndicator()
                 }
@@ -589,7 +652,10 @@ private struct PanelContentView: View {
                     DetailPane(
                         clip: viewModel.focusedClip,
                         onPaste: onPaste,
+                        onPastePath: onPastePath,
                         onTogglePin: { viewModel.toggleFocusedPin() },
+                        onUpdateNote: { viewModel.updateFocusedNote($0) },
+                        onNoteEditingChanged: onNoteEditingChanged,
                         onExpand: {
                             guard let clip = viewModel.focusedClip else { return }
                             ExpandedPreviewWindowController.shared.show(clip: clip)

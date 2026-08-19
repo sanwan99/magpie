@@ -69,16 +69,18 @@ xcodegen generate
 ## Running tests
 
 ```bash
-xcodebuild test \
-  -project Magpie.xcodeproj \
-  -scheme Magpie \
-  -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath build
+Scripts/test.sh
 ```
 
 All tests run against in-memory databases and don't touch your real
 `~/Library/Application Support/Magpie/clips.sqlite`. Adding a new
 data-touching test? Use `Magpie.Database.makeInMemoryForTests()`.
+
+Do not use `-derivedDataPath build` or open
+`build/Build/Products/Debug/Magpie.app`. macOS launchers index app bundles
+under the workspace, which makes a stale `Magpie Debug` entry appear next to
+the installed `/Applications/Magpie.app`. Use `Scripts/install-release.sh`
+for local acceptance.
 
 ## Style
 

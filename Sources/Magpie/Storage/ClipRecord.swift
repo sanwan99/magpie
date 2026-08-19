@@ -10,6 +10,7 @@ struct ClipRecord: Codable, FetchableRecord, MutablePersistableRecord, Equatable
     var createdAt: Double     // unix timestamp (seconds), matches the REAL column
     var pinned: Bool
     var tags: String          // JSON array of strings
+    var note: String          // User note for pinned clips; empty when unused
     var title: String?
     var payload: Data         // JSON-encoded payload struct
 
@@ -22,6 +23,7 @@ struct ClipRecord: Codable, FetchableRecord, MutablePersistableRecord, Equatable
         case createdAt = "created_at"
         case pinned
         case tags
+        case note
         case title
         case payload
     }

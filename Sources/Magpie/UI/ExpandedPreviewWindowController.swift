@@ -153,6 +153,7 @@ private struct ExpandedPreviewView: View {
                     ExpandedSidebar(
                         clip: clip,
                         onPaste: paste,
+                        onPastePath: pastePath,
                         wrapLines: codeWrapLines,
                         onToggleWrap: { codeWrapLines.toggle() },
                         jsonFormatted: jsonFormatted,
@@ -234,16 +235,11 @@ private struct ExpandedPreviewView: View {
         // 走 NSPasteboard + 触发 frontmost-app 粘贴的常规链路：
         // 写入 → 通过通知 / 直接调用 PanelController paste，由 PanelController 来兜。
         // 这里简化：写到 NSPasteboard 让用户自己 ⌘V，避免跨窗口耦合。
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        switch clip.preview {
-        case .text(let body): pb.setString(body, forType: .string)
-        case .code(let body, _): pb.setString(body, forType: .string)
-        case .url(let url, _): pb.setString(url.absoluteString, forType: .string)
-        case .file(let path, _, _), .folder(let path, _), .image(let path, _, _, _):
-            pb.setString(path, forType: .string)
-        case .unsupported: break
-        }
+        Paster.writeToPasteboard(clip)
+    }
+
+    private func pastePath() {
+        Paster.writePathToPasteboard(clip)
     }
 
     private func zoomIn()    { imageMagnification = min(imageMagnification * 1.25, 8.0) }
@@ -256,6 +252,7 @@ private struct ExpandedPreviewView: View {
 private struct ExpandedSidebar: View {
     let clip: ClipDisplayItem
     let onPaste: () -> Void
+    let onPastePath: () -> Void
     let wrapLines: Bool
     let onToggleWrap: () -> Void
     let jsonFormatted: Bool
@@ -547,6 +544,7 @@ private struct ExpandedSidebar: View {
                     label: settings.language.pick(zh: "在 Finder 显示", en: "Reveal"),
                     action: { revealInFinder(path: path) }
                 )
+                sidebarPathButton
                 sidebarPasteButton
             case .folder(let path, _):
                 SidebarSecondaryButton(
@@ -554,6 +552,7 @@ private struct ExpandedSidebar: View {
                     label: settings.language.pick(zh: "打开", en: "Open"),
                     action: { NSWorkspace.shared.open(URL(fileURLWithPath: path)) }
                 )
+                sidebarPathButton
                 sidebarPasteButton
             case .unsupported:
                 EmptyView()
@@ -568,6 +567,14 @@ private struct ExpandedSidebar: View {
             disabled: false
         )
         .keyboardShortcut(.return, modifiers: [])
+    }
+
+    private var sidebarPathButton: some View {
+        SidebarSecondaryButton(
+            icon: "text.quote",
+            label: settings.language.pick(zh: "路径", en: "Path"),
+            action: onPastePath
+        )
     }
 
     private func copyRaw() {

@@ -26,6 +26,11 @@ final class SearchQueryParserTests: XCTestCase {
         XCTAssertEqual(q.terms, ["react", "hook", "useState"])
     }
 
+    func testQuotedPhraseBecomesSingleFreeTerm() {
+        let q = SearchQueryParser.parse("\"react hook\" useState")
+        XCTAssertEqual(q.terms, ["react hook", "useState"])
+    }
+
     // MARK: - type:
 
     func testTypeFacet() {
@@ -61,6 +66,11 @@ final class SearchQueryParserTests: XCTestCase {
     func testAppFacetPreservesCase() {
         let q = SearchQueryParser.parse("app:com.apple.dt.Xcode")
         XCTAssertEqual(q.apps, ["com.apple.dt.Xcode"])
+    }
+
+    func testQuotedAppFacetValuePreservesSpaces() {
+        let q = SearchQueryParser.parse("app:\"Visual Studio Code\"")
+        XCTAssertEqual(q.apps, ["Visual Studio Code"])
     }
 
     func testMultipleAppFacets() {
@@ -109,6 +119,11 @@ final class SearchQueryParserTests: XCTestCase {
         XCTAssertEqual(q.terms, ["color:red", "sky"])
         XCTAssertTrue(q.typeFilters.isEmpty)
         XCTAssertTrue(q.apps.isEmpty)
+    }
+
+    func testUnterminatedQuoteConsumesRestOfInput() {
+        let q = SearchQueryParser.parse("\"react hook")
+        XCTAssertEqual(q.terms, ["react hook"])
     }
 
     // MARK: - isEmpty

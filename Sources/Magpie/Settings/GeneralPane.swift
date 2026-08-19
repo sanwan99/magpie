@@ -64,7 +64,15 @@ struct GeneralPane: View {
             }
 
             Section(text.behavior) {
-                Toggle(text.launchAtLogin, isOn: $store.launchAtLogin)
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(text.launchAtLogin, isOn: $store.launchAtLogin)
+                    if let note = store.launchAtLoginNote(language: store.language) {
+                        Text(note)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                            .padding(.leading, 22)
+                    }
+                }
                 Toggle(text.showRecentFirst, isOn: $store.showRecentFirst)
                 Toggle(text.detectColorsAndLinks, isOn: $store.detectColorsAndLinks)
                 Toggle(text.stripTracking, isOn: $store.stripTrackingFromURLs)

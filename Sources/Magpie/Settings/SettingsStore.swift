@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import ServiceManagement
 
 enum AppLanguage: String, Codable, Sendable, CaseIterable {
     case zhHans
@@ -20,6 +21,60 @@ enum AppLanguage: String, Codable, Sendable, CaseIterable {
     }
 }
 
+enum LoginItemRegistrationStatus: Equatable {
+    case notRegistered
+    case enabled
+    case requiresApproval
+    case notFound
+    case unavailable
+    case unknown(String)
+
+    var isEnabled: Bool {
+        self == .enabled
+    }
+}
+
+@MainActor
+protocol LoginItemControlling {
+    var status: LoginItemRegistrationStatus { get }
+    func register() throws
+    func unregister() throws
+}
+
+@MainActor
+struct SystemLoginItemController: LoginItemControlling {
+    var status: LoginItemRegistrationStatus {
+        if #available(macOS 13.0, *) {
+            switch SMAppService.mainApp.status {
+            case .notRegistered:
+                return .notRegistered
+            case .enabled:
+                return .enabled
+            case .requiresApproval:
+                return .requiresApproval
+            case .notFound:
+                return .notFound
+            @unknown default:
+                return .unknown(String(describing: SMAppService.mainApp.status))
+            }
+        } else {
+            return .unavailable
+        }
+    }
+
+    func register() throws {
+        if #available(macOS 13.0, *) {
+            try SMAppService.mainApp.register()
+        }
+    }
+
+    func unregister() throws {
+        if #available(macOS 13.0, *) {
+            try SMAppService.mainApp.unregister()
+        }
+    }
+}
+
 /// Global app preferences. `@Observable` so SwiftUI views subscribe per-keypath.
 /// Each property has a UserDefaults-backed `didSet` for persistence.
 @MainActor
@@ -27,76 +82,89 @@ enum AppLanguage: String, Codable, Sendable, CaseIterable {
 final class SettingsStore {
     static let shared = SettingsStore()
 
+    private let defaults: UserDefaults
+    private let loginItemController: LoginItemControlling
+    private var isSyncingLaunchAtLogin = false
+
     // MARK: - Language
 
     var language: AppLanguage = .zhHans {
-        didSet { UserDefaults.standard.set(language.rawValue, forKey: Keys.language) }
+        didSet { defaults.set(language.rawValue, forKey: Keys.language) }
     }
 
     // MARK: - Appearance
 
     var theme: AppTheme = .system {
-        didSet { UserDefaults.standard.set(theme.rawValue, forKey: Keys.theme) }
+        didSet { defaults.set(theme.rawValue, forKey: Keys.theme) }
     }
 
     /// 0…60 — mapped to NSVisualEffectView material in `vibrancyMaterial`.
     var vibrancy: Double = 36 {
-        didSet { UserDefaults.standard.set(vibrancy, forKey: Keys.vibrancy) }
+        didSet { defaults.set(vibrancy, forKey: Keys.vibrancy) }
     }
 
     /// 面板整体透明度 0.60…1.00。1.0 = 完全不透明，越低后面应用越透出来。
     /// 应用到 panel.alphaValue。0.60 是肉眼安全下限，再低关键内容会读不清。
     var panelOpacity: Double = 1.0 {
-        didSet { UserDefaults.standard.set(panelOpacity, forKey: Keys.panelOpacity) }
+        didSet { defaults.set(panelOpacity, forKey: Keys.panelOpacity) }
     }
 
     var flavor: Flavor = .mono {
-        didSet { UserDefaults.standard.set(flavor.rawValue, forKey: Keys.flavor) }
+        didSet { defaults.set(flavor.rawValue, forKey: Keys.flavor) }
     }
 
     // MARK: - Behavior toggles
 
     var launchAtLogin: Bool = false {
-        didSet { UserDefaults.standard.set(launchAtLogin, forKey: Keys.launchAtLogin) }
+        didSet {
+            if isSyncingLaunchAtLogin {
+                defaults.set(launchAtLogin, forKey: Keys.launchAtLogin)
+                return
+            }
+            applyLaunchAtLoginChange(from: oldValue, to: launchAtLogin)
+        }
     }
 
+    private(set) var launchAtLoginSystemStatus: LoginItemRegistrationStatus = .notRegistered
+    private(set) var launchAtLoginErrorMessage: String?
+
     var showRecentFirst: Bool = true {
-        didSet { UserDefaults.standard.set(showRecentFirst, forKey: Keys.showRecentFirst) }
+        didSet { defaults.set(showRecentFirst, forKey: Keys.showRecentFirst) }
     }
 
     var detectColorsAndLinks: Bool = true {
-        didSet { UserDefaults.standard.set(detectColorsAndLinks, forKey: Keys.detectColorsAndLinks) }
+        didSet { defaults.set(detectColorsAndLinks, forKey: Keys.detectColorsAndLinks) }
     }
 
     /// v0.2-c only stores the toggle; actual URL-stripping logic lands in v0.3.
     var stripTrackingFromURLs: Bool = false {
-        didSet { UserDefaults.standard.set(stripTrackingFromURLs, forKey: Keys.stripTracking) }
+        didSet { defaults.set(stripTrackingFromURLs, forKey: Keys.stripTracking) }
     }
 
     /// Snippets auto-expansion (typing `;sig` anywhere triggers replacement).
     /// Default OFF — needs Input Monitoring permission, may feel invasive
     /// to users who don't use snippets. Enable explicitly in Settings.
     var autoExpandSnippets: Bool = false {
-        didSet { UserDefaults.standard.set(autoExpandSnippets, forKey: Keys.autoExpand) }
+        didSet { defaults.set(autoExpandSnippets, forKey: Keys.autoExpand) }
     }
 
     // MARK: - History (v0.3-c)
 
     /// 0 = keep forever; otherwise expire non-pinned clips older than this many days.
     var keepHistoryDays: Int = 0 {
-        didSet { UserDefaults.standard.set(keepHistoryDays, forKey: Keys.keepDays) }
+        didSet { defaults.set(keepHistoryDays, forKey: Keys.keepDays) }
     }
 
     /// Max number of non-pinned clips. 0 = unlimited.
     var maxItems: Int = 2000 {
-        didSet { UserDefaults.standard.set(maxItems, forKey: Keys.maxItems) }
+        didSet { defaults.set(maxItems, forKey: Keys.maxItems) }
     }
 
     /// Bundle identifiers whose clipboard activity is never ingested
     /// (e.g. com.agilebits.onepassword for 1Password).
     var ignoredApps: [String] = [] {
         didSet {
-            UserDefaults.standard.set(ignoredApps, forKey: Keys.ignoredApps)
+            defaults.set(ignoredApps, forKey: Keys.ignoredApps)
         }
     }
 
@@ -104,18 +172,27 @@ final class SettingsStore {
 
     /// Require Touch ID on first panel show after launch.
     var useTouchID: Bool = false {
-        didSet { UserDefaults.standard.set(useTouchID, forKey: Keys.touchID) }
+        didSet { defaults.set(useTouchID, forKey: Keys.touchID) }
     }
 
     /// Filter out clips that look like API keys / tokens / passwords.
     var skipSecretLooking: Bool = true {
-        didSet { UserDefaults.standard.set(skipSecretLooking, forKey: Keys.skipSecret) }
+        didSet { defaults.set(skipSecretLooking, forKey: Keys.skipSecret) }
     }
 
     // MARK: - Init / restore
 
-    private init() {
-        let defaults = UserDefaults.standard
+    init(
+        defaults: UserDefaults = .standard,
+        loginItemController: LoginItemControlling? = nil
+    ) {
+        self.defaults = defaults
+        self.loginItemController = loginItemController ?? SystemLoginItemController()
+
+        let storedLaunchAtLogin = defaults.object(forKey: Keys.launchAtLogin) != nil
+            ? defaults.bool(forKey: Keys.launchAtLogin)
+            : nil
+
         if let raw = defaults.string(forKey: Keys.language),
            let restored = AppLanguage(rawValue: raw) {
             self.language = restored
@@ -136,9 +213,6 @@ final class SettingsStore {
         if let raw = defaults.string(forKey: Keys.flavor),
            let restored = Flavor(rawValue: raw) {
             self.flavor = restored
-        }
-        if defaults.object(forKey: Keys.launchAtLogin) != nil {
-            self.launchAtLogin = defaults.bool(forKey: Keys.launchAtLogin)
         }
         if defaults.object(forKey: Keys.showRecentFirst) != nil {
             self.showRecentFirst = defaults.bool(forKey: Keys.showRecentFirst)
@@ -167,6 +241,97 @@ final class SettingsStore {
         if defaults.object(forKey: Keys.skipSecret) != nil {
             self.skipSecretLooking = defaults.bool(forKey: Keys.skipSecret)
         }
+
+        restoreLaunchAtLogin(storedPreference: storedLaunchAtLogin)
+    }
+
+    func refreshLaunchAtLoginStatus() {
+        syncLaunchAtLogin(status: loginItemController.status)
+    }
+
+    func launchAtLoginNote(language: AppLanguage) -> String? {
+        if let launchAtLoginErrorMessage {
+            return language.pick(
+                zh: "无法更新开机启动：\(launchAtLoginErrorMessage)",
+                en: "Could not update launch at login: \(launchAtLoginErrorMessage)"
+            )
+        }
+
+        switch launchAtLoginSystemStatus {
+        case .requiresApproval:
+            return language.pick(
+                zh: "需要到 macOS 系统设置 → 通用 → 登录项中允许 Magpie。",
+                en: "Allow Magpie in macOS System Settings → General → Login Items."
+            )
+        case .notFound:
+            return language.pick(
+                zh: "当前 App 无法注册登录项。请先使用 Release 安装到 /Applications/Magpie.app。",
+                en: "This app bundle cannot be registered. Install the Release app to /Applications/Magpie.app first."
+            )
+        case .unavailable:
+            return language.pick(
+                zh: "当前 macOS 版本不支持此登录项 API。",
+                en: "This macOS version does not support the login item API."
+            )
+        case .unknown(let raw):
+            return language.pick(
+                zh: "开机启动状态未知：\(raw)",
+                en: "Launch at login status is unknown: \(raw)"
+            )
+        case .enabled, .notRegistered:
+            return nil
+        }
+    }
+
+    private func restoreLaunchAtLogin(storedPreference: Bool?) {
+        let status = loginItemController.status
+        guard storedPreference == true, !status.isEnabled else {
+            syncLaunchAtLogin(status: status)
+            return
+        }
+
+        do {
+            try loginItemController.register()
+            syncLaunchAtLogin(status: loginItemController.status)
+        } catch {
+            syncLaunchAtLogin(
+                status: loginItemController.status,
+                errorMessage: error.localizedDescription
+            )
+        }
+    }
+
+    private func applyLaunchAtLoginChange(from oldValue: Bool, to newValue: Bool) {
+        guard oldValue != newValue else {
+            defaults.set(newValue, forKey: Keys.launchAtLogin)
+            return
+        }
+
+        do {
+            if newValue {
+                try loginItemController.register()
+            } else {
+                try loginItemController.unregister()
+            }
+            syncLaunchAtLogin(status: loginItemController.status)
+        } catch {
+            syncLaunchAtLogin(
+                status: loginItemController.status,
+                errorMessage: error.localizedDescription
+            )
+        }
+    }
+
+    private func syncLaunchAtLogin(
+        status: LoginItemRegistrationStatus,
+        errorMessage: String? = nil
+    ) {
+        isSyncingLaunchAtLogin = true
+        launchAtLoginSystemStatus = status
+        launchAtLoginErrorMessage = errorMessage
+        launchAtLogin = status.isEnabled
+        defaults.set(launchAtLogin, forKey: Keys.launchAtLogin)
+        isSyncingLaunchAtLogin = false
     }
 
     // MARK: - Keys
