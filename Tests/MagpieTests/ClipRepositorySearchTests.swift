@@ -83,6 +83,42 @@ final class ClipRepositorySearchTests: XCTestCase {
         XCTAssertEqual(result.first?.title, "say hello world today")
     }
 
+    func testNewClipsStartWithEmptyNote() throws {
+        try insertText(body: "plain clip", app: "abnerworks.Typora")
+
+        let clip = try XCTUnwrap(repo.recent(limit: 1).first)
+
+        XCTAssertEqual(clip.note, "")
+    }
+
+    func testUpdateNoteTrimsAndPersistsPinnedClipNote() throws {
+        try insertText(body: "pinned api token example", app: "abnerworks.Typora")
+        let clip = try XCTUnwrap(repo.recent(limit: 1).first)
+
+        try repo.togglePin(clipId: clip.id)
+        try repo.updateNote(clipId: clip.id, note: "  release checklist  ")
+
+        let updated = try XCTUnwrap(repo.recent(limit: 1).first)
+        XCTAssertTrue(updated.pinned)
+        XCTAssertEqual(updated.note, "release checklist")
+
+        try repo.updateNote(clipId: clip.id, note: "")
+        let cleared = try XCTUnwrap(repo.recent(limit: 1).first)
+        XCTAssertEqual(cleared.note, "")
+    }
+
+    func testFreeTextSearchMatchesClipNote() throws {
+        try insertText(body: "ordinary clipboard body", app: "abnerworks.Typora")
+        let clip = try XCTUnwrap(repo.recent(limit: 1).first)
+        try repo.togglePin(clipId: clip.id)
+        try repo.updateNote(clipId: clip.id, note: "客户回访话术")
+
+        let result = try repo.search(SearchQueryParser.parse("回访"))
+
+        XCTAssertEqual(result.count, 1)
+        XCTAssertEqual(result.first?.note, "客户回访话术")
+    }
+
     private func insertText(body: String, app: String?) throws {
         let payload = try JSONEncoder().encode(TextPayload(body: body))
         let detected = DetectedClip(

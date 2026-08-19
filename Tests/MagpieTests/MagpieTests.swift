@@ -10,6 +10,78 @@ final class MagpieTests: XCTestCase {
 }
 
 @MainActor
+final class SettingsStoreLoginItemTests: XCTestCase {
+    func testStoredLaunchAtLoginPreferenceRegistersSystemLoginItemOnRestore() throws {
+        let (defaults, suiteName) = makeIsolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(true, forKey: "magpie.settings.launchAtLogin")
+
+        let controller = FakeLoginItemController(status: .notRegistered)
+        let store = SettingsStore(defaults: defaults, loginItemController: controller)
+
+        XCTAssertEqual(controller.registerCount, 1)
+        XCTAssertTrue(store.launchAtLogin)
+        XCTAssertEqual(store.launchAtLoginSystemStatus, .enabled)
+    }
+
+    func testLaunchAtLoginToggleRegistersAndUnregistersSystemLoginItem() throws {
+        let (defaults, suiteName) = makeIsolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let controller = FakeLoginItemController(status: .notRegistered)
+        let store = SettingsStore(defaults: defaults, loginItemController: controller)
+
+        store.launchAtLogin = true
+
+        XCTAssertEqual(controller.registerCount, 1)
+        XCTAssertTrue(store.launchAtLogin)
+        XCTAssertEqual(store.launchAtLoginSystemStatus, .enabled)
+
+        store.launchAtLogin = false
+
+        XCTAssertEqual(controller.unregisterCount, 1)
+        XCTAssertFalse(store.launchAtLogin)
+        XCTAssertEqual(store.launchAtLoginSystemStatus, .notRegistered)
+    }
+
+    func testLaunchAtLoginRegisterFailureRollsBackToSystemStatus() throws {
+        let (defaults, suiteName) = makeIsolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let controller = FakeLoginItemController(status: .notRegistered)
+        controller.registerError = FakeLoginItemError.denied
+        let store = SettingsStore(defaults: defaults, loginItemController: controller)
+
+        store.launchAtLogin = true
+
+        XCTAssertEqual(controller.registerCount, 1)
+        XCTAssertFalse(store.launchAtLogin)
+        XCTAssertEqual(store.launchAtLoginSystemStatus, .notRegistered)
+        XCTAssertEqual(store.launchAtLoginErrorMessage, "Login item denied")
+    }
+
+    func testLaunchAtLoginUsesSystemStatusOnRestore() throws {
+        let (defaults, suiteName) = makeIsolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(false, forKey: "magpie.settings.launchAtLogin")
+
+        let controller = FakeLoginItemController(status: .enabled)
+        let store = SettingsStore(defaults: defaults, loginItemController: controller)
+
+        XCTAssertTrue(store.launchAtLogin)
+        XCTAssertEqual(store.launchAtLoginSystemStatus, .enabled)
+        XCTAssertEqual(controller.registerCount, 0)
+    }
+
+    private func makeIsolatedDefaults() -> (UserDefaults, String) {
+        let suiteName = "MagpieTests.SettingsStoreLoginItem.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return (defaults, suiteName)
+    }
+}
+
+@MainActor
 final class PanelWindowTests: XCTestCase {
     func testPanelMovesToActiveSpaceWhenOrderedFront() {
         let panel = PanelWindow(contentRect: NSRect(x: 0, y: 0, width: 100, height: 100))
@@ -19,6 +91,51 @@ final class PanelWindowTests: XCTestCase {
         XCTAssertTrue(panel.collectionBehavior.contains(.fullScreenAuxiliary))
         XCTAssertFalse(panel.collectionBehavior.contains(.canJoinAllSpaces))
         XCTAssertFalse(panel.collectionBehavior.contains(.stationary))
+    }
+}
+
+@MainActor
+private final class FakeLoginItemController: LoginItemControlling {
+    var status: LoginItemRegistrationStatus
+    var registerResultStatus: LoginItemRegistrationStatus
+    var unregisterResultStatus: LoginItemRegistrationStatus
+    var registerError: Error?
+    var unregisterError: Error?
+    var registerCount = 0
+    var unregisterCount = 0
+
+    init(
+        status: LoginItemRegistrationStatus,
+        registerResultStatus: LoginItemRegistrationStatus = .enabled,
+        unregisterResultStatus: LoginItemRegistrationStatus = .notRegistered
+    ) {
+        self.status = status
+        self.registerResultStatus = registerResultStatus
+        self.unregisterResultStatus = unregisterResultStatus
+    }
+
+    func register() throws {
+        registerCount += 1
+        if let registerError {
+            throw registerError
+        }
+        status = registerResultStatus
+    }
+
+    func unregister() throws {
+        unregisterCount += 1
+        if let unregisterError {
+            throw unregisterError
+        }
+        status = unregisterResultStatus
+    }
+}
+
+private enum FakeLoginItemError: LocalizedError {
+    case denied
+
+    var errorDescription: String? {
+        "Login item denied"
     }
 }
 
@@ -39,6 +156,7 @@ final class PasterTests: XCTestCase {
             app: "Finder",
             createdAt: Date(),
             pinned: false,
+            note: "",
             title: "report.pdf",
             preview: .file(path: fileURL.path, kind: "PDF", sizeKB: 32)
         )
@@ -48,6 +166,7 @@ final class PasterTests: XCTestCase {
             app: "Finder",
             createdAt: Date(),
             pinned: false,
+            note: "",
             title: "Magpie",
             preview: .folder(path: folderURL.path, items: 12)
         )
@@ -69,6 +188,7 @@ final class PasterTests: XCTestCase {
             app: "Finder",
             createdAt: Date(),
             pinned: false,
+            note: "",
             title: "report.pdf",
             preview: .file(path: filePath, kind: "PDF", sizeKB: 32)
         )
@@ -78,6 +198,7 @@ final class PasterTests: XCTestCase {
             app: "Finder",
             createdAt: Date(),
             pinned: false,
+            note: "",
             title: "Magpie",
             preview: .folder(path: folderPath, items: 12)
         )
@@ -95,6 +216,128 @@ final class PasterTests: XCTestCase {
             options: nil
         ) as? [URL]
         return objects?.first
+    }
+}
+
+@MainActor
+final class ClipsViewModelTests: XCTestCase {
+    func testPanelShowRefreshFocusesNewestResult() async throws {
+        let database = Database.makeInMemoryForTests()
+        let repository = ClipRepository(database: database)
+
+        try insertText("older self-test clip", repository: repository)
+        try insertText("newer self-test clip", repository: repository)
+
+        let viewModel = ClipsViewModel(repository: repository)
+        try await waitUntil {
+            viewModel.clips.count == 2
+        }
+
+        viewModel.focusedIndex = 1
+        XCTAssertEqual(viewModel.focusedClip?.title, "older self-test clip")
+
+        viewModel.refreshForPanelShow()
+        try await waitUntil {
+            viewModel.focusedClip?.title == "newer self-test clip"
+        }
+
+        XCTAssertEqual(viewModel.focusedIndex, 0)
+    }
+
+    func testGridArrowNavigationMovesByColumnCount() async throws {
+        defer { UserDefaults.standard.removeObject(forKey: "magpie.activeLayout") }
+        let viewModel = try await makeViewModel(clipCount: 10)
+        viewModel.activeLayout = .grid
+        viewModel.updateGridColumnCount(4)
+        viewModel.focusedIndex = 5
+
+        viewModel.moveFocus(.up)
+        XCTAssertEqual(viewModel.focusedIndex, 1)
+
+        viewModel.moveFocus(.down)
+        XCTAssertEqual(viewModel.focusedIndex, 5)
+
+        viewModel.moveFocus(.left)
+        XCTAssertEqual(viewModel.focusedIndex, 4)
+
+        viewModel.moveFocus(.right)
+        XCTAssertEqual(viewModel.focusedIndex, 5)
+    }
+
+    func testGridArrowNavigationClampsVerticalEdges() async throws {
+        defer { UserDefaults.standard.removeObject(forKey: "magpie.activeLayout") }
+        let viewModel = try await makeViewModel(clipCount: 10)
+        viewModel.activeLayout = .grid
+        viewModel.updateGridColumnCount(4)
+
+        viewModel.focusedIndex = 2
+        viewModel.moveFocus(.up)
+        XCTAssertEqual(viewModel.focusedIndex, 2)
+
+        viewModel.focusedIndex = 7
+        viewModel.moveFocus(.down)
+        XCTAssertEqual(viewModel.focusedIndex, 9)
+
+        viewModel.moveFocus(.down)
+        XCTAssertEqual(viewModel.focusedIndex, 9)
+    }
+
+    func testOneDimensionalLayoutsKeepLegacyArrowNavigation() async throws {
+        defer { UserDefaults.standard.removeObject(forKey: "magpie.activeLayout") }
+        let viewModel = try await makeViewModel(clipCount: 10)
+        viewModel.updateGridColumnCount(4)
+
+        viewModel.activeLayout = .stripe
+        viewModel.focusedIndex = 5
+        viewModel.moveFocus(.up)
+        XCTAssertEqual(viewModel.focusedIndex, 4)
+        viewModel.moveFocus(.down)
+        XCTAssertEqual(viewModel.focusedIndex, 5)
+
+        viewModel.activeLayout = .stack
+        viewModel.focusedIndex = 5
+        viewModel.moveFocus(.up)
+        XCTAssertEqual(viewModel.focusedIndex, 4)
+        viewModel.moveFocus(.down)
+        XCTAssertEqual(viewModel.focusedIndex, 5)
+    }
+
+    private func insertText(_ body: String, repository: ClipRepository) throws {
+        let detected = DetectedClip(
+            type: .text,
+            app: "abnerworks.Typora",
+            title: body,
+            payload: try JSONEncoder().encode(TextPayload(body: body)),
+            searchText: body
+        )
+        try repository.insert(detected)
+        Thread.sleep(forTimeInterval: 0.01)
+    }
+
+    private func makeViewModel(clipCount: Int) async throws -> ClipsViewModel {
+        let database = Database.makeInMemoryForTests()
+        let repository = ClipRepository(database: database)
+        for index in 0..<clipCount {
+            try insertText("navigation clip \(index)", repository: repository)
+        }
+
+        let viewModel = ClipsViewModel(repository: repository)
+        try await waitUntil {
+            viewModel.clips.count == clipCount
+        }
+        return viewModel
+    }
+
+    private func waitUntil(
+        timeout: TimeInterval = 1,
+        _ predicate: @escaping @MainActor () -> Bool
+    ) async throws {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if predicate() { return }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTFail("Timed out waiting for condition")
     }
 }
 
