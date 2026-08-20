@@ -47,6 +47,7 @@
 - 🪟 **3 种布局** —— Stripe（横向卡片） / Stack（紧凑列表） / Grid（瓷砖墙）
 - 🔍 **FTS5 全文搜索** —— 支持 `type:code app:vscode tag:design` 这种 key:value 语法
 - 📌 **Pin / Snippets / Queue Mode** —— 钉常用、存模板、批量贴
+- 📸 **系统截图工具栏** —— 全局 `⌘J` 截图并直接进入剪贴板与 Magpie 图片历史
 - 🔐 **Touch ID 隐私门** —— 召出面板前指纹解锁（可选）
 - 🚫 **Secret 自动跳过** —— API key / Bearer token / JWT / OTP 不入库
 - 🎭 **5 种主题** —— mono / graphite / blue / olive 走系统简约；**Splat** 走 Splatoon 灵感的紫黄装饰风
@@ -71,12 +72,13 @@ open dist/Magpie-0.3.0.dmg
 
 ### 给予权限
 
-Magpie 需要两个权限才能完整工作：
+Magpie 需要以下权限才能完整工作：
 
 | 权限 | 用途 | 怎么开 |
 |---|---|---|
 | **辅助功能** | 模拟 ⌘V 把 clip 贴回前台 app | 系统设置 → 隐私与安全性 → 辅助功能 → 添加 Magpie |
 | **输入监控**（可选） | `;sig` 之类的片段触发器自动展开 | 系统设置 → 隐私与安全性 → 输入监控 → 添加 Magpie；并在 Magpie 设置里打开 *Auto-expand snippet shortcuts* |
+| **屏幕与系统音频录制**（可选） | 使用 `⌘J` 打开系统截图工具栏 | 首次按 `⌘J` 时按系统提示授权；授权后按提示重启 Magpie |
 
 第一次启动如果没批准辅助功能，Magpie 会自动弹系统对话框引导。
 
@@ -89,6 +91,7 @@ Magpie 需要两个权限才能完整工作：
 | 快捷键 | 行为 |
 |---|---|
 | `⌘P` | 召出 / 收起 主面板 |
+| `⌘J` | 打开 macOS 系统截图工具栏；静态截图进入剪贴板和 Magpie 历史 |
 | `Esc` | 收回面板（搜索框非空时先清搜索） |
 
 ### 面板内
@@ -160,8 +163,9 @@ Scripts/install-release.sh # 构建 Release，安装到 /Applications/Magpie.app
 
 依赖（SPM 自动拉取）：
 
-- [HotKey](https://github.com/soffes/HotKey) — 全局热键 ⌘P
 - [GRDB.swift](https://github.com/groue/GRDB.swift) — SQLite ORM + FTS5
+
+`⌘P` / `⌘J` 全局热键直接使用系统 Carbon `RegisterEventHotKey`，不依赖第三方热键包。
 
 ---
 
@@ -173,12 +177,13 @@ Scripts/test.sh
 
 测试脚本使用工作区外的 `/private/tmp/magpie-derived` 作为 DerivedData，并复用 `/private/tmp/magpie-source-packages` 包缓存；结束后会清理临时 Debug app，避免启动器出现第二个 Magpie 入口。
 
-当前 **98 个 XCTest 单元测试**：
+当前 **125 个 XCTest 单元测试**：
 
 - `SecretDetectorTests` — 27 个（8 种 secret 模式 + 阴性样本）
 - `SnippetRepositoryTests` — 10 个（CRUD + 触发器索引）
-- `HistoryReaperTests` — 7 个（retention + maxItems + clear all）
-- 其他模块 — 38 个（ClipDetector / SearchQueryParser / ClipboardWatcher 等）
+- `HistoryReaperTests` — 8 个（retention + maxItems + clear all）
+- `ScreenshotCoordinatorTests` — 10 个（权限、进程、面板恢复、剪贴板路由）
+- 其他模块 — 70 个（ClipDetector / SearchQueryParser / HotkeyCenter 等）
 
 ---
 
@@ -190,7 +195,7 @@ Scripts/test.sh
 | v0.2 | ✅ 已发布 | 搜索（FTS5 + key:value 语法）、类型过滤、Pin、Stack & Grid、Detail Pane、Settings |
 | v0.3 | ✅ 已发布 | Image 类型、Snippets 抽屉 + 编辑器、History/Privacy/Queue Mode、ColorScheme-aware Splat dark |
 | **v0.3-d 系列** | ✅ 已发布 | 装饰元素（squid + 墨点）、霓虹选中态、面板透明度、放大预览窗口（⌘O）、菜单栏图标 + sleep/wake/Space 切换 hotkey 自愈、粘贴去重 upsert、AX 权限自检 |
-| **v1.0** | 进行中 | Sparkle EdDSA 自动更新、SQLCipher 加密、PasteToast 动画、ClipPreview hover 过渡、Apple Developer ID 签名、Homebrew Cask、公开仓库 |
+| **v1.0** | 进行中 | `⌘J` 系统截图工具栏、Sparkle EdDSA 自动更新、SQLCipher 加密、PasteToast 动画、ClipPreview hover 过渡、Apple Developer ID 签名、Homebrew Cask、公开仓库 |
 | Later | — | 正则搜索、URL 跟踪参数清理、CLI 工具、`;sig` CGEventTap 升级、第三方 Sync 插件接口 |
 
 ---
@@ -208,6 +213,7 @@ magpie/
 │   ├── Storage/                # GRDB schema + ClipRepository（FTS5 + upsert 去重）
 │   ├── Paste/                  # FrontmostTracker + Paster（CGEvent ⌘V 模拟）
 │   ├── Hotkey/                 # HotkeyCenter（Carbon RegisterEventHotKey）
+│   ├── Screenshot/             # 系统截图工具栏协调、权限与结果判定
 │   ├── Snippets/               # 片段管理 + ;sig 自动展开
 │   ├── Privacy/                # SecretDetector + BiometricGate (Touch ID)
 │   ├── History/                # HistoryReaper（retention + 清理）

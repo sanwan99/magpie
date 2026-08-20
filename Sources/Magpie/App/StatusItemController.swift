@@ -11,9 +11,11 @@ import AppKit
 final class StatusItemController: NSObject {
     private let statusItem: NSStatusItem
     private weak var panelController: PanelController?
+    private let onCaptureScreenshot: () -> Void
 
-    init(panelController: PanelController) {
+    init(panelController: PanelController, onCaptureScreenshot: @escaping () -> Void) {
         self.panelController = panelController
+        self.onCaptureScreenshot = onCaptureScreenshot
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
@@ -30,7 +32,7 @@ final class StatusItemController: NSObject {
         let primary = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Magpie")
         button.image = primary ?? NSImage(systemSymbolName: "scissors", accessibilityDescription: "Magpie")
         button.image?.isTemplate = true  // 跟随系统暗 / 亮主题反色
-        button.toolTip = "Magpie · 剪切板管理器（⌘P 召出面板）"
+        button.toolTip = "Magpie · 剪切板管理器（⌘P 面板 · ⌘J 截图）"
     }
 
     // MARK: - Menu
@@ -42,6 +44,16 @@ final class StatusItemController: NSObject {
         show.target = self
         show.keyEquivalentModifierMask = [.command]
         menu.addItem(show)
+
+        let language = SettingsStore.shared.language
+        let capture = NSMenuItem(
+            title: language.pick(zh: "截图…", en: "Capture Screenshot…"),
+            action: #selector(captureScreenshot),
+            keyEquivalent: "j"
+        )
+        capture.target = self
+        capture.keyEquivalentModifierMask = [.command]
+        menu.addItem(capture)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -67,6 +79,10 @@ final class StatusItemController: NSObject {
 
     @objc private func togglePanel() {
         panelController?.toggle()
+    }
+
+    @objc private func captureScreenshot() {
+        onCaptureScreenshot()
     }
 
     @objc private func openSettings() {

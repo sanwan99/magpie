@@ -185,12 +185,14 @@ final class PanelController {
         isVisible = true
     }
 
-    func hide() {
+    func hide(completion: (() -> Void)? = nil) {
         guard isVisible else {
             // Even if we weren't visible, run any pending after-hide hook so
             // paste flows can't get stranded.
-            afterHide?()
+            let pendingAfter = afterHide
             afterHide = nil
+            pendingAfter?()
+            completion?()
             return
         }
         noteEditorActive = false
@@ -212,6 +214,7 @@ final class PanelController {
             // Only after this is it safe to simulate ⌘V into the previously frontmost app.
             self?.panel.orderOut(nil)
             pendingAfter?()
+            completion?()
         })
         isVisible = false
     }

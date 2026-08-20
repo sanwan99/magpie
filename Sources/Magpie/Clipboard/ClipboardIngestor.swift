@@ -4,6 +4,31 @@ struct ClipboardIngestPolicy: Sendable {
     let appBundleIdentifier: String?
     let ignoredApps: [String]
     let skipSecretLooking: Bool
+
+    static func forChange(
+        origin: ClipboardChangeOrigin,
+        observedAppBundleIdentifier: String?,
+        magpieBundleIdentifier: String,
+        ignoredApps: [String],
+        skipSecretLooking: Bool
+    ) -> ClipboardIngestPolicy {
+        switch origin {
+        case .observed:
+            return ClipboardIngestPolicy(
+                appBundleIdentifier: observedAppBundleIdentifier,
+                ignoredApps: ignoredApps,
+                skipSecretLooking: skipSecretLooking
+            )
+        case .explicitScreenshot:
+            // An explicit user action must not be discarded just because the
+            // app underneath the screenshot is on the passive-watch ignore list.
+            return ClipboardIngestPolicy(
+                appBundleIdentifier: magpieBundleIdentifier,
+                ignoredApps: [],
+                skipSecretLooking: skipSecretLooking
+            )
+        }
+    }
 }
 
 /// Serial background ingest pipeline for clipboard snapshots.

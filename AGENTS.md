@@ -34,7 +34,7 @@ magpie/
 - 语言：Swift 5.9+ / SwiftUI（部分 AppKit 桥接：NSPanel / NSVisualEffectView / NSPasteboard）
 - 部署目标：macOS 14+
 - 工具链：**完整 Xcode**（Command Line Tools 不够）。检查：`xcode-select -p` 应输出 `/Applications/Xcode.app/Contents/Developer`。
-- 关键依赖（SPM）：[`HotKey`](https://github.com/soffes/HotKey)、[`GRDB.swift`](https://github.com/groue/GRDB.swift)；v0.2 起加 `KeyboardShortcuts`，v0.3 起加 `Sparkle`。
+- 全局热键直接使用 Carbon `RegisterEventHotKey`；当前 SPM 依赖为 [`GRDB.swift`](https://github.com/groue/GRDB.swift)，后续发布阶段再按计划引入 `Sparkle`。
 - 选型决策见 `md/codex/plan/decisions/0001-tech-stack-swiftui.md`（ADR-0001）。
 
 构建（Phase 0b 落地后）：

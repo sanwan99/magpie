@@ -7,6 +7,7 @@ struct ShortcutsPane: View {
         let text = SettingsText(language: language)
         return [
             .init(keys: ["⌘", "P"],          action: text.shortcutShowHidePanel,      scope: text.scopeGlobal),
+            .init(keys: ["⌘", "J"],          action: text.shortcutCaptureScreenshot, scope: text.scopeGlobal),
             .init(keys: ["⌘", ","],          action: text.shortcutOpenSettings,       scope: text.scopeGlobal),
             .init(keys: ["↵"],               action: text.shortcutPasteFocused,       scope: text.scopePanel),
             .init(keys: ["⌘", "1"],          action: text.shortcutQuickPaste,         scope: text.scopePanel),

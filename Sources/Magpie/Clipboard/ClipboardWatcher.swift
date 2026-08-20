@@ -1,5 +1,10 @@
 import AppKit
 
+enum ClipboardChangeOrigin: Sendable, Equatable {
+    case observed
+    case explicitScreenshot
+}
+
 /// Sendable pasteboard snapshot captured on the main thread.
 ///
 /// AppKit pasteboard objects are not a good boundary to hand to background
@@ -43,18 +48,21 @@ struct ClipboardSnapshot: Sendable {
 /// so we don't dump existing user content into history at launch.
 @MainActor
 final class ClipboardWatcher {
-    private let pasteboard = NSPasteboard.general
+    private let pasteboard: NSPasteboard
     private var lastChangeCount: Int
     private var timer: Timer?
-    private let pollInterval: TimeInterval = 0.4
+    private var preparedOrigin: ClipboardChangeOrigin?
+    private let pollInterval: TimeInterval
 
     /// Fired on the main thread whenever the pasteboard changes.
     /// The closure receives a copied snapshot; expensive ingest work should
     /// continue off the main thread.
-    var onChange: ((ClipboardSnapshot) -> Void)?
+    var onChange: ((ClipboardSnapshot, ClipboardChangeOrigin) -> Void)?
 
-    init() {
-        self.lastChangeCount = NSPasteboard.general.changeCount
+    init(pasteboard: NSPasteboard = .general, pollInterval: TimeInterval = 0.4) {
+        self.pasteboard = pasteboard
+        self.pollInterval = pollInterval
+        self.lastChangeCount = pasteboard.changeCount
     }
 
     func start() {
@@ -74,10 +82,65 @@ final class ClipboardWatcher {
         timer = nil
     }
 
-    private func pollOnce() {
+    /// Reserve the next image pasteboard change for an explicit source. The
+    /// timer may observe screencapture's clipboard write before the child
+    /// process exits, so the reservation keeps source attribution deterministic.
+    func prepareNextChange(origin: ClipboardChangeOrigin) {
+        preparedOrigin = origin
+    }
+
+    func cancelPreparedChange(origin: ClipboardChangeOrigin) {
+        guard preparedOrigin == origin else { return }
+        preparedOrigin = nil
+    }
+
+    /// Immediately processes a pasteboard change and advances lastChangeCount,
+    /// preventing the regular timer from ingesting the same screenshot twice.
+    @discardableResult
+    func pollNow() -> Bool {
+        pollOnce()
+    }
+
+    @discardableResult
+    func pollNow(origin: ClipboardChangeOrigin) -> Bool {
+        pollOnce(forcedOrigin: origin)
+    }
+
+    @discardableResult
+    private func pollOnce(forcedOrigin: ClipboardChangeOrigin? = nil) -> Bool {
         let current = pasteboard.changeCount
-        guard current != lastChangeCount else { return }
+        guard current != lastChangeCount else {
+            if let forcedOrigin, preparedOrigin == forcedOrigin {
+                preparedOrigin = nil
+            }
+            return false
+        }
         lastChangeCount = current
-        onChange?(ClipboardSnapshot.capture(from: pasteboard))
+        let snapshot = ClipboardSnapshot.capture(from: pasteboard)
+
+        let origin: ClipboardChangeOrigin
+        if let forcedOrigin {
+            origin = forcedOrigin
+            if preparedOrigin == forcedOrigin {
+                preparedOrigin = nil
+            }
+        } else if let preparedOrigin {
+            guard let imageData = snapshot.imageData, !imageData.isEmpty else {
+                // The system toolbar also exposes recording. Any non-image
+                // clipboard result while an explicit screenshot is pending is
+                // intentionally ignored so video/file output cannot become a clip.
+                NSLog("[clipboard] count=%d ignored non-image while origin=%@ is pending",
+                      snapshot.changeCount,
+                      String(describing: preparedOrigin))
+                return false
+            }
+            origin = preparedOrigin
+            self.preparedOrigin = nil
+        } else {
+            origin = .observed
+        }
+
+        onChange?(snapshot, origin)
+        return true
     }
 }

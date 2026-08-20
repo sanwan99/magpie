@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var snippetsViewModel: SnippetsViewModel?
     private var snippetExpander: SnippetExpander?
     private var historyReaper: HistoryReaper?
+    private var screenshotCoordinator: ScreenshotCoordinator?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Self.isRunningUnitTests {
@@ -33,10 +34,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         reaper.reapInBackground()  // Apply retention on launch without blocking first wake.
 
         let watcher = ClipboardWatcher()
-        watcher.onChange = { [weak vm, weak reaper, ingestor] snapshot in
+        watcher.onChange = { [weak vm, weak reaper, ingestor] snapshot, origin in
             let store = SettingsStore.shared
-            let policy = ClipboardIngestPolicy(
-                appBundleIdentifier: NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+            let policy = ClipboardIngestPolicy.forChange(
+                origin: origin,
+                observedAppBundleIdentifier: NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+                magpieBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.sanwan.magpie",
                 ignoredApps: store.ignoredApps,
                 skipSecretLooking: store.skipSecretLooking
             )
@@ -51,6 +54,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         watcher.start()
 
+        let screenshotCoordinator = ScreenshotCoordinator(
+            panel: panel,
+            clipboardRouter: watcher
+        )
+        hotkeys.onCaptureScreenshot = { [weak screenshotCoordinator] in
+            screenshotCoordinator?.capture()
+        }
+
         // Snippet auto-expansion (e.g. typing ;sig in any text field).
         // OFF by default — requires Input Monitoring permission. User opts in
         // via Settings → General → "Auto-expand snippet shortcuts".
@@ -62,7 +73,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observeAutoExpandToggle(expander: expander)
 
         // 菜单栏图标：⌘P 失效时的兜底入口（也解决 LSUIElement 隐藏带来的可发现性问题）
-        let statusItem = StatusItemController(panelController: panel)
+        let statusItem = StatusItemController(
+            panelController: panel,
+            onCaptureScreenshot: { [weak screenshotCoordinator] in
+                screenshotCoordinator?.capture()
+            }
+        )
 
         // Carbon 热键恢复链路：sleep 前释放旧 ref，wake / Space / session
         // active / app active 后做一次性重建，不再使用 30 秒心跳。
@@ -90,8 +106,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.clipboardWatcher = watcher
         self.snippetExpander = expander
         self.historyReaper = reaper
+        self.screenshotCoordinator = screenshotCoordinator
 
-        NSLog("[magpie] launched. ⌘P toggles panel, Esc hides it. clips=%d snippets=%d",
+        NSLog("[magpie] launched. ⌘P toggles panel, ⌘J captures screenshot, Esc hides panel. clips=%d snippets=%d",
               vm.clips.count, snippetsVM.snippets.count)
 
         // 辅助权限自检 — 没权限就 prompt=true 弹系统权限对话框。

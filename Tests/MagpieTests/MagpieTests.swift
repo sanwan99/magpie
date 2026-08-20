@@ -343,15 +343,16 @@ final class ClipsViewModelTests: XCTestCase {
 
 @MainActor
 final class HotkeyCenterTests: XCTestCase {
-    func testInitialLaunchRegistersCarbonHotkeyWithoutHeartbeat() {
+    func testInitialLaunchRegistersPanelAndScreenshotHotkeysWithoutHeartbeat() {
         let driver = FakeHotkeyRegistrationDriver()
         let center = HotkeyCenter(driver: driver, deferredRepairDelay: nil)
 
         XCTAssertEqual(driver.reinstallEventHandlerCount, 1)
-        XCTAssertEqual(driver.registerCount, 1)
-        XCTAssertEqual(driver.unregisterCount, 0)
+        XCTAssertEqual(driver.registeredActionHistory, [.togglePanel, .captureScreenshot])
+        XCTAssertEqual(driver.unregisterAllCount, 0)
         XCTAssertEqual(center.diagnosticsSnapshot.deferredRepairSchedules, 0)
         XCTAssertTrue(center.diagnosticsSnapshot.registered)
+        XCTAssertEqual(center.diagnosticsSnapshot.registeredActions, Set(GlobalHotkeyAction.allCases))
     }
 
     func testWakeRecoveryRebuildsEventHandlerAndRegistration() {
@@ -360,9 +361,9 @@ final class HotkeyCenterTests: XCTestCase {
 
         center.recover(after: .didWake)
 
-        XCTAssertEqual(driver.unregisterCount, 1)
+        XCTAssertEqual(driver.unregisterAllCount, 1)
         XCTAssertEqual(driver.reinstallEventHandlerCount, 2)
-        XCTAssertEqual(driver.registerCount, 2)
+        XCTAssertEqual(driver.registeredActionHistory.count, 4)
         XCTAssertEqual(center.diagnosticsSnapshot.lastReason, "didWake")
         XCTAssertTrue(center.diagnosticsSnapshot.registered)
     }
@@ -373,9 +374,9 @@ final class HotkeyCenterTests: XCTestCase {
 
         center.recover(after: .activeSpaceDidChange)
 
-        XCTAssertEqual(driver.unregisterCount, 1)
+        XCTAssertEqual(driver.unregisterAllCount, 1)
         XCTAssertEqual(driver.reinstallEventHandlerCount, 2)
-        XCTAssertEqual(driver.registerCount, 2)
+        XCTAssertEqual(driver.registeredActionHistory.count, 4)
         XCTAssertEqual(center.diagnosticsSnapshot.deferredRepairSchedules, 0)
         XCTAssertEqual(center.diagnosticsSnapshot.lastReason, "activeSpaceDidChange")
     }
@@ -387,9 +388,9 @@ final class HotkeyCenterTests: XCTestCase {
         center.recover(after: .sessionDidBecomeActive)
         center.recover(after: .applicationDidBecomeActive)
 
-        XCTAssertEqual(driver.unregisterCount, 2)
+        XCTAssertEqual(driver.unregisterAllCount, 2)
         XCTAssertEqual(driver.reinstallEventHandlerCount, 3)
-        XCTAssertEqual(driver.registerCount, 3)
+        XCTAssertEqual(driver.registeredActionHistory.count, 6)
         XCTAssertEqual(center.diagnosticsSnapshot.lastReason, "applicationDidBecomeActive")
         XCTAssertTrue(center.diagnosticsSnapshot.registered)
     }
@@ -400,60 +401,74 @@ final class HotkeyCenterTests: XCTestCase {
 
         center.recover(after: .willSleep)
 
-        XCTAssertEqual(driver.unregisterCount, 1)
+        XCTAssertEqual(driver.unregisterAllCount, 1)
         XCTAssertFalse(center.diagnosticsSnapshot.registered)
 
         center.recover(after: .didWake)
 
-        XCTAssertEqual(driver.registerCount, 2)
+        XCTAssertEqual(driver.registeredActionHistory.count, 4)
         XCTAssertTrue(center.diagnosticsSnapshot.registered)
     }
 
-    func testRegisterFailureIsRecordedAndNextLifecycleRepairRetries() {
+    func testScreenshotRegisterFailureDoesNotDisablePanelAndLifecycleRepairRetries() {
         let driver = FakeHotkeyRegistrationDriver()
-        driver.registerStatuses = [OSStatus(eventNotHandledErr), noErr]
+        driver.registerStatuses[.captureScreenshot] = [OSStatus(eventNotHandledErr), noErr]
 
         let center = HotkeyCenter(driver: driver, deferredRepairDelay: nil)
 
         XCTAssertFalse(center.diagnosticsSnapshot.registered)
+        XCTAssertEqual(driver.registeredActions, [.togglePanel])
         XCTAssertEqual(center.diagnosticsSnapshot.registerFailures, 1)
         XCTAssertEqual(center.diagnosticsSnapshot.lastOSStatus, OSStatus(eventNotHandledErr))
+        XCTAssertEqual(
+            center.diagnosticsSnapshot.registrationFailures[.captureScreenshot],
+            OSStatus(eventNotHandledErr)
+        )
         XCTAssertNotNil(center.diagnosticsSnapshot.lastError)
 
         center.recover(after: .didWake)
 
         XCTAssertTrue(center.diagnosticsSnapshot.registered)
+        XCTAssertEqual(driver.registeredActions, Set(GlobalHotkeyAction.allCases))
         XCTAssertEqual(center.diagnosticsSnapshot.registerFailures, 1)
-        XCTAssertEqual(center.diagnosticsSnapshot.registerSuccesses, 1)
+        XCTAssertEqual(center.diagnosticsSnapshot.registerSuccesses, 3)
         XCTAssertEqual(center.diagnosticsSnapshot.lastOSStatus, noErr)
+        XCTAssertTrue(center.diagnosticsSnapshot.registrationFailures.isEmpty)
         XCTAssertNil(center.diagnosticsSnapshot.lastError)
     }
 
-    func testKeyDownUpdatesDiagnosticsAndCallsToggleHandler() {
+    func testKeyDownDispatchesPanelAndScreenshotActions() {
         let driver = FakeHotkeyRegistrationDriver()
         let center = HotkeyCenter(driver: driver, deferredRepairDelay: nil)
         var toggles = 0
+        var captures = 0
         center.onTogglePanel = {
             toggles += 1
         }
+        center.onCaptureScreenshot = {
+            captures += 1
+        }
 
-        driver.fireKeyDown()
+        driver.fireKeyDown(.togglePanel)
+        driver.fireKeyDown(.captureScreenshot)
 
         XCTAssertEqual(toggles, 1)
-        XCTAssertEqual(center.diagnosticsSnapshot.keyDownEvents, 1)
+        XCTAssertEqual(captures, 1)
+        XCTAssertEqual(center.diagnosticsSnapshot.keyDownEvents, 2)
+        XCTAssertEqual(center.diagnosticsSnapshot.lastAction, .captureScreenshot)
         XCTAssertEqual(center.diagnosticsSnapshot.lastReason, "keyDown")
     }
 }
 
 private final class FakeHotkeyRegistrationDriver: HotkeyRegistrationDriver {
-    var isRegistered = false
-    var registerStatuses: [OSStatus] = []
+    var registeredActions: Set<GlobalHotkeyAction> = []
+    var registerStatuses: [GlobalHotkeyAction: [OSStatus]] = [:]
     var reinstallEventHandlerStatuses: [OSStatus] = []
 
-    private(set) var registerCount = 0
-    private(set) var unregisterCount = 0
+    private(set) var registeredActionHistory: [GlobalHotkeyAction] = []
+    private(set) var unregisterAllCount = 0
     private(set) var reinstallEventHandlerCount = 0
-    private var keyDownHandler: (@MainActor () -> Void)?
+    private var keyDownHandler: (@MainActor (GlobalHotkeyAction) -> Void)?
 
     func reinstallEventHandler() -> OSStatus {
         reinstallEventHandlerCount += 1
@@ -463,23 +478,34 @@ private final class FakeHotkeyRegistrationDriver: HotkeyRegistrationDriver {
         return reinstallEventHandlerStatuses.removeFirst()
     }
 
-    func register(keyDownHandler: @escaping @MainActor () -> Void) -> OSStatus {
-        registerCount += 1
+    func register(
+        action: GlobalHotkeyAction,
+        keyDownHandler: @escaping @MainActor (GlobalHotkeyAction) -> Void
+    ) -> OSStatus {
+        registeredActionHistory.append(action)
         self.keyDownHandler = keyDownHandler
 
-        let status = registerStatuses.isEmpty ? noErr : registerStatuses.removeFirst()
-        isRegistered = status == noErr
+        var statuses = registerStatuses[action] ?? []
+        let status = statuses.isEmpty ? noErr : statuses.removeFirst()
+        registerStatuses[action] = statuses
+        if status == noErr {
+            registeredActions.insert(action)
+        } else {
+            registeredActions.remove(action)
+        }
         return status
     }
 
-    func unregister() -> OSStatus {
-        unregisterCount += 1
-        isRegistered = false
-        return noErr
+    func unregisterAll() -> [GlobalHotkeyAction: OSStatus] {
+        unregisterAllCount += 1
+        let statuses = Dictionary(uniqueKeysWithValues: registeredActions.map { ($0, noErr) })
+        registeredActions.removeAll()
+        return statuses
     }
 
     @MainActor
-    func fireKeyDown() {
-        keyDownHandler?()
+    func fireKeyDown(_ action: GlobalHotkeyAction) {
+        guard registeredActions.contains(action) else { return }
+        keyDownHandler?(action)
     }
 }

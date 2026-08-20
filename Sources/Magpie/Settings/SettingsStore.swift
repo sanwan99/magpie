@@ -461,6 +461,9 @@ struct SettingsText {
     var keyDoubleClick: String { language.pick(zh: "双击", en: "Double-click") }
     var keySpace: String { language.pick(zh: "空格", en: "Space") }
     var shortcutShowHidePanel: String { language.pick(zh: "显示 / 隐藏面板", en: "Show / hide panel") }
+    var shortcutCaptureScreenshot: String {
+        language.pick(zh: "打开系统截图工具栏", en: "Open system screenshot toolbar")
+    }
     var shortcutOpenSettings: String { language.pick(zh: "打开设置", en: "Open Settings") }
     var shortcutPasteFocused: String { language.pick(zh: "粘贴当前选中记录", en: "Paste focused clip") }
     var shortcutQuickPaste: String { language.pick(zh: "快速粘贴第 1 条（也支持 ⌘2...⌘9）", en: "Quick paste clip 1 (also ⌘2...⌘9)") }
