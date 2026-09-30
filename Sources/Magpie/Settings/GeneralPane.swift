@@ -2,6 +2,13 @@ import SwiftUI
 
 struct GeneralPane: View {
     @Bindable var store: SettingsStore
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private var usesNativeLiquidGlass: Bool {
+        store.panelSurface == .liquidGlass
+            && PanelSurface.supportsNativeLiquidGlass
+            && !reduceTransparency
+    }
 
     var body: some View {
         let text = SettingsText(language: store.language)
@@ -22,9 +29,27 @@ struct GeneralPane: View {
                 }
                 .pickerStyle(.segmented)
 
+                Picker(text.panelSurface, selection: $store.panelSurface) {
+                    ForEach(PanelSurface.allCases, id: \.self) { surface in
+                        Text(surface.displayName(language: store.language)).tag(surface)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if reduceTransparency {
+                    Text(text.reducedTransparencyNote)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                } else if store.panelSurface == .liquidGlass {
+                    Text(usesNativeLiquidGlass ? text.liquidGlassSystemNote : text.liquidGlassCompatibilityNote)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+
                 HStack {
                     Text(text.vibrancy)
                     Slider(value: $store.vibrancy, in: 0...60)
+                        .disabled(usesNativeLiquidGlass || reduceTransparency)
                     Text("\(Int(store.vibrancy))")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(.secondary)
@@ -35,6 +60,7 @@ struct GeneralPane: View {
                 HStack {
                     Text(text.panelOpacity)
                     Slider(value: $store.panelOpacity, in: 0.60...1.00)
+                        .disabled(reduceTransparency)
                     Text("\(Int(store.panelOpacity * 100))%")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(.secondary)

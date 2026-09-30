@@ -98,6 +98,10 @@ final class SettingsStore {
         didSet { defaults.set(theme.rawValue, forKey: Keys.theme) }
     }
 
+    var panelSurface: PanelSurface = .liquidGlass {
+        didSet { defaults.set(panelSurface.rawValue, forKey: Keys.panelSurface) }
+    }
+
     /// 0…60 — mapped to NSVisualEffectView material in `vibrancyMaterial`.
     var vibrancy: Double = 36 {
         didSet { defaults.set(vibrancy, forKey: Keys.vibrancy) }
@@ -200,6 +204,10 @@ final class SettingsStore {
         if let raw = defaults.string(forKey: Keys.theme),
            let restored = AppTheme(rawValue: raw) {
             self.theme = restored
+        }
+        if let raw = defaults.string(forKey: Keys.panelSurface),
+           let restored = PanelSurface(rawValue: raw) {
+            self.panelSurface = restored
         }
         if defaults.object(forKey: Keys.vibrancy) != nil {
             let stored = defaults.double(forKey: Keys.vibrancy)
@@ -339,6 +347,7 @@ final class SettingsStore {
     private enum Keys {
         static let language = "magpie.settings.language"
         static let theme = "magpie.settings.theme"
+        static let panelSurface = "magpie.settings.panelSurface"
         static let vibrancy = "magpie.settings.vibrancy"
         static let panelOpacity = "magpie.settings.panelOpacity"
         static let flavor = "magpie.settings.flavor"
@@ -368,6 +377,25 @@ struct SettingsText {
     var appearance: String { language.pick(zh: "外观", en: "Appearance") }
     var languageLabel: String { language.pick(zh: "语言", en: "Language") }
     var theme: String { language.pick(zh: "主题", en: "Theme") }
+    var panelSurface: String { language.pick(zh: "界面材质", en: "Surface material") }
+    var liquidGlassCompatibilityNote: String {
+        language.pick(
+            zh: "当前使用兼容毛玻璃与柔和高光。原生液态玻璃需要 macOS 26 或更新版本。",
+            en: "Using compatible frosted glass and soft highlights. Native Liquid Glass requires macOS 26 or later."
+        )
+    }
+    var liquidGlassSystemNote: String {
+        language.pick(
+            zh: "液态玻璃的折射与虚化由系统自动调整。",
+            en: "The system automatically adjusts Liquid Glass refraction and blur."
+        )
+    }
+    var reducedTransparencyNote: String {
+        language.pick(
+            zh: "已遵循系统的“减少透明度”设置，使用清晰的不透明背景。",
+            en: "Reduce Transparency is enabled. Using a clear, opaque background."
+        )
+    }
     var vibrancy: String { language.pick(zh: "毛玻璃强度", en: "Vibrancy") }
     var panelOpacity: String { language.pick(zh: "面板透明度", en: "Panel opacity") }
     var flavor: String { language.pick(zh: "风格", en: "Flavor") }

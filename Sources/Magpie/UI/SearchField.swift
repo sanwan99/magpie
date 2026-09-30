@@ -8,6 +8,14 @@ struct SearchField: View {
     @FocusState private var focused: Bool
     private let settings = SettingsStore.shared
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private var usesNativeLiquidGlass: Bool {
+        settings.panelSurface == .liquidGlass
+            && PanelSurface.supportsNativeLiquidGlass
+            && !settings.flavor.isDecorative
+            && !reduceTransparency
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -51,6 +59,7 @@ struct SearchField: View {
                     lineWidth: settings.flavor == .splat ? 2 : 0.5
                 )
         )
+        .modifier(LiquidGlassSearchChrome(enabled: usesNativeLiquidGlass))
         .onAppear {
             // Focus the field on first show; subsequent ⌘P calls also reset focus.
             focused = true
@@ -63,6 +72,7 @@ struct SearchField: View {
 
     private var splatYellow: Color { Color(red: 1.00, green: 0.91, blue: 0.00) }
     private var searchBackground: Color {
+        if usesNativeLiquidGlass { return .clear }
         if settings.flavor == .splat {
             return splatCard
         }

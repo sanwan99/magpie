@@ -31,6 +31,29 @@ enum AppTheme: String, Codable, Sendable, CaseIterable {
     }
 }
 
+// MARK: - Surface material (independent of brightness and flavor)
+
+enum PanelSurface: String, Codable, Sendable, CaseIterable {
+    case liquidGlass
+    case frosted
+
+    func displayName(language: AppLanguage) -> String {
+        switch self {
+        case .liquidGlass: return language.pick(zh: "液态玻璃", en: "Liquid Glass")
+        case .frosted: return language.pick(zh: "毛玻璃", en: "Frosted")
+        }
+    }
+
+    static var supportsNativeLiquidGlass: Bool {
+        // Xcode 26 ships both Swift 6.2 and the macOS 26 SDK. Keep older
+        // toolchains building the macOS 14-compatible vibrancy implementation.
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) { return true }
+        #endif
+        return false
+    }
+}
+
 // MARK: - Flavor (overlay theme — accent palette + decorative tokens)
 
 /// A flavor sits on top of the base theme. Mono/Graphite/Blue/Olive are

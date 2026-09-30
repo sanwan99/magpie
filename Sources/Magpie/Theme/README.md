@@ -12,6 +12,15 @@ A flavor sits **on top** of the base theme — it overrides accent + decorative
 chrome but leaves the base brightness alone. So `Splat + Light` and
 `Splat + Dark` both work.
 
+`PanelSurface` is a third, independent layer: `liquidGlass` (default) or
+`frosted`. Settings → General → Surface material persists this choice without
+changing the base theme or flavor. On macOS 26 with Xcode 26+, the panel uses
+`NSGlassEffectView` and the search control uses SwiftUI `glassEffect`. The same
+hosting view is retained when switching materials. Earlier systems/toolchains
+use native vibrancy with a soft glass rim, without native refraction. Reduce
+Transparency disables glass and forces full panel opacity. See
+[`ADR-0002`](../../../docs/decisions/0002-liquid-glass.md).
+
 ---
 
 ## Adding a new flavor

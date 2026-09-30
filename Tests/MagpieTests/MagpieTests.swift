@@ -95,6 +95,56 @@ final class PanelWindowTests: XCTestCase {
 }
 
 @MainActor
+final class SettingsStoreAppearanceTests: XCTestCase {
+    func testLegacyAppearanceSettingsKeepThemeFlavorAndOpacity() {
+        let (defaults, suiteName) = makeIsolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set("dark", forKey: "magpie.settings.theme")
+        defaults.set("blue", forKey: "magpie.settings.flavor")
+        defaults.set(0.76, forKey: "magpie.settings.panelOpacity")
+        defaults.set(20.0, forKey: "magpie.settings.vibrancy")
+
+        let store = SettingsStore(defaults: defaults, loginItemController: FakeLoginItemController(status: .notRegistered))
+
+        XCTAssertEqual(store.panelSurface, .liquidGlass)
+        XCTAssertEqual(store.theme, .dark)
+        XCTAssertEqual(store.flavor, .blue)
+        XCTAssertEqual(store.panelOpacity, 0.76, accuracy: 0.001)
+        XCTAssertEqual(store.vibrancy, 20.0)
+    }
+
+    func testSurfaceChoiceSurvivesRestoringSettings() {
+        let (defaults, suiteName) = makeIsolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = SettingsStore(defaults: defaults, loginItemController: FakeLoginItemController(status: .notRegistered))
+
+        for surface in PanelSurface.allCases {
+            store.panelSurface = surface
+            let restored = SettingsStore(defaults: defaults, loginItemController: FakeLoginItemController(status: .notRegistered))
+            XCTAssertEqual(restored.panelSurface, surface)
+            XCTAssertEqual(defaults.string(forKey: "magpie.settings.panelSurface"), surface.rawValue)
+        }
+    }
+
+    func testUnknownSurfaceFallsBackWithoutChangingTheme() {
+        let (defaults, suiteName) = makeIsolatedDefaults()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set("future-material", forKey: "magpie.settings.panelSurface")
+        defaults.set("light", forKey: "magpie.settings.theme")
+
+        let store = SettingsStore(defaults: defaults, loginItemController: FakeLoginItemController(status: .notRegistered))
+
+        XCTAssertEqual(store.panelSurface, .liquidGlass)
+        XCTAssertEqual(store.theme, .light)
+    }
+
+    private func makeIsolatedDefaults() -> (UserDefaults, String) {
+        let suiteName = "MagpieTests.SettingsStoreAppearance.\(UUID().uuidString)"
+        return (UserDefaults(suiteName: suiteName)!, suiteName)
+    }
+}
+
+@MainActor
 private final class FakeLoginItemController: LoginItemControlling {
     var status: LoginItemRegistrationStatus
     var registerResultStatus: LoginItemRegistrationStatus

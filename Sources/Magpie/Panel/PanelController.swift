@@ -16,7 +16,8 @@ final class PanelController {
     private var noteEditorActive = false
     private var searchFieldActive = false
     private var settingsObservationTask: Task<Void, Never>?
-    private weak var visualEffectView: NSVisualEffectView?
+    private weak var materialView: PanelMaterialView?
+    private var accessibilityObserver: NSObjectProtocol?
     private(set) var isVisible: Bool = false
 
     /// Panel size — wide enough for layout body + Detail Pane side-by-side.
@@ -38,6 +39,16 @@ final class PanelController {
         applyVibrancy()
         wireKeyboard()
         observeSettings()
+        accessibilityObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.applyVibrancy()
+                self?.applyOpacity()
+            }
+        }
 
         viewModel.onPasteRequest = { [weak self] in
             self?.paste()
@@ -98,6 +109,7 @@ final class PanelController {
         func track() {
             withObservationTracking {
                 _ = store.theme
+                _ = store.panelSurface
                 _ = store.vibrancy
                 _ = store.panelOpacity
             } onChange: { [weak self] in
@@ -117,15 +129,18 @@ final class PanelController {
     }
 
     private func applyVibrancy() {
-        guard let effect = visualEffectView else { return }
-        effect.material = mapVibrancy(settings.vibrancy)
+        materialView?.update(surface: settings.panelSurface, material: mapVibrancy(settings.vibrancy))
+    }
+
+    private var effectivePanelOpacity: Double {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency ? 1.0 : settings.panelOpacity
     }
 
     /// 面板可见时直接应用新的透明度。隐藏中不动 alphaValue（hide 动画自己负责
     /// 把它降到 0），下次 show() 会用最新 panelOpacity 作为目标值。
     private func applyOpacity() {
         guard isVisible else { return }
-        panel.animator().alphaValue = settings.panelOpacity
+        panel.animator().alphaValue = effectivePanelOpacity
     }
 
     /// 0…60 slider → NSVisualEffectView material.
@@ -164,7 +179,7 @@ final class PanelController {
         positionAtBottomCenter()
         let target = panel.frame
         if isVisible {
-            panel.alphaValue = settings.panelOpacity
+            panel.alphaValue = effectivePanelOpacity
             panel.makeKeyAndOrderFront(nil)
             panel.orderFrontRegardless()
             return
@@ -180,7 +195,7 @@ final class PanelController {
             ctx.duration = 0.32
             ctx.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.7, 0.2, 1.0)
             panel.animator().setFrame(target, display: true)
-            panel.animator().alphaValue = settings.panelOpacity
+            panel.animator().alphaValue = effectivePanelOpacity
         }
         isVisible = true
     }
@@ -470,6 +485,9 @@ final class PanelController {
     }
 
     deinit {
+        if let accessibilityObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(accessibilityObserver)
+        }
         if let keyMonitor {
             NSEvent.removeMonitor(keyMonitor)
         }
@@ -488,23 +506,9 @@ final class PanelController {
             onCreateSnippet: { [weak self] in self?.openNewSnippetEditor() },
             onEditSnippet: { [weak self] s in self?.openEditor(for: s) }
         ))
-        let container = NSView(frame: NSRect(origin: .zero, size: Self.panelSize))
-        container.wantsLayer = true
-        container.layer?.cornerRadius = 22
-        container.layer?.masksToBounds = true
-
-        let effect = NSVisualEffectView(frame: container.bounds)
-        effect.material = mapVibrancy(settings.vibrancy)
-        effect.blendingMode = .behindWindow
-        effect.state = .active
-        effect.autoresizingMask = [.width, .height]
-        container.addSubview(effect)
-        self.visualEffectView = effect
-
-        host.frame = container.bounds
-        host.autoresizingMask = [.width, .height]
-        container.addSubview(host)
-
+        let container = PanelMaterialView(content: host, frame: NSRect(origin: .zero, size: Self.panelSize))
+        container.update(surface: settings.panelSurface, material: mapVibrancy(settings.vibrancy))
+        self.materialView = container
         return container
     }
 }
@@ -523,11 +527,14 @@ private struct PanelContentView: View {
 
     private let settings = SettingsStore.shared
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         ZStack {
             if let overlay = settings.flavor.tokens(for: colorScheme).panelBgOverlay {
-                overlay.ignoresSafeArea()
+                overlay
+                    .opacity(settings.panelSurface == .liquidGlass && !settings.flavor.isDecorative && !reduceTransparency ? 0.28 : 1)
+                    .ignoresSafeArea()
             }
             // Decorative flavor chrome sits above the overlay but below
             // content, with hit testing off.
@@ -567,9 +574,13 @@ private struct PanelContentView: View {
                     .padding(0.5)
                     .allowsHitTesting(false)
             } else {
-                RoundedRectangle(cornerRadius: 18)
-                    .strokeBorder(regularPanelBorder, lineWidth: 0.5)
-                    .allowsHitTesting(false)
+                if settings.panelSurface == .liquidGlass && !reduceTransparency {
+                    PanelGlassRim()
+                } else {
+                    RoundedRectangle(cornerRadius: 22)
+                        .strokeBorder(regularPanelBorder, lineWidth: 0.5)
+                        .allowsHitTesting(false)
+                }
             }
         }
         // 主面板焦点变化时联动放大预览窗口（仅在窗口已打开时生效）。
