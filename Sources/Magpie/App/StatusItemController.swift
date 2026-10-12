@@ -12,10 +12,13 @@ final class StatusItemController: NSObject {
     private let statusItem: NSStatusItem
     private weak var panelController: PanelController?
     private let onCaptureScreenshot: () -> Void
+    private let onScreenCapturePermissions: () -> Void
 
-    init(panelController: PanelController, onCaptureScreenshot: @escaping () -> Void) {
+    init(panelController: PanelController, onCaptureScreenshot: @escaping () -> Void,
+         onScreenCapturePermissions: @escaping () -> Void) {
         self.panelController = panelController
         self.onCaptureScreenshot = onCaptureScreenshot
+        self.onScreenCapturePermissions = onScreenCapturePermissions
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
@@ -54,6 +57,10 @@ final class StatusItemController: NSObject {
         capture.target = self
         capture.keyEquivalentModifierMask = [.command]
         menu.addItem(capture)
+        let permission = NSMenuItem(title: language.pick(zh: "屏幕录制权限…", en: "Screen Recording Permission…"),
+                                    action: #selector(openScreenCapturePermissions), keyEquivalent: "")
+        permission.target = self
+        menu.addItem(permission)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -83,6 +90,10 @@ final class StatusItemController: NSObject {
 
     @objc private func captureScreenshot() {
         onCaptureScreenshot()
+    }
+
+    @objc private func openScreenCapturePermissions() {
+        onScreenCapturePermissions()
     }
 
     @objc private func openSettings() {

@@ -4,11 +4,6 @@ import XCTest
 
 @MainActor
 final class ScreenshotCoordinatorTests: XCTestCase {
-    func testSystemCommandUsesInteractiveToolbarAndClipboard() {
-        XCTAssertEqual(SystemScreenshotCommand.executableURL.path, "/usr/sbin/screencapture")
-        XCTAssertEqual(SystemScreenshotCommand.arguments, ["-i", "-U", "-c", "-d"])
-    }
-
     func testPermissionDeniedDoesNotHidePanelOrLaunchCommand() {
         let dependencies = makeDependencies(panelVisible: true)
         dependencies.permission.hasAccessValue = false
@@ -25,6 +20,65 @@ final class ScreenshotCoordinatorTests: XCTestCase {
         XCTAssertEqual(dependencies.feedback.permissionDeniedCount, 1)
     }
 
+    func testRepeatedDeniedCaptureRequestsPermissionAndShowsHelpOnlyOnce() {
+        let dependencies = makeDependencies(panelVisible: true)
+        dependencies.permission.hasAccessValue = false
+        dependencies.permission.requestAccessValue = false
+        let coordinator = dependencies.makeCoordinator()
+        coordinator.capture()
+        coordinator.capture()
+        coordinator.capture()
+        XCTAssertEqual(dependencies.permission.requestCount, 1)
+        XCTAssertEqual(dependencies.feedback.permissionDeniedCount, 1)
+        XCTAssertEqual(dependencies.runner.runCount, 0)
+        XCTAssertEqual(dependencies.panel.hideCount, 0)
+        XCTAssertFalse(coordinator.isCapturing)
+    }
+
+    func testAccessGrantedAfterDeniedCaptureCanStartWithoutAnotherRequest() {
+        let dependencies = makeDependencies(panelVisible: true)
+        dependencies.permission.hasAccessValue = false
+        dependencies.permission.requestAccessValue = false
+        let coordinator = dependencies.makeCoordinator()
+        coordinator.capture()
+        dependencies.permission.hasAccessValue = true
+        coordinator.capture()
+        XCTAssertEqual(dependencies.permission.requestCount, 1)
+        XCTAssertEqual(dependencies.runner.runCount, 1)
+        XCTAssertTrue(coordinator.isCapturing)
+    }
+
+    func testGrantedPermissionRequestStartsCapture() {
+        let dependencies = makeDependencies(panelVisible: false)
+        dependencies.permission.hasAccessValue = false
+        dependencies.permission.requestAccessValue = true
+        let coordinator = dependencies.makeCoordinator()
+        coordinator.capture()
+        XCTAssertEqual(dependencies.runner.runCount, 1)
+        XCTAssertEqual(dependencies.feedback.permissionDeniedCount, 0)
+    }
+
+    func testPermissionDialogReentryDoesNotOpenAnotherDialog() {
+        let dependencies = makeDependencies(panelVisible: false)
+        dependencies.permission.hasAccessValue = false
+        dependencies.permission.requestAccessValue = false
+        let coordinator = dependencies.makeCoordinator()
+        dependencies.feedback.onPermissionDenied = { coordinator.capture() }
+        coordinator.capture()
+        XCTAssertEqual(dependencies.permission.requestCount, 1)
+        XCTAssertEqual(dependencies.feedback.permissionDeniedCount, 1)
+        XCTAssertEqual(dependencies.runner.runCount, 0)
+    }
+
+    func testExplicitPermissionMenuOpensSettingsWithoutRequestingAccess() {
+        let dependencies = makeDependencies(panelVisible: false)
+        let coordinator = dependencies.makeCoordinator()
+        coordinator.openPermissionSettings()
+        XCTAssertEqual(dependencies.feedback.openSettingsCount, 1)
+        XCTAssertEqual(dependencies.permission.requestCount, 0)
+        XCTAssertEqual(dependencies.runner.runCount, 0)
+    }
+
     func testSuccessfulCaptureHidesVisiblePanelAndRoutesClipboardOnce() {
         let dependencies = makeDependencies(panelVisible: true)
         let coordinator = dependencies.makeCoordinator()
@@ -33,12 +87,13 @@ final class ScreenshotCoordinatorTests: XCTestCase {
 
         XCTAssertTrue(coordinator.isCapturing)
         XCTAssertEqual(dependencies.panel.hideCount, 1)
-        XCTAssertEqual(dependencies.router.preparedOrigins, [.explicitScreenshot])
+        XCTAssertEqual(dependencies.router.preparedOrigins, [])
         XCTAssertEqual(dependencies.runner.runCount, 1)
 
-        dependencies.pasteboard.changeCount = 11
-        dependencies.pasteboard.containsImage = true
-        dependencies.runner.finish(.success(0))
+        let png = Data([1, 2, 3])
+        dependencies.runner.finish(.success(.copied(png)))
+        XCTAssertEqual(dependencies.pasteboard.writes, [png])
+        XCTAssertEqual(dependencies.router.preparedOrigins, [.explicitScreenshot])
 
         XCTAssertEqual(coordinator.lastResult, .captured)
         XCTAssertFalse(coordinator.isCapturing)
@@ -52,11 +107,11 @@ final class ScreenshotCoordinatorTests: XCTestCase {
         let coordinator = dependencies.makeCoordinator()
 
         coordinator.capture()
-        dependencies.runner.finish(.success(1))
+        dependencies.runner.finish(.success(.cancelled))
 
         XCTAssertEqual(coordinator.lastResult, .cancelledOrNonImage)
         XCTAssertFalse(coordinator.isCapturing)
-        XCTAssertEqual(dependencies.router.cancelledOrigins, [.explicitScreenshot])
+        XCTAssertEqual(dependencies.router.cancelledOrigins, [])
         XCTAssertEqual(dependencies.router.polledOrigins, [])
         XCTAssertEqual(dependencies.panel.showCount, 1)
     }
@@ -70,7 +125,7 @@ final class ScreenshotCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(coordinator.lastResult, .launchFailed("fake launch failure"))
         XCTAssertFalse(coordinator.isCapturing)
-        XCTAssertEqual(dependencies.router.cancelledOrigins, [.explicitScreenshot])
+        XCTAssertEqual(dependencies.router.cancelledOrigins, [])
         XCTAssertEqual(dependencies.panel.showCount, 1)
         XCTAssertEqual(dependencies.feedback.launchFailures, ["fake launch failure"])
     }
@@ -84,7 +139,66 @@ final class ScreenshotCoordinatorTests: XCTestCase {
 
         XCTAssertTrue(coordinator.isCapturing)
         XCTAssertEqual(dependencies.runner.runCount, 1)
-        XCTAssertEqual(dependencies.router.preparedOrigins, [.explicitScreenshot])
+        XCTAssertEqual(dependencies.router.preparedOrigins, [])
+    }
+
+    func testPresentationDoesNotChangeClipboardOrRestorePanel() {
+        let dependencies = makeDependencies(panelVisible: true)
+        let coordinator = dependencies.makeCoordinator()
+        coordinator.capture()
+        dependencies.runner.finish(.success(.presented))
+        XCTAssertEqual(coordinator.lastResult, .presented)
+        XCTAssertTrue(dependencies.pasteboard.writes.isEmpty)
+        XCTAssertTrue(dependencies.pasteboard.textWrites.isEmpty)
+        XCTAssertTrue(dependencies.router.polledOrigins.isEmpty)
+        XCTAssertEqual(dependencies.panel.showCount, 0)
+    }
+
+    func testColorCopyRoutesExplicitSourceOnce() {
+        let dependencies = makeDependencies(panelVisible: false)
+        let coordinator = dependencies.makeCoordinator()
+        coordinator.capture()
+        dependencies.runner.finish(.success(.copiedText("#FF0000")))
+        XCTAssertEqual(coordinator.lastResult, .copiedText)
+        XCTAssertEqual(dependencies.pasteboard.textWrites, ["#FF0000"])
+        XCTAssertEqual(dependencies.router.polledOrigins, [.explicitScreenshot])
+        XCTAssertTrue(dependencies.router.preparedOrigins.isEmpty)
+    }
+
+    func testSaveDoesNotWriteClipboardOrIngestHistory() {
+        let dependencies = makeDependencies(panelVisible: true)
+        let coordinator = dependencies.makeCoordinator()
+        coordinator.capture()
+        dependencies.runner.finish(.success(.saved))
+        XCTAssertEqual(coordinator.lastResult, .saved)
+        XCTAssertTrue(dependencies.pasteboard.writes.isEmpty)
+        XCTAssertTrue(dependencies.router.preparedOrigins.isEmpty)
+        XCTAssertTrue(dependencies.router.polledOrigins.isEmpty)
+        XCTAssertEqual(dependencies.panel.showCount, 0)
+    }
+
+    func testClipboardFailureCancelsReservationAndRestoresPanel() {
+        let dependencies = makeDependencies(panelVisible: true)
+        dependencies.pasteboard.succeeds = false
+        let coordinator = dependencies.makeCoordinator()
+        coordinator.capture()
+        dependencies.runner.finish(.success(.copied(Data([1]))))
+        XCTAssertEqual(dependencies.router.cancelledOrigins, [.explicitScreenshot])
+        XCTAssertTrue(dependencies.router.polledOrigins.isEmpty)
+        XCTAssertEqual(dependencies.panel.showCount, 1)
+        XCTAssertEqual(dependencies.feedback.launchFailures.count, 1)
+        XCTAssertFalse(coordinator.isCapturing)
+    }
+
+    func testCancelDoesNotWriteClipboardAndAllowsAnotherSession() {
+        let dependencies = makeDependencies(panelVisible: false)
+        let coordinator = dependencies.makeCoordinator()
+        coordinator.capture()
+        dependencies.runner.finish(.success(.cancelled))
+        XCTAssertTrue(dependencies.pasteboard.writes.isEmpty)
+        XCTAssertEqual(dependencies.panel.showCount, 0)
+        coordinator.capture()
+        XCTAssertEqual(dependencies.runner.runCount, 2)
     }
 
     func testExplicitScreenshotPolicyBypassesPassiveIgnoreListAndUsesMagpieSource() {
@@ -186,7 +300,7 @@ final class ScreenshotCoordinatorTests: XCTestCase {
 @MainActor
 private final class ScreenshotTestDependencies {
     let permission = FakeScreenCapturePermission()
-    let runner = FakeScreenshotCommandRunner()
+    let runner = FakeScreenshotSession()
     let pasteboard = FakeScreenshotPasteboard()
     let panel: FakeScreenshotPanel
     let router = FakeScreenshotClipboardRouter()
@@ -199,7 +313,7 @@ private final class ScreenshotTestDependencies {
     func makeCoordinator() -> ScreenshotCoordinator {
         ScreenshotCoordinator(
             permission: permission,
-            commandRunner: runner,
+            session: runner,
             pasteboard: pasteboard,
             panel: panel,
             clipboardRouter: router,
@@ -225,16 +339,16 @@ private final class FakeScreenCapturePermission: ScreenCapturePermissionProvidin
 }
 
 @MainActor
-private final class FakeScreenshotCommandRunner: ScreenshotCommandRunning {
+private final class FakeScreenshotSession: ScreenshotSessionRunning {
     private(set) var runCount = 0
-    private var completion: ((Result<Int32, Error>) -> Void)?
+    private var completion: ((Result<ScreenshotSessionOutput, Error>) -> Void)?
 
-    func run(completion: @escaping (Result<Int32, Error>) -> Void) {
+    func run(completion: @escaping (Result<ScreenshotSessionOutput, Error>) -> Void) {
         runCount += 1
         self.completion = completion
     }
 
-    func finish(_ result: Result<Int32, Error>) {
+    func finish(_ result: Result<ScreenshotSessionOutput, Error>) {
         let completion = completion
         self.completion = nil
         completion?(result)
@@ -242,9 +356,12 @@ private final class FakeScreenshotCommandRunner: ScreenshotCommandRunning {
 }
 
 @MainActor
-private final class FakeScreenshotPasteboard: ScreenshotPasteboardReading {
-    var changeCount = 10
-    var containsImage = false
+private final class FakeScreenshotPasteboard: ScreenshotPasteboardWriting {
+    var succeeds = true
+    private(set) var writes: [Data] = []
+    private(set) var textWrites: [String] = []
+    func writeText(_ text: String) -> Bool { textWrites.append(text); return succeeds }
+    func writePNG(_ data: Data) -> Bool { writes.append(data); return succeeds }
 }
 
 @MainActor
@@ -292,11 +409,16 @@ private final class FakeScreenshotClipboardRouter: ScreenshotClipboardRouting {
 @MainActor
 private final class FakeScreenshotFeedbackPresenter: ScreenshotFeedbackPresenting {
     private(set) var permissionDeniedCount = 0
+    private(set) var openSettingsCount = 0
+    var onPermissionDenied: (() -> Void)?
     private(set) var launchFailures: [String] = []
 
     func showPermissionDenied() {
         permissionDeniedCount += 1
+        onPermissionDenied?()
     }
+
+    func openPermissionSettings() { openSettingsCount += 1 }
 
     func showLaunchFailure(_ message: String) {
         launchFailures.append(message)

@@ -82,9 +82,8 @@ final class ClipboardWatcher {
         timer = nil
     }
 
-    /// Reserve the next image pasteboard change for an explicit source. The
-    /// timer may observe screencapture's clipboard write before the child
-    /// process exits, so the reservation keeps source attribution deterministic.
+    /// Reserve the next image pasteboard change immediately before an explicit
+    /// image write. Cancel the reservation if that write fails.
     func prepareNextChange(origin: ClipboardChangeOrigin) {
         preparedOrigin = origin
     }
@@ -126,9 +125,8 @@ final class ClipboardWatcher {
             }
         } else if let preparedOrigin {
             guard let imageData = snapshot.imageData, !imageData.isEmpty else {
-                // The system toolbar also exposes recording. Any non-image
-                // clipboard result while an explicit screenshot is pending is
-                // intentionally ignored so video/file output cannot become a clip.
+                // A reservation only applies to images; wait for the explicit
+                // writer to finish or cancel it.
                 NSLog("[clipboard] count=%d ignored non-image while origin=%@ is pending",
                       snapshot.changeCount,
                       String(describing: preparedOrigin))

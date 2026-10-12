@@ -19,6 +19,21 @@ struct ShortcutsPane: View {
             .init(keys: ["⌘", "\\"],         action: text.shortcutCycleLayout,        scope: text.scopePanel),
             .init(keys: [text.keySpace],     action: text.shortcutToggleDetail,       scope: text.scopePanel),
             .init(keys: ["Esc"],             action: text.shortcutCancelCascade,      scope: text.scopePanel),
+            .init(keys: ["V", "R", "O", "A"], action: language.pick(zh: "选区 / 矩形 / 椭圆 / 箭头", en: "Select / Rectangle / Ellipse / Arrow"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["P", "T", "M"], action: language.pick(zh: "画笔 / 文字 / 马赛克", en: "Pen / Text / Mosaic"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["C", "[", "]"], action: language.pick(zh: "颜色 / 减细 / 加粗", en: "Color / Thinner / Thicker"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["⌘", "Z"], action: language.pick(zh: "撤销；⇧⌘Z 重做", en: "Undo; ⇧⌘Z to redo"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["↵", "⌘C"], action: language.pick(zh: "复制截图", en: "Copy screenshot"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["⌘", "S"], action: language.pick(zh: "保存 PNG", en: "Save PNG"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["⌘", "A"], action: language.pick(zh: "选择当前整屏", en: "Select entire screen"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["↑", "↓", "←", "→"], action: language.pick(zh: "移动选区；⇧ 加速，⌥ 调整大小", en: "Move selection; ⇧ faster, ⌥ resize"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["Esc"], action: language.pick(zh: "取消截图", en: "Cancel screenshot"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["E"], action: language.pick(zh: "表情 / 自定义表情", en: "Stickers / custom emoji"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["X", "L"], action: language.pick(zh: "提取文字 / 系统翻译", en: "OCR / local translation"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["D", "N", "G"], action: language.pick(zh: "一键打码 / 贴图 / 长截图", en: "Redact / Pin / Scroll"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["⇧", "⌘", "S"], action: language.pick(zh: "系统分享", en: "System sharing"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["Delete"], action: language.pick(zh: "删除选中标注", en: "Delete selected annotation"), scope: language.pick(zh: "截图", en: "Capture")),
+            .init(keys: ["⇧", "↵"], action: language.pick(zh: "文字换行", en: "New line in text"), scope: language.pick(zh: "截图", en: "Capture")),
         ]
     }
 

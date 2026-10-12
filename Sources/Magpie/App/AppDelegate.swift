@@ -26,9 +26,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let snippetsVM = SnippetsViewModel()
         let panel = PanelController(viewModel: vm, snippetsViewModel: snippetsVM)
         let hotkeys = HotkeyCenter()
-        hotkeys.onTogglePanel = { [weak panel] in
-            panel?.toggle()
-        }
 
         let reaper = HistoryReaper()
         reaper.reapInBackground()  // Apply retention on launch without blocking first wake.
@@ -58,6 +55,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             panel: panel,
             clipboardRouter: watcher
         )
+        hotkeys.onTogglePanel = { [weak panel, weak screenshotCoordinator] in
+            guard screenshotCoordinator?.isCapturing != true else { return }
+            panel?.toggle()
+        }
         hotkeys.onCaptureScreenshot = { [weak screenshotCoordinator] in
             screenshotCoordinator?.capture()
         }
@@ -77,6 +78,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             panelController: panel,
             onCaptureScreenshot: { [weak screenshotCoordinator] in
                 screenshotCoordinator?.capture()
+            },
+            onScreenCapturePermissions: { [weak screenshotCoordinator] in
+                screenshotCoordinator?.openPermissionSettings()
             }
         )
 

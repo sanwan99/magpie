@@ -4,14 +4,12 @@ import Foundation
 
 enum ScreenshotResult: Equatable {
     case captured
+    case saved
+    case presented
+    case copiedText
     case cancelledOrNonImage
     case permissionDenied
     case launchFailed(String)
-}
-
-enum SystemScreenshotCommand {
-    static let executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
-    static let arguments = ["-i", "-U", "-c", "-d"]
 }
 
 @MainActor
@@ -32,69 +30,21 @@ struct SystemScreenCapturePermission: ScreenCapturePermissionProviding {
 }
 
 @MainActor
-protocol ScreenshotCommandRunning: AnyObject {
-    func run(completion: @escaping (Result<Int32, Error>) -> Void)
-}
-
-private enum ScreenshotCommandError: LocalizedError {
-    case alreadyRunning
-
-    var errorDescription: String? {
-        "A screenshot command is already running."
-    }
+protocol ScreenshotPasteboardWriting {
+    func writePNG(_ data: Data) -> Bool
+    func writeText(_ text: String) -> Bool
 }
 
 @MainActor
-final class ProcessScreenshotCommandRunner: ScreenshotCommandRunning {
-    private var process: Process?
-
-    func run(completion: @escaping (Result<Int32, Error>) -> Void) {
-        guard process == nil else {
-            completion(.failure(ScreenshotCommandError.alreadyRunning))
-            return
-        }
-
-        let process = Process()
-        process.executableURL = SystemScreenshotCommand.executableURL
-        process.arguments = SystemScreenshotCommand.arguments
-        process.terminationHandler = { [weak self] process in
-            let status = process.terminationStatus
-            Task { @MainActor in
-                self?.process = nil
-                completion(.success(status))
-            }
-        }
-        self.process = process
-
-        do {
-            try process.run()
-        } catch {
-            self.process = nil
-            completion(.failure(error))
-        }
+struct GeneralScreenshotPasteboard: ScreenshotPasteboardWriting {
+    func writeText(_ text: String) -> Bool {
+        NSPasteboard.general.clearContents()
+        return NSPasteboard.general.setString(text, forType: .string)
     }
-}
-
-@MainActor
-protocol ScreenshotPasteboardReading {
-    var changeCount: Int { get }
-    var containsImage: Bool { get }
-}
-
-@MainActor
-struct GeneralScreenshotPasteboard: ScreenshotPasteboardReading {
-    var changeCount: Int {
-        NSPasteboard.general.changeCount
-    }
-
-    var containsImage: Bool {
-        let pasteboard = NSPasteboard.general
-        guard let type = pasteboard.availableType(from: [.png, .tiff]),
-              let data = pasteboard.data(forType: type)
-        else {
-            return false
-        }
-        return !data.isEmpty
+    func writePNG(_ data: Data) -> Bool {
+        guard !data.isEmpty else { return false }
+        NSPasteboard.general.clearContents()
+        return NSPasteboard.general.setData(data, forType: .png)
     }
 }
 
@@ -121,6 +71,7 @@ extension ClipboardWatcher: ScreenshotClipboardRouting {}
 protocol ScreenshotFeedbackPresenting {
     func showPermissionDenied()
     func showLaunchFailure(_ message: String)
+    func openPermissionSettings()
 }
 
 @MainActor
@@ -134,20 +85,18 @@ struct SystemScreenshotFeedbackPresenter: ScreenshotFeedbackPresenting {
             en: "Screen Recording permission required"
         )
         alert.informativeText = language.pick(
-            zh: "请在系统设置的“隐私与安全性 → 屏幕与系统音频录制”中允许 Magpie，然后重新启动 Magpie 再试。",
-            en: "Allow Magpie in System Settings → Privacy & Security → Screen & System Audio Recording, then restart Magpie and try again."
+            zh: "请在系统设置的“隐私与安全性 → 录屏与系统录音”中允许 Magpie，再按系统提示重新打开应用。如果已经开启仍不能截图，请移除列表中的 Magpie，再添加“应用程序”里的 Magpie。也可从菜单栏的“屏幕录制权限…”返回这里。",
+            en: "Allow Magpie in System Settings → Privacy & Security → Screen & System Audio Recording, then reopen it if macOS asks. If access is already enabled but capture still fails, remove Magpie from that list and add the copy in Applications. You can return here using Screen Recording Permission… in the menu bar."
         )
         alert.addButton(withTitle: language.pick(zh: "打开系统设置", en: "Open System Settings"))
         alert.addButton(withTitle: language.pick(zh: "取消", en: "Cancel"))
         NSApp.activate(ignoringOtherApps: true)
 
-        guard alert.runModal() == .alertFirstButtonReturn,
-              let url = URL(
-                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
-              )
-        else {
-            return
-        }
+        if alert.runModal() == .alertFirstButtonReturn { openPermissionSettings() }
+    }
+
+    func openPermissionSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else { return }
         NSWorkspace.shared.open(url)
     }
 
@@ -166,12 +115,15 @@ struct SystemScreenshotFeedbackPresenter: ScreenshotFeedbackPresenting {
 @MainActor
 final class ScreenshotCoordinator {
     private let permission: ScreenCapturePermissionProviding
-    private let commandRunner: ScreenshotCommandRunning
-    private let pasteboard: ScreenshotPasteboardReading
+    private let session: ScreenshotSessionRunning
+    private let pasteboard: ScreenshotPasteboardWriting
     private weak var panel: ScreenshotPanelControlling?
     private weak var clipboardRouter: ScreenshotClipboardRouting?
     private let feedback: ScreenshotFeedbackPresenting
 
+    private var isCheckingPermission = false
+    private var requestedPermission = false
+    private var showedPermissionHelp = false
     private(set) var isCapturing = false
     private(set) var lastResult: ScreenshotResult?
 
@@ -181,7 +133,7 @@ final class ScreenshotCoordinator {
     ) {
         self.init(
             permission: SystemScreenCapturePermission(),
-            commandRunner: ProcessScreenshotCommandRunner(),
+            session: NativeScreenshotSession(),
             pasteboard: GeneralScreenshotPasteboard(),
             panel: panel,
             clipboardRouter: clipboardRouter,
@@ -191,14 +143,14 @@ final class ScreenshotCoordinator {
 
     init(
         permission: ScreenCapturePermissionProviding,
-        commandRunner: ScreenshotCommandRunning,
-        pasteboard: ScreenshotPasteboardReading,
+        session: ScreenshotSessionRunning,
+        pasteboard: ScreenshotPasteboardWriting,
         panel: ScreenshotPanelControlling,
         clipboardRouter: ScreenshotClipboardRouting,
         feedback: ScreenshotFeedbackPresenting
     ) {
         self.permission = permission
-        self.commandRunner = commandRunner
+        self.session = session
         self.pasteboard = pasteboard
         self.panel = panel
         self.clipboardRouter = clipboardRouter
@@ -206,25 +158,35 @@ final class ScreenshotCoordinator {
     }
 
     func capture() {
-        guard !isCapturing else {
+        guard !isCapturing, !isCheckingPermission else {
             NSLog("[screenshot] ignored duplicate ⌘J while capture is active")
             return
         }
 
-        guard permission.hasAccess() || permission.requestAccess() else {
+        isCheckingPermission = true
+        var authorized = permission.hasAccess()
+        if !authorized, !requestedPermission {
+            requestedPermission = true
+            authorized = permission.requestAccess()
+        }
+        guard authorized else {
             lastResult = .permissionDenied
-            NSLog("[screenshot] screen capture permission denied")
-            feedback.showPermissionDenied()
+            NSLog("[screenshot] permission unavailable; requested=%d helpShown=%d", requestedPermission, showedPermissionHelp)
+            if !showedPermissionHelp {
+                showedPermissionHelp = true
+                feedback.showPermissionDenied()
+            }
+            isCheckingPermission = false
             return
         }
+        isCheckingPermission = false
+        showedPermissionHelp = false
 
         isCapturing = true
-        let pasteboardChangeCount = pasteboard.changeCount
         let shouldRestorePanel = panel?.isVisible == true
         let launch: () -> Void = { [weak self] in
             guard let self else { return }
             self.launchCapture(
-                pasteboardChangeCount: pasteboardChangeCount,
                 shouldRestorePanel: shouldRestorePanel
             )
         }
@@ -236,56 +198,49 @@ final class ScreenshotCoordinator {
         }
     }
 
-    private func launchCapture(pasteboardChangeCount: Int, shouldRestorePanel: Bool) {
-        clipboardRouter?.prepareNextChange(origin: .explicitScreenshot)
-        NSLog("[screenshot] launch %@ %@",
-              SystemScreenshotCommand.executableURL.path,
-              SystemScreenshotCommand.arguments.joined(separator: " "))
+    func openPermissionSettings() {
+        feedback.openPermissionSettings()
+    }
 
-        commandRunner.run { [weak self] result in
+    private func launchCapture(shouldRestorePanel: Bool) {
+        session.run { [weak self] result in
             guard let self else { return }
+            self.isCapturing = false
             switch result {
-            case .success(let terminationStatus):
-                self.finishCapture(
-                    pasteboardChangeCount: pasteboardChangeCount,
-                    terminationStatus: terminationStatus,
-                    shouldRestorePanel: shouldRestorePanel
-                )
-            case .failure(let error):
-                self.clipboardRouter?.cancelPreparedChange(origin: .explicitScreenshot)
-                self.lastResult = .launchFailed(error.localizedDescription)
-                self.isCapturing = false
-                if shouldRestorePanel {
-                    self.panel?.show()
+            case .success(.copied(let data)):
+                // Reserve only the synchronous write, not the whole editing session.
+                self.clipboardRouter?.prepareNextChange(origin: .explicitScreenshot)
+                if self.pasteboard.writePNG(data) {
+                    _ = self.clipboardRouter?.pollNow(origin: .explicitScreenshot)
+                    self.lastResult = .captured
+                } else {
+                    self.clipboardRouter?.cancelPreparedChange(origin: .explicitScreenshot)
+                    self.reportFailure(ScreenshotSessionError.clipboardWriteFailed, restorePanel: shouldRestorePanel)
                 }
-                NSLog("[screenshot] launch failed: %@", error.localizedDescription)
-                self.feedback.showLaunchFailure(error.localizedDescription)
+            case .success(.copiedText(let text)):
+                if self.pasteboard.writeText(text) {
+                    _ = self.clipboardRouter?.pollNow(origin: .explicitScreenshot)
+                    self.lastResult = .copiedText
+                } else {
+                    self.reportFailure(ScreenshotSessionError.clipboardWriteFailed, restorePanel: shouldRestorePanel)
+                }
+            case .success(.presented):
+                self.lastResult = .presented
+            case .success(.saved):
+                self.lastResult = .saved
+            case .success(.cancelled):
+                self.lastResult = .cancelledOrNonImage
+                if shouldRestorePanel { self.panel?.show() }
+            case .failure(let error):
+                self.reportFailure(error, restorePanel: shouldRestorePanel)
             }
         }
     }
 
-    private func finishCapture(
-        pasteboardChangeCount: Int,
-        terminationStatus: Int32,
-        shouldRestorePanel: Bool
-    ) {
-        let capturedImage = pasteboard.changeCount != pasteboardChangeCount && pasteboard.containsImage
-        isCapturing = false
-
-        if capturedImage {
-            _ = clipboardRouter?.pollNow(origin: .explicitScreenshot)
-            lastResult = .captured
-            NSLog("[screenshot] captured status=%d pasteboard=%d",
-                  terminationStatus,
-                  pasteboard.changeCount)
-            return
-        }
-
-        clipboardRouter?.cancelPreparedChange(origin: .explicitScreenshot)
-        lastResult = .cancelledOrNonImage
-        if shouldRestorePanel {
-            panel?.show()
-        }
-        NSLog("[screenshot] cancelled or non-image result status=%d", terminationStatus)
+    private func reportFailure(_ error: Error, restorePanel: Bool) {
+        lastResult = .launchFailed(error.localizedDescription)
+        if restorePanel { panel?.show() }
+        NSLog("[screenshot] failed: %@", error.localizedDescription)
+        feedback.showLaunchFailure(error.localizedDescription)
     }
 }

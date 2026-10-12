@@ -7,6 +7,7 @@ DERIVED_DATA="${MAGPIE_TEST_DERIVED_DATA_PATH:-/private/tmp/magpie-derived}"
 # shellcheck source=Scripts/xcode-env.sh
 source "$ROOT/Scripts/xcode-env.sh"
 ensure_magpie_package_cache "$ROOT"
+python3 "$ROOT/Scripts/setup-local-signing.py"
 
 cleanup_app_entries() {
   local status=$?
