@@ -10,10 +10,10 @@ struct StripeLayout: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+                LazyHStack(spacing: 10) {
                     ForEach(Array(viewModel.clips.enumerated()), id: \.element.id) { index, clip in
                         ClipPreview(
-                            clip: clip,
+                            clip: clip.card,
                             isFocused: index == viewModel.focusedIndex,
                             shortcutNumber: index < 9 ? index + 1 : nil
                         )

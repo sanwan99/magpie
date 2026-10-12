@@ -13,7 +13,7 @@ struct StackLayout: View {
                 LazyVStack(spacing: 2) {
                     ForEach(Array(viewModel.clips.enumerated()), id: \.element.id) { index, clip in
                         StackRow(
-                            clip: clip,
+                            clip: clip.card,
                             isFocused: index == viewModel.focusedIndex,
                             shortcutNumber: index < 9 ? index + 1 : nil
                         )
@@ -35,7 +35,7 @@ struct StackLayout: View {
 }
 
 private struct StackRow: View {
-    let clip: ClipDisplayItem
+    let clip: ClipCardItem
     let isFocused: Bool
     let shortcutNumber: Int?
 
@@ -129,13 +129,13 @@ private struct StackRow: View {
     @ViewBuilder
     private var miniPreview: some View {
         switch clip.preview {
-        case .text(let body):
-            Text(body)
+        case .text:
+            Text(clip.previewText ?? "")
                 .font(.system(size: 11))
                 .lineLimit(1)
                 .foregroundStyle(.secondary)
-        case .code(let body, _):
-            Text(body)
+        case .code:
+            Text(clip.previewText ?? "")
                 .font(.system(size: 11, design: .monospaced))
                 .lineLimit(1)
                 .foregroundStyle(.secondary)
@@ -166,19 +166,22 @@ private struct StackRow: View {
             }
         case .image(let path, let w, let h, let sizeKB):
             HStack(spacing: 6) {
-                // Stack 行只显示 40×22 的小缩略图，128 已经过剩。
-                switch ImageThumbnail.loadResult(path: path, maxPixelSize: 128) {
-                case .loaded(let nsimg):
-                    Image(nsImage: nsimg)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 40, height: 22)
-                        .background(Color.black.opacity(0.04))
-                        .clipShape(RoundedRectangle(cornerRadius: 3))
-                case .failed(let reason):
-                    ImageThumbnailPlaceholder(reason: reason, iconSize: 12, showLabel: false)
-                        .frame(width: 40, height: 22)
+                AsyncImageThumbnail(path: path, maxPixelSize: 128) { phase in
+                    switch phase {
+                    case .loading:
+                        Image(systemName: "photo").foregroundStyle(.tertiary)
+                    case .loaded(let nsimg):
+                        Image(nsImage: nsimg)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 40, height: 22)
+                            .background(Color.black.opacity(0.04))
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                    case .failed(let reason):
+                        ImageThumbnailPlaceholder(reason: reason, iconSize: 12, showLabel: false)
+                    }
                 }
+                .frame(width: 40, height: 22)
                 Text("\(w)×\(h) · \(sizeKB) KB")
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(.secondary)

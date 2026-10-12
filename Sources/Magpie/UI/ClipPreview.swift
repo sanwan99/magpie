@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Compact 220×220 card used by Stripe layout. Type-aware preview body.
 struct ClipPreview: View {
-    let clip: ClipDisplayItem
+    let clip: ClipCardItem
     var isFocused: Bool = false
     /// If set, render a `⌘N` shortcut badge in the header. Stripe layout
     /// passes 1-9 for the first nine cards (matching the ⌘1-⌘9 hotkeys).
@@ -58,7 +58,7 @@ struct ClipPreview: View {
                     .font(.system(size: 9))
                     .foregroundStyle(accentText)
             }
-            if clip.pinned, !clip.note.isEmpty {
+            if clip.pinned, clip.hasNote {
                 Image(systemName: "note.text")
                     .font(.system(size: 9))
                     .foregroundStyle(accentText)
@@ -75,18 +75,18 @@ struct ClipPreview: View {
     @ViewBuilder
     private var previewBody: some View {
         switch clip.preview {
-        case .text(let body):
+        case .text:
             previewSurface {
-                Text(body)
+                Text(clip.previewText ?? "")
                     .font(.system(size: 12))
                     .lineLimit(7)
                     .lineSpacing(2)
                     .foregroundStyle(primaryText)
             }
 
-        case .code(let body, _):
+        case .code:
             previewSurface {
-                Text(body)
+                Text(clip.previewText ?? "")
                     .font(.system(size: 11, design: .monospaced))
                     .lineLimit(8)
                     .lineSpacing(2)
@@ -134,35 +134,39 @@ struct ClipPreview: View {
 
         case .image(let path, let w, let h, let sizeKB):
             VStack(alignment: .leading, spacing: 6) {
-                // Stripe 卡片只显示 ~190pt 宽，加载 256px 缩略图就够，
-                // 比直接 NSImage(contentsOfFile:) 全分辨率解码省 ~30 倍内存。
-                switch ImageThumbnail.loadResult(path: path, maxPixelSize: 256) {
-                case .loaded(let nsimg):
-                    ZStack(alignment: .bottomLeading) {
-                        CardCheckerboardBackground()
-                        Image(nsImage: nsimg)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .padding(5)
-                        Text("\(w)×\(h)")
-                            .font(.system(size: 9, weight: .medium, design: .monospaced))
-                            .foregroundStyle(primaryText)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(cardOverlayFill)
-                            )
-                            .padding(5)
+                AsyncImageThumbnail(path: path, maxPixelSize: 256) { phase in
+                    switch phase {
+                    case .loading:
+                        Image(systemName: "photo")
+                            .foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    case .loaded(let nsimg):
+                        ZStack(alignment: .bottomLeading) {
+                            CardCheckerboardBackground()
+                            Image(nsImage: nsimg)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .padding(5)
+                            Text("\(w)×\(h)")
+                                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                .foregroundStyle(primaryText)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(cardOverlayFill)
+                                )
+                                .padding(5)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(ruleColor, lineWidth: 0.5)
+                        )
+                    case .failed(let reason):
+                        thumbnailPlaceholder(reason)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .strokeBorder(ruleColor, lineWidth: 0.5)
-                    )
-                case .failed(let reason):
-                    thumbnailPlaceholder(reason)
                 }
                 Text("\(sizeKB) KB")
                     .font(.system(size: 9, design: .monospaced))
@@ -405,9 +409,13 @@ private struct ClipCardChrome: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(idleShape)
-            .background(focusShape)
-            .background(shadowShape)
+            .background(
+                RoundedRectangle(cornerRadius: tokens.cardCornerRadius)
+                    .fill(isFocused ? tokens.focusBg : tokens.cardBgIdle)
+            )
+            .background {
+                if isSplat { shadowShape }
+            }
             .overlay(strokeShape)
             .shadow(
                 color: isSplat ? .clear : Color.black.opacity(isFocused ? 0.12 : 0.04),
@@ -424,16 +432,6 @@ private struct ClipCardChrome: ViewModifier {
                 x: isSplat ? (isFocused ? 6 : 4) : 0,
                 y: isSplat ? (isFocused ? 8 : 5) : 0
             )
-    }
-
-    private var idleShape: some View {
-        RoundedRectangle(cornerRadius: tokens.cardCornerRadius)
-            .fill(isFocused ? Color.clear : tokens.cardBgIdle)
-    }
-
-    private var focusShape: some View {
-        RoundedRectangle(cornerRadius: tokens.cardCornerRadius)
-            .fill(isFocused ? tokens.focusBg : Color.clear)
     }
 
     private var strokeShape: some View {

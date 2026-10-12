@@ -12,6 +12,23 @@ struct ClipDisplayItem: Identifiable, Equatable, Sendable {
     let note: String
     let title: String?
     let preview: PreviewContent
+    let card: ClipCardItem
+
+    var previewText: String? { card.previewText }
+
+    init(id: String, type: ClipType, app: String?, createdAt: Date, pinned: Bool,
+         note: String, title: String?, preview: PreviewContent) {
+        self.id = id
+        self.type = type
+        self.app = app
+        self.createdAt = createdAt
+        self.pinned = pinned
+        self.note = note
+        self.title = title
+        self.preview = preview
+        card = ClipCardItem(id: id, type: type, app: app, createdAt: createdAt, pinned: pinned,
+                            hasNote: !note.isEmpty, title: title, preview: preview)
+    }
 
     enum PreviewContent: Equatable, Sendable {
         case text(String)
@@ -21,6 +38,45 @@ struct ClipDisplayItem: Identifiable, Equatable, Sendable {
         case file(path: String, kind: String, sizeKB: Int)
         case image(path: String, width: Int, height: Int, sizeKB: Int)
         case unsupported
+    }
+}
+
+/// 卡片只持有有限长度的正文，减少滚动时的比较和排版开销。
+struct ClipCardItem: Identifiable, Equatable, Sendable {
+    private static let textLimit = 512
+    let id: String
+    let type: ClipType
+    let app: String?
+    let createdAt: Date
+    let pinned: Bool
+    let hasNote: Bool
+    let title: String?
+    let preview: ClipDisplayItem.PreviewContent
+
+    init(id: String, type: ClipType, app: String?, createdAt: Date, pinned: Bool,
+         hasNote: Bool, title: String?, preview: ClipDisplayItem.PreviewContent) {
+        self.id = id
+        self.type = type
+        self.app = app
+        self.createdAt = createdAt
+        self.pinned = pinned
+        self.hasNote = hasNote
+        self.title = title
+        switch preview {
+        case .text(let body):
+            self.preview = .text(String(body.prefix(Self.textLimit)))
+        case .code(let body, let lang):
+            self.preview = .code(body: String(body.prefix(Self.textLimit)), lang: lang)
+        default:
+            self.preview = preview
+        }
+    }
+
+    var previewText: String? {
+        switch preview {
+        case .text(let body), .code(let body, _): return body
+        default: return nil
+        }
     }
 }
 
@@ -57,14 +113,8 @@ extension ClipDisplayItem {
             guard let p = try? decoder.decode(ImagePayload.self, from: record.payload) else { return nil }
             preview = .image(path: p.path, width: p.width, height: p.height, sizeKB: p.sizeKB)
         }
-        self.id = record.id
-        self.type = type
-        self.app = record.app
-        self.createdAt = record.createdAtDate
-        self.pinned = record.pinned
-        self.note = record.note
-        self.title = record.title
-        self.preview = preview
+        self.init(id: record.id, type: type, app: record.app, createdAt: record.createdAtDate,
+                  pinned: record.pinned, note: record.note, title: record.title, preview: preview)
     }
 }
 
@@ -201,6 +251,7 @@ final class ClipsViewModel {
         let repository = self.repository
         let shouldPreserveFocus = preserveFocus
         let oldFocusedID = preserveFocus ? (preferredFocusID ?? focusedClip?.id) : preferredFocusID
+        let previousItems = clips
 
         refreshTask = Task { [weak self] in
             let result = await Task.detached(priority: .userInitiated) {
@@ -208,24 +259,24 @@ final class ClipsViewModel {
                     let records = try repository.search(query, limit: limit)
                     let items = records.compactMap { ClipDisplayItem(record: $0) }
                     let total = (try? repository.count()) ?? items.count
-                    return Result<([ClipDisplayItem], Int), Error>.success((items, total))
+                    return Result<([ClipDisplayItem], Int, Bool), Error>.success((items, total, items != previousItems))
                 } catch {
-                    return Result<([ClipDisplayItem], Int), Error>.failure(error)
+                    return Result<([ClipDisplayItem], Int, Bool), Error>.failure(error)
                 }
             }.value
 
             guard !Task.isCancelled, let self else { return }
 
             switch result {
-            case .success(let (items, total)):
-                self.clips = items
-                self.totalClipCount = total
+            case .success(let (items, total, changed)):
+                if changed { self.clips = items }
+                if self.totalClipCount != total { self.totalClipCount = total }
                 if shouldPreserveFocus,
                    let oldFocusedID,
                    let idx = items.firstIndex(where: { $0.id == oldFocusedID }) {
-                    self.focusedIndex = idx
+                    if self.focusedIndex != idx { self.focusedIndex = idx }
                 } else if !shouldPreserveFocus {
-                    self.focusedIndex = 0
+                    if self.focusedIndex != 0 { self.focusedIndex = 0 }
                 } else if self.focusedIndex >= items.count {
                     self.focusedIndex = 0
                 }

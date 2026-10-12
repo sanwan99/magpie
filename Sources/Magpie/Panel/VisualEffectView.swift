@@ -65,6 +65,14 @@ final class PanelMaterialView: NSView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    func prepareContent() {
+        hostedView.needsLayout = true
+        hostedView.layoutSubtreeIfNeeded()
+        if let bitmap = hostedView.bitmapImageRepForCachingDisplay(in: hostedView.bounds) {
+            hostedView.cacheDisplay(in: hostedView.bounds, to: bitmap)
+        }
+    }
+
     func update(surface: PanelSurface, material: NSVisualEffectView.Material) {
         vibrancyView.material = material
         let reduceTransparency = NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency

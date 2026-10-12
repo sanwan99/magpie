@@ -1,10 +1,12 @@
 import AppKit
 import SwiftUI
+import os
 
 /// Owns the lifecycle of the Magpie panel: positioning at the bottom of the active screen,
 /// hosting SwiftUI content with vibrancy, and the show/hide slide animation.
 @MainActor
 final class PanelController {
+    private static let performanceLog = OSLog(subsystem: "com.sanwan.magpie", category: .pointsOfInterest)
     private let panel: PanelWindow
     private let viewModel: ClipsViewModel
     private let snippetsViewModel: SnippetsViewModel
@@ -16,6 +18,7 @@ final class PanelController {
     private var noteEditorActive = false
     private var searchFieldActive = false
     private var settingsObservationTask: Task<Void, Never>?
+    private var preparationTask: Task<Void, Never>?
     private weak var materialView: PanelMaterialView?
     private var accessibilityObserver: NSObjectProtocol?
     private(set) var isVisible: Bool = false
@@ -39,6 +42,7 @@ final class PanelController {
         applyVibrancy()
         wireKeyboard()
         observeSettings()
+        observePreviewContent()
         accessibilityObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
             object: nil,
@@ -117,11 +121,47 @@ final class PanelController {
                     self?.applyAppearance()
                     self?.applyVibrancy()
                     self?.applyOpacity()
+                    self?.schedulePreparation()
                     track()
                 }
             }
         }
         track()
+    }
+
+    private func observePreviewContent() {
+        withObservationTracking {
+            _ = viewModel.clips
+            _ = viewModel.activeLayout
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.observePreviewContent()
+            }
+        }
+        schedulePreparation()
+    }
+
+    private func schedulePreparation() {
+        preparationTask?.cancel()
+        guard !isVisible else { return }
+        let size = viewModel.activeLayout == .stack ? 128 : 256
+        let requests = viewModel.clips.prefix(24).compactMap { clip -> ImageThumbnail.Request? in
+            guard case .image(let path, _, _, _) = clip.preview else { return nil }
+            return .init(path: path, maxPixelSize: size)
+        }
+        preparationTask = Task { @MainActor [weak self] in
+            let signpost = OSSignpostID(log: Self.performanceLog)
+            os_signpost(.begin, log: Self.performanceLog, name: "PanelPreparation", signpostID: signpost)
+            defer { os_signpost(.end, log: Self.performanceLog, name: "PanelPreparation", signpostID: signpost) }
+            await ImageThumbnailLoader.shared.prefetch(requests)
+            guard !Task.isCancelled, let self, !self.isVisible else { return }
+            // 隐藏期间准备首屏排版，不显示窗口，也不改变前台应用。
+            self.positionAtBottomCenter()
+            let started = ProcessInfo.processInfo.systemUptime
+            self.materialView?.prepareContent()
+            NSLog("[panel-perf] hidden content prepared %.3f ms", (ProcessInfo.processInfo.systemUptime - started) * 1000)
+            os_signpost(.event, log: Self.performanceLog, name: "HiddenLayoutReady")
+        }
     }
 
     private func applyAppearance() {
@@ -171,6 +211,11 @@ final class PanelController {
     }
 
     func show() {
+        let started = ProcessInfo.processInfo.systemUptime
+        let signpost = OSSignpostID(log: Self.performanceLog)
+        os_signpost(.begin, log: Self.performanceLog, name: "PanelShow", signpostID: signpost)
+        defer { os_signpost(.end, log: Self.performanceLog, name: "PanelShow", signpostID: signpost) }
+        defer { NSLog("[panel-perf] show setup %.3f ms", (ProcessInfo.processInfo.systemUptime - started) * 1000) }
         // Snapshot the frontmost app *before* the panel becomes key, so paste
         // can target the correct app even if .nonactivatingPanel ever flakes.
         frontmost.snapshot()
@@ -188,8 +233,10 @@ final class PanelController {
         let start = target.offsetBy(dx: 0, dy: -target.height - 16)
         panel.setFrame(start, display: false)
         panel.alphaValue = 0
+        let orderStarted = ProcessInfo.processInfo.systemUptime
         panel.makeKeyAndOrderFront(nil)
         panel.orderFrontRegardless()
+        NSLog("[panel-perf] order front %.3f ms", (ProcessInfo.processInfo.systemUptime - orderStarted) * 1000)
 
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.32
@@ -228,6 +275,7 @@ final class PanelController {
             // orderOut tears down keyWindow + revokes frontmost focus from the panel.
             // Only after this is it safe to simulate ⌘V into the previously frontmost app.
             self?.panel.orderOut(nil)
+            Task { @MainActor [weak self] in self?.schedulePreparation() }
             pendingAfter?()
             completion?()
         })
@@ -506,6 +554,8 @@ final class PanelController {
             onCreateSnippet: { [weak self] in self?.openNewSnippetEditor() },
             onEditSnippet: { [weak self] s in self?.openEditor(for: s) }
         ))
+        // 面板尺寸由容器给定，无需再测量 SwiftUI 内容的最小、最大和固有尺寸。
+        host.sizingOptions = []
         let container = PanelMaterialView(content: host, frame: NSRect(origin: .zero, size: Self.panelSize))
         container.update(surface: settings.panelSurface, material: mapVibrancy(settings.vibrancy))
         self.materialView = container

@@ -27,7 +27,7 @@ struct GridLayout: View {
                     LazyVGrid(columns: columns, spacing: Self.columnSpacing) {
                         ForEach(Array(viewModel.clips.enumerated()), id: \.element.id) { index, clip in
                             GridTile(
-                                clip: clip,
+                                clip: clip.card,
                                 isFocused: index == viewModel.focusedIndex,
                                 shortcutNumber: index < 9 ? index + 1 : nil
                             )
@@ -61,7 +61,7 @@ struct GridLayout: View {
 }
 
 private struct GridTile: View {
-    let clip: ClipDisplayItem
+    let clip: ClipCardItem
     let isFocused: Bool
     let shortcutNumber: Int?
 
@@ -111,13 +111,13 @@ private struct GridTile: View {
     @ViewBuilder
     private var previewBody: some View {
         switch clip.preview {
-        case .text(let body):
-            Text(body)
+        case .text:
+            Text(clip.previewText ?? "")
                 .font(.system(size: 11))
                 .lineLimit(5)
                 .lineSpacing(1)
-        case .code(let body, _):
-            Text(body)
+        case .code:
+            Text(clip.previewText ?? "")
                 .font(.system(size: 10, design: .monospaced))
                 .lineLimit(6)
         case .url(_, let host):
@@ -158,17 +158,22 @@ private struct GridTile: View {
             }
         case .image(let path, let w, let h, let sizeKB):
             VStack(alignment: .leading, spacing: 3) {
-                // Grid tile 比 Stripe 还小（~150pt），256 缩略图绰绰有余。
-                switch ImageThumbnail.loadResult(path: path, maxPixelSize: 256) {
-                case .loaded(let nsimg):
-                    Image(nsImage: nsimg)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.black.opacity(0.04))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                case .failed(let reason):
-                    ImageThumbnailPlaceholder(reason: reason, iconSize: 22, showLabel: false)
+                AsyncImageThumbnail(path: path, maxPixelSize: 256) { phase in
+                    switch phase {
+                    case .loading:
+                        Image(systemName: "photo")
+                            .foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    case .loaded(let nsimg):
+                        Image(nsImage: nsimg)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Color.black.opacity(0.04))
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    case .failed(let reason):
+                        ImageThumbnailPlaceholder(reason: reason, iconSize: 22, showLabel: false)
+                    }
                 }
                 Text("\(w)×\(h) · \(sizeKB) KB")
                     .font(.system(size: 8, design: .monospaced))
@@ -217,9 +222,13 @@ private struct GridTileChrome: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .background(idleShape)
-            .background(focusShape)
-            .background(shadowShape)
+            .background(
+                RoundedRectangle(cornerRadius: tokens.tileCornerRadius)
+                    .fill(isFocused ? tokens.focusBg : tokens.cardBgIdle)
+            )
+            .background {
+                if isSplat { shadowShape }
+            }
             .overlay(strokeShape)
             .shadow(
                 color: isSplat ? .clear : Color.black.opacity(isFocused ? 0.10 : 0.03),
@@ -236,16 +245,6 @@ private struct GridTileChrome: ViewModifier {
                 x: isSplat ? (isFocused ? 6 : 4) : 0,
                 y: isSplat ? (isFocused ? 8 : 5) : 0
             )
-    }
-
-    private var idleShape: some View {
-        RoundedRectangle(cornerRadius: tokens.tileCornerRadius)
-            .fill(isFocused ? Color.clear : tokens.cardBgIdle)
-    }
-
-    private var focusShape: some View {
-        RoundedRectangle(cornerRadius: tokens.tileCornerRadius)
-            .fill(isFocused ? tokens.focusBg : Color.clear)
     }
 
     private var strokeShape: some View {

@@ -657,23 +657,29 @@ private struct ImagePreviewBlock: View {
 
     @ViewBuilder
     private var thumb: some View {
-        switch ImageThumbnail.loadResult(path: path, maxPixelSize: 800) {
-        case .loaded(let nsimg):
-            ZStack {
-                CheckerBg(tile: 12)
-                Image(nsImage: nsimg)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .padding(8)
+        AsyncImageThumbnail(path: path, maxPixelSize: 800) { phase in
+            switch phase {
+            case .loading:
+                Image(systemName: "photo")
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, minHeight: 180, maxHeight: 220)
+            case .loaded(let nsimg):
+                ZStack {
+                    CheckerBg(tile: 12)
+                    Image(nsImage: nsimg)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .padding(8)
+                }
+                .frame(maxWidth: .infinity, minHeight: 180, maxHeight: 220)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(MagpieColors.rule(colorScheme), lineWidth: 0.5)
+                )
+            case .failed(let reason):
+                ImageErrorBlock(reason: reason)
             }
-            .frame(maxWidth: .infinity, minHeight: 180, maxHeight: 220)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(MagpieColors.rule(colorScheme), lineWidth: 0.5)
-            )
-        case .failed(let reason):
-            ImageErrorBlock(reason: reason)
         }
     }
 }
