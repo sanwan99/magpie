@@ -1,0 +1,63 @@
+{
+  "environment": {
+    "os": "macOS 15.7.9",
+    "architecture": "arm64",
+    "xcode": "26.0.1"
+  },
+  "method": {
+    "test": "ScreenshotPerformanceTests.testRetinaAndFortyMegapixelRenderAndEncodingBaselines",
+    "fixture": "Synthetic RGBA bands, one rectangle annotation, 2x point scale; 3840x2160 and 4000x10000 pixels",
+    "samples_per_size_per_run": 1,
+    "order": "render, AppKit PNG, ImageIO PNG; no randomized order or warmup",
+    "validation": "Both PNGs decoded and dimensions asserted",
+    "limits": "No UI responsiveness, Instruments RSS, photographic content or before/after optimization claim; runner variance and encoding order apply"
+  },
+  "xctest": {
+    "total": 219,
+    "passed": 216,
+    "failed": 0,
+    "skipped": 3
+  },
+  "xcresult_artifact_url": "https://github.com/sanwan99/magpie/actions/runs/39054745870/artifacts/12109705181",
+  "xcresult_artifact_sha256": "7c8242c6855b3958ecf65dfe92172f321ac0ea364e5564a6c3f969c76164c711",
+  "samples": [
+    {
+      "commit": "3844d27a72672eed5ac3e867c2bbe944547d7eb9",
+      "ci_run_url": "https://github.com/sanwan99/magpie/actions/runs/39054458269",
+      "workflow_result": "superseded during Release build; XCTest passed",
+      "timings": [
+        {
+          "pixels": 8294400,
+          "render_ms": 11.470791666681635,
+          "appkit_png_ms": 88.70604166668272,
+          "imageio_png_ms": 104.66020833331413
+        },
+        {
+          "pixels": 40000000,
+          "render_ms": 169.5557500000291,
+          "appkit_png_ms": 428.96250000001146,
+          "imageio_png_ms": 396.08312499996146
+        }
+      ]
+    },
+    {
+      "commit": "035920122a1b6f21b693ded5c05ebaee3172a783",
+      "ci_run_url": "https://github.com/sanwan99/magpie/actions/runs/39054745870",
+      "workflow_result": "success",
+      "timings": [
+        {
+          "pixels": 8294400,
+          "render_ms": 7.090166666671394,
+          "appkit_png_ms": 58.314125000038075,
+          "imageio_png_ms": 56.89808333329438
+        },
+        {
+          "pixels": 40000000,
+          "render_ms": 286.83412500004124,
+          "appkit_png_ms": 305.2500416666817,
+          "imageio_png_ms": 283.7075416666721
+        }
+      ]
+    }
+  ]
+}

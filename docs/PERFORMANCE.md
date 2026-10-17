@@ -51,6 +51,30 @@ Exact values, fixture scope and CI evidence: [native-benchmark.json](review/nati
 
 ## Targeted changes and retained limits
 
+### Native screenshot baseline (2026-10-18 follow-up)
+
+On macOS 15.7.9 arm64 / Xcode 26.0.1, the synthetic screenshot test renders RGBA bands
+with one rectangle at 2x point scale, then encodes AppKit PNG followed by ImageIO PNG.
+Both results are decoded and checked for exact pixel dimensions. Each row is one sample,
+without warmup or randomized encoder order; it is not a percentile or optimization result.
+
+| CI run | Pixels | Render | AppKit PNG | ImageIO PNG |
+| --- | ---: | ---: | ---: | ---: |
+| 39054458269 | 8,294,400 | 11.471 ms | 88.706 ms | 104.660 ms |
+| 39054458269 | 40,000,000 | 169.556 ms | 428.963 ms | 396.083 ms |
+| 39054745870 | 8,294,400 | 7.090 ms | 58.314 ms | 56.898 ms |
+| 39054745870 | 40,000,000 | 286.834 ms | 305.250 ms | 283.708 ms |
+
+The first run passed XCTest but was superseded during Release build by the additional
+native packaging/focus checks. The final run passed XCTest and Release build. Exact
+commits, measurements and archived test evidence are in
+[native-image-benchmark.json](review/native-image-benchmark.json).
+Runner variation and mixed results do not justify replacing a production encoder.
+No screenshot implementation was changed on this evidence. Peak RSS, photographic images,
+UI frame time and cancellation behavior still require the device protocol below.
+
+### Existing targeted storage changes
+
 - Add v5 payload hash index with bounded migration batches; preserve exact dedup semantics.
 - Cancel old search publication immediately when the query changes, including debounce time;
   propagate cancellation to detached workers between expensive operations. A synchronous

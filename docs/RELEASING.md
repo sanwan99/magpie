@@ -29,6 +29,10 @@ Use a disposable macOS account and synthetic data. Never test deletion against r
 | Area | Procedure | Expected result |
 | --- | --- | --- |
 | First install | Clean account with no old app, signing metadata or certificates | Signed/notarized app installs and opens without developer setup |
+| Getting started | First launch, close/reopen guide, complete, relaunch; deny permission | Guide remains available from menu; completion persists; permissions requested only by user action |
+| Recording pause | Pause 15 minutes/1 hour, copy, restart, sleep past expiry, resume | Deadline persists; paused contents are not replayed; queued writes discarded; already executing writes may finish |
+| Quick ignore | Open menu in a normal app, already ignored app and Magpie; change language | Correct app identified; unavailable actions disabled; preference persists and can be removed in Settings |
+| Paste feedback | Revoke AX, change clipboard, switch windows; use keyboard while notice appears | Useful localized message without content; no focus theft; replaced clipboard never suggests pasting the old record |
 | Upgrade | Old signed app, populated history and images | Old app verified and backed up; new app starts; data survives |
 | Bad package | Corrupt signature, wrong bundle/team, failed staged copy | No replacement; old app remains usable |
 | Rollback | Force launch failure after replacement | Restore old app, preserve backup; report rollback failures honestly |
@@ -160,6 +164,9 @@ and image files; do not copy a live SQLite main file alone.
 - Separate developer builds from signed public installation; add first-install/rollback tests.
 - Index dedup lookup without changing payload/app semantics; improve stale-search cancellation.
 - Refresh bilingual documentation and macOS CI.
+- Add timed recording pause, quick application exclusion and an explicit first-run permission guide.
+- Explain canceled/failed paste without activating another window or exposing clipboard content.
+- Add verified local DMG packaging, native packaging smoke coverage and 4K/40MP image baselines.
 
 Known limitations: unencrypted local storage, heuristic secret detection, AX-dependent safe
 paste, environmental capture/translation tests, large CJK scans and main-thread screenshot
