@@ -34,6 +34,21 @@ bounds/correctness, not machine-specific timing thresholds. See the review recor
 actual CI status. These fixtures use shorter text than the microbenchmark, so results are
 not directly comparable. Native pre-change timings have not been collected.
 
+Measured on macOS 15.7.9 arm64, Xcode 26.0.1 at commit
+`2d36900b999e90191193e3dfa136a4dbc3e80f90`, in
+[successful CI run 39052758182](https://github.com/sanwan99/magpie/actions/runs/39052758182).
+One sample per query after fixture insertion, in-memory SQLite; includes repository
+query/record decoding and excludes fixture setup and UI rendering. These are diagnostic
+samples, not latency percentiles or a native before/after comparison.
+
+| Rows | Recent 200 | ASCII search | CJK search |
+| ---: | ---: | ---: | ---: |
+| 1,000 | 1.138 ms | 0.641 ms | 1.203 ms |
+| 10,000 | 1.224 ms | 3.539 ms | 8.902 ms |
+| 50,000 | 1.283 ms | 15.551 ms | 42.588 ms |
+
+Exact values, fixture scope and CI evidence: [native-benchmark.json](review/native-benchmark.json).
+
 ## Targeted changes and retained limits
 
 - Add v5 payload hash index with bounded migration batches; preserve exact dedup semantics.

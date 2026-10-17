@@ -1,0 +1,73 @@
+{
+  "measured_commit": "2d36900b999e90191193e3dfa136a4dbc3e80f90",
+  "ci_run_url": "https://github.com/sanwan99/magpie/actions/runs/39052758182",
+  "xcresult_artifact_url": "https://github.com/sanwan99/magpie/actions/runs/39052758182/artifacts/12108750942",
+  "xcresult_sha256": "5b3112fda040d3ae5ccdca78e43442163221f771ec98985d8868e90f6df6676a",
+  "environment": {
+    "os": "macOS 15.7.9",
+    "architecture": "arm64",
+    "xcode": "26.0.1"
+  },
+  "method": {
+    "test": "RepositoryPerformanceTests.testLargeHistoriesRemainBoundedAndSearchable",
+    "database": "in-memory GRDB/SQLite",
+    "fixture": "short synthetic text; one source application; ASCII and Chinese match every 97 rows",
+    "samples_per_query": 1,
+    "result_limit": 200,
+    "includes": "repository query and record decoding",
+    "excludes": "fixture setup; UI rendering; cold disk; peak memory; pre-change native baseline"
+  },
+  "xctest": {
+    "total": 208,
+    "passed": 205,
+    "failed": 0,
+    "skipped": 3
+  },
+  "timings": [
+    {
+      "history_rows": 1000,
+      "query_kind": "recent",
+      "elapsed_ms": 1.1377916666788224
+    },
+    {
+      "history_rows": 1000,
+      "query_kind": "ascii",
+      "elapsed_ms": 0.6407083333783703
+    },
+    {
+      "history_rows": 1000,
+      "query_kind": "cjk",
+      "elapsed_ms": 1.2029583332946459
+    },
+    {
+      "history_rows": 10000,
+      "query_kind": "recent",
+      "elapsed_ms": 1.2238749999937681
+    },
+    {
+      "history_rows": 10000,
+      "query_kind": "ascii",
+      "elapsed_ms": 3.5389166666845995
+    },
+    {
+      "history_rows": 10000,
+      "query_kind": "cjk",
+      "elapsed_ms": 8.901750000006814
+    },
+    {
+      "history_rows": 50000,
+      "query_kind": "recent",
+      "elapsed_ms": 1.2825000000020736
+    },
+    {
+      "history_rows": 50000,
+      "query_kind": "ascii",
+      "elapsed_ms": 15.550749999988511
+    },
+    {
+      "history_rows": 50000,
+      "query_kind": "cjk",
+      "elapsed_ms": 42.58766666663405
+    }
+  ]
+}
