@@ -45,7 +45,7 @@
 
 不要关闭 Gatekeeper、SIP 或批量移除隔离属性。若系统阻止运行下载的应用，先核对来源、签名和对应版本的发布说明；不要用“绕过安全检查”作为安装步骤。
 
-已有签名发行包时，可使用 `Scripts/install-release.sh /path/to/Magpie.app --team-id 发行说明中的团队ID` 安装（首次公开安装必须核对团队 ID）。脚本校验 Developer ID、Gatekeeper 和升级前后的团队身份，升级前备份旧应用，启动检查失败时尝试回滚。它不下载应用，不生成开发证书，不重置系统权限；当前没有发行包可用于验证完整公开安装流程。
+已有签名发行包时，可使用 `Scripts/install-release.sh /path/to/Magpie.app --team-id 发行说明中的团队ID` 安装（首次公开安装必须核对团队 ID）。脚本校验 Developer ID、Gatekeeper 和升级前后的团队身份，升级前备份旧应用，启动检查失败时尝试回滚。它不下载应用，不生成开发证书，不重置系统权限；当前没有发行包可用于验证完整公开安装流程。该可选脚本需要 Python 3；未来正式 DMG 应同时提供 Finder 拖拽安装方式。
 
 ## 首次使用
 

@@ -43,7 +43,7 @@ Source builds use ad-hoc signing by default, without a paid developer account or
 
 Do not disable Gatekeeper or SIP, or remove quarantine attributes as a routine installation step. Check the source, signature and release instructions if macOS blocks an application.
 
-For a future signed distribution, `Scripts/install-release.sh /path/to/Magpie.app --team-id TEAMID_FROM_RELEASE` verifies Developer ID, Gatekeeper and signer continuity, backs up an existing application and attempts rollback if startup verification fails. The expected team identifier must come from independently verified release instructions; it is required for a first public installation. The script does not download packages, create certificates or reset permissions. A full public-install test still requires an actual signed distribution.
+For a future signed distribution, `Scripts/install-release.sh /path/to/Magpie.app --team-id TEAMID_FROM_RELEASE` verifies Developer ID, Gatekeeper and signer continuity, backs up an existing application and attempts rollback if startup verification fails. The expected team identifier must come from independently verified release instructions; it is required for a first public installation. The script does not download packages, create certificates or reset permissions. This optional script requires Python 3. A future DMG should also support ordinary Finder drag-and-drop installation. A full public-install test still requires an actual signed distribution.
 
 ## First run
 

@@ -14,6 +14,7 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import time
 import uuid
 
@@ -150,8 +151,18 @@ def install(source, target=TARGET, support=SUPPORT, local_build=False, team_id=N
             shutil.rmtree(staged)
     if previous.exists():
         # A verified ZIP remains. Retain the previous app as an extra recovery
-        # copy; no user data is removed by the installer.
-        shutil.move(str(previous), str(backup / 'Magpie.previous'))
+        # copy. This is post-install housekeeping, not part of the transaction.
+        # An atomic rename either archives it completely or leaves the original
+        # untouched (including when the backup directory is on another volume).
+        try:
+            os.replace(previous, backup / 'Magpie.previous')
+        except OSError:
+            print(
+                f'Installation succeeded, but the previous application could not be '
+                f'archived. It remains at {previous}; the verified ZIP backup is at '
+                f'{backup / "Magpie.zip"}.',
+                file=sys.stderr,
+            )
     return backup
 
 

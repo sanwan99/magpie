@@ -18,6 +18,7 @@ final class PanelController {
     private var noteEditorActive = false
     private var searchFieldActive = false
     private var authenticationTask: Task<Void, Never>?
+    private var authenticationRequestID = UUID()
     private var privacyObservers: [(NotificationCenter, NSObjectProtocol)] = []
     private var visibilityGeneration = 0
     private var preparationTask: Task<Void, Never>?
@@ -87,6 +88,7 @@ final class PanelController {
 
     private func lockPrivacy() {
         biometric.relock()
+        authenticationRequestID = UUID()
         authenticationTask?.cancel()
         authenticationTask = nil
         visibilityGeneration += 1
@@ -256,11 +258,19 @@ final class PanelController {
     /// Every entry point (menu, screenshot restore, queue) uses the same gate.
     func show() {
         guard authenticationTask == nil else { return }
+        let requestID = UUID()
+        authenticationRequestID = requestID
         authenticationTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            defer { self.authenticationTask = nil }
+            guard let self, self.authenticationRequestID == requestID, !Task.isCancelled else { return }
+            defer {
+                // A cancelled request may finish after a new hotkey request.
+                // It must not clear the newer request's cancellation handle.
+                if self.authenticationRequestID == requestID {
+                    self.authenticationTask = nil
+                }
+            }
             let ok = await self.biometric.authenticateIfNeeded(reason: "Unlock Magpie clipboard")
-            guard ok, !Task.isCancelled else { return }
+            guard ok, self.authenticationRequestID == requestID, !Task.isCancelled else { return }
             self.showAuthenticated()
         }
     }
@@ -309,6 +319,7 @@ final class PanelController {
             ExpandedPreviewWindowController.shared.close()
             SnippetEditorWindowController.shared.close()
         }
+        authenticationRequestID = UUID()
         authenticationTask?.cancel()
         authenticationTask = nil
         visibilityGeneration += 1

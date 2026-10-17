@@ -77,7 +77,8 @@ quarantine/Gatekeeper on another Mac, checksum and an Applications shortcut.
 
 `install-release.sh` verifies a provided app; first public installation requires the
 expected `--team-id` from independently verified release instructions. The release notes
-must publish that team identifier and checksums. It does not produce or download a DMG.
+must publish that team identifier and checksums. The optional script requires Python 3;
+a public DMG should support Finder drag-and-drop without developer tooling. It does not produce or download a DMG.
 Backups under the application support directory are application bundles, not automatic
 database snapshots. A data backup must be taken after quitting Magpie, including sidecars
 and image files; do not copy a live SQLite main file alone.

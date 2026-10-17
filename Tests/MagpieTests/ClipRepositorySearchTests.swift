@@ -4,11 +4,11 @@ import GRDB
 
 final class ClipRepositorySearchTests: XCTestCase {
 
-    private var db: Database!
+    private var db: Magpie.Database!
     private var repo: ClipRepository!
 
     override func setUp() async throws {
-        db = Database.makeInMemoryForTests()
+        db = Magpie.Database.makeInMemoryForTests()
         repo = ClipRepository(database: db)
     }
 
@@ -138,7 +138,7 @@ final class RepositoryPerformanceTests: XCTestCase {
         // Synthetic fixtures only. Times include GRDB/decoding for repository
         // operations; they are diagnostic measurements, not timing assertions.
         for count in [1_000, 10_000, 50_000] {
-            let db = Database.makeInMemoryForTests()
+            let db = Magpie.Database.makeInMemoryForTests()
             try db.dbQueue.write { connection in
                 for i in 0..<count {
                     let body = "entry \(i) " + (i % 97 == 0 ? "needle 客户回访记录" : "ordinary 常规记录")
@@ -164,7 +164,7 @@ final class RepositoryPerformanceTests: XCTestCase {
     }
 
     func testHashDedupPreservesPinNoteAndAppIdentity() throws {
-        let db = Database.makeInMemoryForTests(), body = "duplicate payload"
+        let db = Magpie.Database.makeInMemoryForTests(), body = "duplicate payload"
         let repository = ClipRepository(database: db)
         let clip = try XCTUnwrap(ClipDetector.detectFromString(body, app: "app.one"))
         try repository.insert(clip)

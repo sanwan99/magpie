@@ -14,7 +14,7 @@ struct PrivacyPane: View {
         Form {
             Section(text.authentication) {
                 Toggle(text.requireTouchID, isOn: Binding(
-                    get: { store.useTouchID }, set: changeLock))
+                    get: { store.useTouchID }, set: { value in changeLock(value) }))
                     .disabled(authenticating)
                 if authenticationFailed {
                     Text(store.language.pick(zh: "认证未完成，隐私锁设置未更改。", en: "Authentication did not complete. The lock setting is unchanged."))

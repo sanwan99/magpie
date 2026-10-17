@@ -1,4 +1,5 @@
 import importlib.util
+import io
 from pathlib import Path
 import plistlib
 import shutil
@@ -70,6 +71,31 @@ class InstallerTests(unittest.TestCase):
         backup = self.install()
         self.assertTrue((backup / 'Magpie.zip').exists())
         self.assertEqual((backup / 'Magpie.previous/Contents/MacOS/Magpie').read_bytes(), b'old')
+
+    def test_post_install_archive_failure_preserves_recovery_and_reports_success(self):
+        self.make_app(self.target, b'old')
+        original_replace = installer.os.replace
+
+        def fail_archive(source, destination):
+            if Path(destination).name == 'Magpie.previous':
+                raise OSError('archive unavailable')
+            return original_replace(source, destination)
+
+        warning = io.StringIO()
+        with patch.object(installer.os, 'replace', side_effect=fail_archive), \
+                patch.object(installer.sys, 'stderr', warning):
+            backup = self.install()
+
+        self.assertEqual((self.target / 'Contents/MacOS/Magpie').read_bytes(), b'new')
+        self.launch.assert_called_once_with(self.target)
+        previous = list(self.target.parent.glob('.Magpie-previous-*'))
+        self.assertEqual(len(previous), 1)
+        self.assertEqual((previous[0] / 'Contents/MacOS/Magpie').read_bytes(), b'old')
+        self.assertTrue((backup / 'Magpie.zip').exists())
+        self.assertFalse((backup / 'Magpie.previous').exists())
+        self.assertIn('Installation succeeded', warning.getvalue())
+        self.assertIn(str(previous[0]), warning.getvalue())
+        self.assertIn(str(backup / 'Magpie.zip'), warning.getvalue())
 
     def test_upgrade_launch_failure_restores_original(self):
         self.make_app(self.target, b'old')

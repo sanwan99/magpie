@@ -289,6 +289,33 @@ final class BiometricGateTests: XCTestCase {
         XCTAssertFalse(allowed); XCTAssertFalse(gate.isUnlocked)
     }
 
+    func testRelockCancelsSuspendedRequestAndNextRequestCanAuthenticate() async {
+        let auth = SuspendedOwnerAuthenticator()
+        let gate = BiometricGate(authenticator: auth, enabled: { true })
+        let firstStarted = expectation(description: "first system authentication began")
+        auth.didStart = { firstStarted.fulfill() }
+        let first = Task { @MainActor in await gate.authenticateIfNeeded() }
+        await fulfillment(of: [firstStarted], timeout: 2)
+
+        gate.relock()
+        XCTAssertEqual(auth.cancelCalls, 1)
+        let overlap = await gate.authenticateIfNeeded()
+        XCTAssertFalse(overlap, "Do not create another system prompt while cancellation is pending")
+        auth.finish(true) // A late system success must not reopen the panel.
+        let firstAllowed = await first.value
+        XCTAssertFalse(firstAllowed)
+        XCTAssertFalse(gate.isUnlocked)
+
+        let secondStarted = expectation(description: "next system authentication began")
+        auth.didStart = { secondStarted.fulfill() }
+        let second = Task { @MainActor in await gate.authenticateIfNeeded() }
+        await fulfillment(of: [secondStarted], timeout: 2)
+        auth.finish(true)
+        let secondAllowed = await second.value
+        XCTAssertTrue(secondAllowed)
+        XCTAssertTrue(gate.isUnlocked)
+    }
+
     func testDisabledLockDoesNotPrompt() async {
         let auth = FakeOwnerAuthenticator(result: false)
         let gate = BiometricGate(authenticator: auth, enabled: { false })
@@ -307,4 +334,27 @@ private final class FakeOwnerAuthenticator: OwnerAuthenticating {
         calls += 1; onAuthenticate?(); return result
     }
     func cancel() {}
+}
+
+/// Deliberately delivers a callback after cancel, like an in-flight system prompt.
+@MainActor
+private final class SuspendedOwnerAuthenticator: OwnerAuthenticating {
+    var didStart: (() -> Void)?
+    private(set) var cancelCalls = 0
+    private var continuation: CheckedContinuation<Bool, Never>?
+
+    func authenticate(reason: String) async -> Bool {
+        await withCheckedContinuation { continuation in
+            self.continuation = continuation
+            didStart?()
+        }
+    }
+
+    func cancel() { cancelCalls += 1 }
+
+    func finish(_ result: Bool) {
+        let pending = continuation
+        continuation = nil
+        pending?.resume(returning: result)
+    }
 }
