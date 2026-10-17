@@ -66,10 +66,17 @@ enum ImageStorage {
         }
     }
 
+    /// Compare filesystem identities consistently across macOS path aliases such
+    /// as /var and /private/var. This is only an identity key; deletion still
+    /// checks the original candidate to reject a symlink at the final component.
+    static func canonicalPath(for url: URL) -> String {
+        url.resolvingSymlinksInPath().standardizedFileURL.path
+    }
+
     /// Reject traversal, symlinks, directories, and paths outside our PNG cache.
     static func isManagedFile(_ url: URL, in directory: URL = directoryURL) -> Bool {
         let candidate = url.standardizedFileURL
-        guard candidate.deletingLastPathComponent().standardizedFileURL.path == directory.standardizedFileURL.path,
+        guard canonicalPath(for: candidate.deletingLastPathComponent()) == canonicalPath(for: directory),
               candidate.pathExtension.lowercased() == "png",
               let values = try? candidate.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
               values.isRegularFile == true, values.isSymbolicLink != true else { return false }
@@ -87,8 +94,9 @@ enum ImageStorage {
     /// Caller holds Database.withStorageLock so an in-flight ingest cannot be swept.
     static func removeOrphans(keeping paths: Set<String>, in directory: URL = directoryURL) throws {
         guard FileManager.default.fileExists(atPath: directory.path) else { return }
+        let referenced = Set(paths.map { canonicalPath(for: URL(fileURLWithPath: $0)) })
         for url in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
-            if !paths.contains(url.path), isManagedFile(url, in: directory) {
+            if !referenced.contains(canonicalPath(for: url)), isManagedFile(url, in: directory) {
                 try FileManager.default.removeItem(at: url)
             }
         }

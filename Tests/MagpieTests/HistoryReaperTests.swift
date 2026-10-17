@@ -249,6 +249,26 @@ final class HistoryReaperTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: image.path))
     }
 
+    func testRetentionKeepsSharedImageAcrossDirectoryAliases() throws {
+        let image = imageDirectoryURL.appendingPathComponent("shared-via-alias.png")
+        try Data([7]).write(to: image)
+        let alias = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: imageDirectoryURL)
+        defer { try? FileManager.default.removeItem(at: alias) }
+        let referencedAlias = alias.appendingPathComponent(image.lastPathComponent)
+        try insertImageClip(id: "old", path: image.path,
+                            createdAt: Date().addingTimeInterval(-40 * 86400))
+        try insertImageClip(id: "pin", path: referencedAlias.path, pinned: true)
+        try withSettings(keepHistoryDays: 7) {
+            HistoryReaper(database: db, imageDirectoryURL: imageDirectoryURL).reapNow()
+        }
+        XCTAssertEqual(try clipCount(), 1)
+        XCTAssertEqual(try ftsCount(clipID: "old"), 0)
+        XCTAssertEqual(try ftsCount(clipID: "pin"), 1)
+        XCTAssertEqual(try Data(contentsOf: image), Data([7]))
+        XCTAssertEqual(try Data(contentsOf: referencedAlias), Data([7]))
+    }
+
     // MARK: - clearAll
 
     func testClearAllRemovesEverything() throws {
@@ -340,6 +360,22 @@ final class StorageMigrationTests: XCTestCase {
         })
         XCTAssertEqual(try ClipRepository(database: db).count(), 1)
         XCTAssertEqual(try ClipRepository(database: db).search(SearchQueryParser.parse("rollback")).count, 1)
+    }
+
+    func testOrphanCleanupPreservesReferencesThroughDirectoryAliases() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let managed = root.appendingPathComponent("images", isDirectory: true)
+        try FileManager.default.createDirectory(at: managed, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let alias = root.appendingPathComponent("images-alias")
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: managed)
+        let kept = managed.appendingPathComponent("kept.png")
+        let orphan = managed.appendingPathComponent("orphan.png")
+        try Data([1]).write(to: kept)
+        try Data([2]).write(to: orphan)
+        try ImageStorage.removeOrphans(keeping: [alias.appendingPathComponent("kept.png").path], in: managed)
+        XCTAssertEqual(try Data(contentsOf: kept), Data([1]))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: orphan.path))
     }
 
     func testImageCleanupRejectsOutsideFilesSymlinksAndDirectories() throws {

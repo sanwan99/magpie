@@ -164,10 +164,15 @@ final class HistoryReaper {
             let referenced = try database.dbQueue.read { db in
                 try Self.fetchImagePaths(db: db, sql: "SELECT payload FROM clips WHERE type = 'image'", arguments: [])
             }
-            let referencedPaths = Set(referenced)
-            // A surviving pinned/legacy row may share an image path.
+            let referencedPaths = Set(referenced.map {
+                ImageStorage.canonicalPath(for: URL(fileURLWithPath: $0))
+            })
+            // A surviving pinned/legacy row may share an image through another
+            // spelling of its directory (for example /var and /private/var).
             var removed = 0
-            for path in Set(imageFilesToRemove) where !referencedPaths.contains(path) {
+            for path in Set(imageFilesToRemove) where !referencedPaths.contains(
+                ImageStorage.canonicalPath(for: URL(fileURLWithPath: path))
+            ) {
                 if ImageStorage.removeManagedFile(at: path, in: directory) {
                     removed += 1
                 }
