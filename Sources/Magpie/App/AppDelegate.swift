@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyCenter: HotkeyCenter?
     private var statusItemController: StatusItemController?
     private var clipboardWatcher: ClipboardWatcher?
+    private let recording = ClipboardRecordingControl()
     private var clipboardIngestor: ClipboardIngestor?
     private var repository: ClipRepository?
     private var viewModel: ClipsViewModel?
@@ -31,6 +32,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         reaper.reapInBackground()  // Apply retention on launch without blocking first wake.
 
         let watcher = ClipboardWatcher()
+        watcher.allowsCapture = { [recording] in !recording.isPaused }
+        recording.onChange = { [weak self, weak watcher] in
+            repo.database.invalidatePendingIngests()
+            watcher?.discardPendingChanges()
+            self?.statusItemController?.refreshRecordingStatus()
+        }
+        SettingsStore.shared.onRecordingPolicyChange = recording.onChange
         watcher.onChange = { [weak vm, weak reaper, ingestor] snapshot, origin in
             let store = SettingsStore.shared
             let policy = ClipboardIngestPolicy.forChange(
@@ -77,6 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 菜单栏图标：⌘P 失效时的兜底入口（也解决 LSUIElement 隐藏带来的可发现性问题）
         let statusItem = StatusItemController(
             panelController: panel,
+            recording: recording,
             onCaptureScreenshot: { [weak screenshotCoordinator] in
                 screenshotCoordinator?.capture()
             },
@@ -116,12 +125,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSLog("[magpie] launched. ⌘P toggles panel, ⌘J captures screenshot, Esc hides panel. clips=%d snippets=%d",
               vm.clips.count, snippetsVM.snippets.count)
 
-        // 辅助权限自检 — 没权限就 prompt=true 弹系统权限对话框。
-        // 没有这个权限 CGEvent.post 会静默失败 → 粘贴看似执行了实际啥也没发出去。
-        let prompt = "AXTrustedCheckOptionPrompt" as CFString
-        let opts = [prompt: true] as CFDictionary
-        let trusted = AXIsProcessTrustedWithOptions(opts)
-        NSLog("[ax] trusted=%d — 模拟 ⌘V 需要辅助功能权限", trusted ? 1 : 0)
+        // Explain permissions before requesting them; normal launches are quiet.
+        if GettingStartedPreferences().needsPresentation {
+            GettingStartedController.shared.show()
+        }
+
     }
 
     private static var isRunningUnitTests: Bool {

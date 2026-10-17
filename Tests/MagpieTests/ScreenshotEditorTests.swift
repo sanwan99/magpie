@@ -373,3 +373,39 @@ final class ScreenshotEditorTests: XCTestCase {
         return try XCTUnwrap(context.makeImage())
     }
 }
+
+/// Synthetic CPU-path baselines. Does not capture the screen or claim UI/RSS improvements.
+@MainActor
+final class ScreenshotPerformanceTests: XCTestCase {
+    func testRetinaAndFortyMegapixelRenderAndEncodingBaselines() throws {
+        for (width, height) in [(3840, 2160), (4000, 10000)] {
+            try autoreleasepool {
+                let context = try XCTUnwrap(CGContext(data: nil, width: width, height: height,
+                    bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+                for row in stride(from: 0, to: height, by: 64) {
+                    context.setFillColor(CGColor(red: CGFloat(row % 256) / 255, green: 0.35, blue: 0.7, alpha: 1))
+                    context.fill(CGRect(x: 0, y: row, width: width, height: 64))
+                }
+                let image = try XCTUnwrap(context.makeImage())
+                let points = CGSize(width: CGFloat(width) / 2, height: CGFloat(height) / 2)
+                var state = ScreenshotEditorState(selection: CGRect(origin: .zero, size: points))
+                state.annotations = [ScreenshotAnnotation(tool: .rectangle,
+                    points: [CGPoint(x: 40, y: 40), CGPoint(x: 200, y: 180)])]
+                let started = ProcessInfo.processInfo.systemUptime
+                let rendered = try XCTUnwrap(ScreenshotRenderer.render(image: image, pointSize: points, state: state))
+                let renderedAt = ProcessInfo.processInfo.systemUptime
+                let appKitData = try XCTUnwrap(NSBitmapImageRep(cgImage: rendered).representation(using: .png, properties: [:]))
+                let appKitAt = ProcessInfo.processInfo.systemUptime
+                let imageIOData = try XCTUnwrap(ScreenshotPNG.encode(rendered))
+                let imageIOAt = ProcessInfo.processInfo.systemUptime
+                for data in [appKitData, imageIOData] {
+                    let decoded = try XCTUnwrap(NSBitmapImageRep(data: data))
+                    XCTAssertEqual(decoded.pixelsWide, width)
+                    XCTAssertEqual(decoded.pixelsHigh, height)
+                }
+                print("IMAGE_BENCH pixels=\(width * height) renderMS=\((renderedAt - started) * 1000) appKitPNGMS=\((appKitAt - renderedAt) * 1000) imageIOPNGMS=\((imageIOAt - appKitAt) * 1000)")
+            }
+        }
+    }
+}

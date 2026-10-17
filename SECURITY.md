@@ -26,6 +26,11 @@ content. Regex filtering is supplementary and can both miss secrets and reject b
 text. No OCR-based secret filter is applied to copied images. Explicit screenshots can
 contain anything the user captured; automatic redaction must be reviewed manually.
 
+Recording pause is checked before pasteboard content reads, including explicit screenshot
+history ingestion. Its deadline persists across restart. Resuming discards the current
+pasteboard baseline rather than importing paused content. Policy changes invalidate queued
+snapshots; a write already executing may finish, and existing history is unchanged.
+
 ## Content handling
 
 Production diagnostic logs must not include clipboard/snippet text, titles, file paths,

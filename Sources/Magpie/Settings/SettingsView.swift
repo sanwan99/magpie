@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Top-level Settings tabbed modal — General + Shortcuts (v0.2 scope).
-/// History + Privacy panes land in v0.3.
+/// App preferences, global shortcuts, retention and privacy controls.
 struct SettingsView: View {
     @Bindable var store: SettingsStore
 

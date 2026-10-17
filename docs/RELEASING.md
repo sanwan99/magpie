@@ -75,6 +75,58 @@ signature check disappear. Build/package both intended architectures and inspect
 A final DMG must itself be validated for packaging, notarization/stapling where applicable,
 quarantine/Gatekeeper on another Mac, checksum and an Applications shortcut.
 
+## Local DMG packaging
+
+`Scripts/package-dmg.py` prepares a local distribution container from an **already
+Developer ID-signed, notarized and stapled** app. It requires Python 3 and macOS's
+`ditto`, `codesign`, `spctl`, `hdiutil` and `xcrun stapler`; it has no third-party Python
+dependencies. Use a team identifier independently verified by the maintainer. This
+script does not create a signing identity, sign code, submit to Apple, staple tickets,
+install/launch the app, mount a volume, or publish a Release.
+
+```bash
+# Run after the app's signing, notarization and stapling steps above.
+# The output name is an example, not authorization to create a version/tag/Release.
+python3 Scripts/package-dmg.py \
+  "/path/to/Magpie.app" \
+  "dist/Magpie-0.4.0-alpha.1.dmg" \
+  --team-id YOURTEAMID
+
+# Check the local bytes against the generated sidecar.
+(cd dist && shasum -a 256 -c Magpie-0.4.0-alpha.1.dmg.sha256)
+```
+
+Replace `YOURTEAMID` with the real ten-character team ID; the placeholder is not a
+usable signing identity. The script checks the bundle identifier, executable name,
+Developer ID requirement/team, Gatekeeper assessment and stapled ticket both before
+and after copying the app. The read-only compressed DMG contains `Magpie.app` and an
+`Applications` link to `/Applications`. `hdiutil verify` must succeed before output.
+Neither the source bundle nor an existing output is modified.
+
+The DMG and `.dmg.sha256` sidecar are staged beside the destination, then published with
+atomic, no-overwrite hard links. The destination filesystem must support hard links;
+if it does not, use a local APFS volume. An existing file, directory or dangling symlink
+at either output path is an error, including one created by a concurrent packager.
+Each file appears complete, but the pair is not one filesystem transaction: an abrupt
+process/power interruption can leave only the checksum. Inspect that state and select
+a new output name before retrying; the script never automatically removes old output.
+
+**The newly created DMG container is not itself signed or notarized.** The tool only
+packages a verified, stapled app. An authorized maintainer must still complete the final
+container signing/notarization workflow as applicable, inspect the mounted contents,
+and test a quarantined download and drag-and-drop installation on another Mac. If any
+subsequent signing/stapling changes the DMG bytes, regenerate and independently verify
+the release checksum; the packaging-stage sidecar no longer describes those new bytes.
+Follow Apple's [packaging](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)
+and [notarization](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)
+guidance for the final distribution container.
+
+Automated Python tests use synthetic bundles and mocked macOS commands; they cover
+validation failures, copy/image failures, checksum integrity, output collisions and
+publication cleanup. **No real signed-app/DMG tool execution has been established by
+those tests.** Record the actual macOS tools, app identity, final checksum and clean-device
+outcomes before treating a DMG as distributable.
+
 `install-release.sh` verifies a provided app; first public installation requires the
 expected `--team-id` from independently verified release instructions. The release notes
 must publish that team identifier and checksums. The optional script requires Python 3;

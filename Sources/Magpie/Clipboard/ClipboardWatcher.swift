@@ -82,6 +82,13 @@ final class ClipboardWatcher {
     /// The closure receives a copied snapshot; expensive ingest work should
     /// continue off the main thread.
     var onChange: ((ClipboardSnapshot, ClipboardChangeOrigin) -> Void)?
+    /// Checked before content reads, including explicit screenshot ingestion.
+    var allowsCapture: () -> Bool = { true }
+
+    func discardPendingChanges() {
+        lastChangeCount = pasteboard.changeCount
+        preparedOrigin = nil
+    }
 
     init(pasteboard: NSPasteboard = .general, pollInterval: TimeInterval = 0.4) {
         self.pasteboard = pasteboard
@@ -132,6 +139,10 @@ final class ClipboardWatcher {
 
     @discardableResult
     private func pollOnce(forcedOrigin: ClipboardChangeOrigin? = nil) -> Bool {
+        guard allowsCapture() else {
+            discardPendingChanges()
+            return false
+        }
         let current = pasteboard.changeCount
         guard current != lastChangeCount else {
             if let forcedOrigin, preparedOrigin == forcedOrigin {
@@ -167,5 +178,46 @@ final class ClipboardWatcher {
 
         onChange?(snapshot, origin)
         return true
+    }
+}
+
+
+/// A persisted deadline survives relaunch; expiration never imports paused copies.
+/// Injected clock/defaults make sleep and restart behavior deterministic in tests.
+@MainActor
+final class ClipboardRecordingControl {
+    private static let key = "magpie.recording.pausedUntil"
+    private let defaults: UserDefaults
+    private let now: () -> Date
+    private(set) var pausedUntil: Date?
+    var onChange: (() -> Void)?
+
+    init(defaults: UserDefaults = .standard, now: @escaping () -> Date = Date.init) {
+        self.defaults = defaults
+        self.now = now
+        let timestamp = defaults.double(forKey: Self.key)
+        pausedUntil = timestamp > 0 ? Date(timeIntervalSince1970: timestamp) : nil
+    }
+
+    var isPaused: Bool {
+        guard let deadline = pausedUntil else { return false }
+        if deadline > now() { return true }
+        resume()
+        return false
+    }
+
+    func pause(for duration: TimeInterval) {
+        guard duration.isFinite, duration > 0 else { return }
+        let deadline = now().addingTimeInterval(duration)
+        pausedUntil = deadline
+        defaults.set(deadline.timeIntervalSince1970, forKey: Self.key)
+        onChange?()
+    }
+
+    func resume() {
+        guard pausedUntil != nil else { return }
+        pausedUntil = nil
+        defaults.removeObject(forKey: Self.key)
+        onChange?()
     }
 }

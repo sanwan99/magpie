@@ -361,3 +361,99 @@ private final class SuspendedOwnerAuthenticator: OwnerAuthenticating {
         pending?.resume(returning: result)
     }
 }
+
+@MainActor
+final class RecordingControlTests: XCTestCase {
+    func testDeadlinePersistsAndExpiresAcrossRestartWithoutReplay() throws {
+        let name = "magpie.recording.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        var now = Date(timeIntervalSince1970: 1000)
+        let control = ClipboardRecordingControl(defaults: defaults, now: { now })
+        control.pause(for: 900)
+        let restored = ClipboardRecordingControl(defaults: defaults, now: { now })
+        XCTAssertTrue(restored.isPaused)
+        XCTAssertEqual(restored.pausedUntil, Date(timeIntervalSince1970: 1900))
+        var transitions = 0
+        restored.onChange = { transitions += 1 }
+        now = Date(timeIntervalSince1970: 1900)
+        XCTAssertFalse(restored.isPaused)
+        XCTAssertFalse(restored.isPaused)
+        XCTAssertEqual(transitions, 1)
+        XCTAssertNil(ClipboardRecordingControl(defaults: defaults).pausedUntil)
+    }
+
+    func testPausedCopiesAndExplicitScreenshotsAreNotReplayedOnResume() throws {
+        let name = "magpie.recording.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let pb = NSPasteboard.withUniqueName()
+        defer { pb.releaseGlobally() }
+        let control = ClipboardRecordingControl(defaults: defaults)
+        let watcher = ClipboardWatcher(pasteboard: pb)
+        watcher.allowsCapture = { !control.isPaused }
+        control.onChange = { watcher.discardPendingChanges() }
+        var delivered = 0
+        watcher.onChange = { _, _ in delivered += 1 }
+        control.pause(for: 900)
+        pb.clearContents(); pb.setString("synthetic paused value", forType: .string)
+        XCTAssertFalse(watcher.pollNow(origin: .explicitScreenshot))
+        pb.clearContents(); pb.setString("last paused value", forType: .string)
+        control.resume()
+        XCTAssertFalse(watcher.pollNow())
+        XCTAssertEqual(delivered, 0)
+        pb.clearContents(); pb.setString("fresh copy", forType: .string)
+        XCTAssertTrue(watcher.pollNow())
+        XCTAssertEqual(delivered, 1)
+    }
+
+    func testSleepPastDeadlineDiscardsCurrentClipboardBeforeResuming() throws {
+        let name = "magpie.recording.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        var now = Date(timeIntervalSince1970: 1000)
+        let control = ClipboardRecordingControl(defaults: defaults, now: { now })
+        let pb = NSPasteboard.withUniqueName()
+        defer { pb.releaseGlobally() }
+        let watcher = ClipboardWatcher(pasteboard: pb)
+        watcher.allowsCapture = { !control.isPaused }
+        control.onChange = { watcher.discardPendingChanges() }
+        control.pause(for: 900)
+        // No timer ticks during this simulated sleep interval.
+        pb.clearContents(); pb.setString("copied while asleep/paused", forType: .string)
+        now = Date(timeIntervalSince1970: 5000)
+        XCTAssertFalse(watcher.pollNow())
+        pb.clearContents(); pb.setString("new copy after wake", forType: .string)
+        XCTAssertTrue(watcher.pollNow())
+    }
+
+    func testPauseInvalidatesPreviouslyQueuedDatabaseAndFTSWrites() async throws {
+        let name = "magpie.recording.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let db = Magpie.Database.makeInMemoryForTests()
+        let control = ClipboardRecordingControl(defaults: defaults)
+        control.onChange = { db.invalidatePendingIngests() }
+        let generation = db.currentIngestGeneration
+        control.pause(for: 3600)
+        let ingestor = ClipboardIngestor(repository: ClipRepository(database: db))
+        let snapshot = ClipboardSnapshot(changeCount: 1, typeNames: [], fileURLs: [],
+            imageData: nil, imageTypeName: nil, string: "synthetic queued value")
+        let changed = await ingestor.ingest(snapshot: snapshot,
+            policy: .init(appBundleIdentifier: nil, ignoredApps: [], skipSecretLooking: true), expectedGeneration: generation)
+        XCTAssertFalse(changed)
+        XCTAssertEqual(try ClipRepository(database: db).count(), 0)
+        let count = try await db.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips_fts") }
+        XCTAssertEqual(count, 0)
+    }
+
+    func testInvalidPauseDurationsDoNotChangeState() throws {
+        let name = "magpie.recording.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let control = ClipboardRecordingControl(defaults: defaults)
+        for duration in [0, -1, Double.infinity, Double.nan] { control.pause(for: duration) }
+        XCTAssertFalse(control.isPaused)
+        XCTAssertNil(control.pausedUntil)
+    }
+}

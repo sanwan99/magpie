@@ -85,6 +85,7 @@ final class SettingsStore {
     private let defaults: UserDefaults
     private let loginItemController: LoginItemControlling
     private var isSyncingLaunchAtLogin = false
+    @ObservationIgnored var onRecordingPolicyChange: (() -> Void)?
 
     // MARK: - Language
 
@@ -169,6 +170,7 @@ final class SettingsStore {
     var ignoredApps: [String] = [] {
         didSet {
             defaults.set(ignoredApps, forKey: Keys.ignoredApps)
+            onRecordingPolicyChange?()
         }
     }
 
@@ -181,7 +183,10 @@ final class SettingsStore {
 
     /// Filter out clips that look like API keys / tokens / passwords.
     var skipSecretLooking: Bool = true {
-        didSet { defaults.set(skipSecretLooking, forKey: Keys.skipSecret) }
+        didSet {
+            defaults.set(skipSecretLooking, forKey: Keys.skipSecret)
+            onRecordingPolicyChange?()
+        }
     }
 
     // MARK: - Init / restore

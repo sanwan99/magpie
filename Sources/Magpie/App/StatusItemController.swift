@@ -11,12 +11,19 @@ import AppKit
 final class StatusItemController: NSObject, NSMenuDelegate {
     private let statusItem: NSStatusItem
     private weak var panelController: PanelController?
+    private let recording: ClipboardRecordingControl
+    private var ignoredApplication: NSRunningApplication?
+    private var recordingItem: NSMenuItem?
+    private var resumeItem: NSMenuItem?
+    private var ignoreItem: NSMenuItem?
     private let onCaptureScreenshot: () -> Void
     private let onScreenCapturePermissions: () -> Void
 
-    init(panelController: PanelController, onCaptureScreenshot: @escaping () -> Void,
+    init(panelController: PanelController, recording: ClipboardRecordingControl,
+         onCaptureScreenshot: @escaping () -> Void,
          onScreenCapturePermissions: @escaping () -> Void) {
         self.panelController = panelController
+        self.recording = recording
         self.onCaptureScreenshot = onCaptureScreenshot
         self.onScreenCapturePermissions = onScreenCapturePermissions
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -43,6 +50,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private func configureMenu() {
         let menu = NSMenu()
         menu.delegate = self
+        menu.autoenablesItems = false
 
         let show = NSMenuItem(title: "显示面板", action: #selector(togglePanel), keyEquivalent: "p")
         show.target = self
@@ -64,6 +72,30 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(permission)
 
         menu.addItem(NSMenuItem.separator())
+        let recordingState = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        recordingState.isEnabled = false
+        menu.addItem(recordingState)
+        recordingItem = recordingState
+        for (minutes, title) in [(15, language.pick(zh: "暂停记录 15 分钟", en: "Pause Recording for 15 Minutes")),
+                                  (60, language.pick(zh: "暂停记录 1 小时", en: "Pause Recording for 1 Hour"))] {
+            let item = NSMenuItem(title: title, action: #selector(pauseRecording(_:)), keyEquivalent: "")
+            item.tag = minutes
+            item.target = self
+            menu.addItem(item)
+        }
+        let resume = NSMenuItem(title: language.pick(zh: "恢复记录", en: "Resume Recording"), action: #selector(resumeRecording), keyEquivalent: "")
+        resume.target = self
+        menu.addItem(resume)
+        resumeItem = resume
+        let ignore = NSMenuItem(title: "", action: #selector(ignoreCurrentApplication), keyEquivalent: "")
+        ignore.target = self
+        menu.addItem(ignore)
+        ignoreItem = ignore
+        menu.addItem(NSMenuItem.separator())
+        let guide = NSMenuItem(title: language.pick(zh: "使用入门与权限…", en: "Getting Started & Permissions…"),
+                               action: #selector(openGettingStarted), keyEquivalent: "")
+        guide.target = self
+        menu.addItem(guide)
 
         let settings = NSMenuItem(title: "设置…", action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
@@ -81,9 +113,35 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(quit)
 
         statusItem.menu = menu
+        refreshRecordingStatus()
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        let language = SettingsStore.shared.language
+        for item in menu.items {
+            if item.action == #selector(togglePanel) { item.title = language.pick(zh: "显示面板", en: "Show Panel") }
+            if item.action == #selector(captureScreenshot) { item.title = language.pick(zh: "截图…", en: "Capture Screenshot…") }
+            if item.action == #selector(openScreenCapturePermissions) { item.title = language.pick(zh: "屏幕录制权限…", en: "Screen Recording Permission…") }
+            if item.action == #selector(openSettings) { item.title = language.pick(zh: "设置…", en: "Settings…") }
+            if item.action == #selector(openAbout) { item.title = language.pick(zh: "关于 Magpie", en: "About Magpie") }
+            if item.action == #selector(quit) { item.title = language.pick(zh: "退出 Magpie", en: "Quit Magpie") }
+            if item.action == #selector(openGettingStarted) { item.title = language.pick(zh: "使用入门与权限…", en: "Getting Started & Permissions…") }
+            if item.action == #selector(resumeRecording) { item.title = language.pick(zh: "恢复记录", en: "Resume Recording") }
+            if item.action == #selector(pauseRecording(_:)) {
+                item.title = item.tag == 15
+                    ? language.pick(zh: "暂停记录 15 分钟", en: "Pause Recording for 15 Minutes")
+                    : language.pick(zh: "暂停记录 1 小时", en: "Pause Recording for 1 Hour")
+            }
+        }
+        let frontmost = NSWorkspace.shared.frontmostApplication
+        ignoredApplication = frontmost?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : frontmost
+        let id = ignoredApplication?.bundleIdentifier
+        let canIgnore = id != nil && !SettingsStore.shared.ignoredApps.contains(id!)
+        ignoreItem?.title = canIgnore
+            ? language.pick(zh: "忽略当前应用：", en: "Ignore Current App: ") + (ignoredApplication?.localizedName ?? id!)
+            : language.pick(zh: "当前应用已忽略或不可识别", en: "Current App Ignored or Unavailable")
+        ignoreItem?.isEnabled = canIgnore
+        refreshRecordingStatus()
         guard let center = HotkeyCenter.current else { return }
         for (index, action) in [GlobalHotkeyAction.togglePanel, .captureScreenshot].enumerated() {
             let binding = center.binding(for: action)
@@ -91,6 +149,38 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             menu.items[index].keyEquivalentModifierMask = binding.cocoaModifiers
         }
     }
+
+    func refreshRecordingStatus() {
+        let paused = recording.isPaused
+        let language = SettingsStore.shared.language
+        let title: String
+        if paused, let deadline = recording.pausedUntil {
+            let time = DateFormatter.localizedString(from: deadline, dateStyle: .none, timeStyle: .short)
+            title = language.pick(zh: "记录已暂停，恢复时间：", en: "Recording paused until ") + time
+        } else {
+            title = language.pick(zh: "剪贴板记录中", en: "Clipboard Recording On")
+        }
+        recordingItem?.title = title
+        resumeItem?.isHidden = !paused
+        statusItem.button?.toolTip = "Magpie · " + title
+        statusItem.button?.image = NSImage(systemSymbolName: paused ? "pause.circle" : "doc.on.clipboard", accessibilityDescription: title)
+        statusItem.button?.image?.isTemplate = true
+    }
+
+    @objc private func pauseRecording(_ sender: NSMenuItem) {
+        recording.pause(for: TimeInterval(sender.tag * 60))
+    }
+
+    @objc private func resumeRecording() { recording.resume() }
+
+    @objc private func ignoreCurrentApplication() {
+        guard let app = ignoredApplication, !app.isTerminated,
+              let id = app.bundleIdentifier,
+              !SettingsStore.shared.ignoredApps.contains(id) else { return }
+        SettingsStore.shared.ignoredApps.append(id)
+    }
+
+    @objc private func openGettingStarted() { GettingStartedController.shared.show() }
 
     // MARK: - Actions
 

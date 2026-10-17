@@ -117,7 +117,10 @@ final class PanelController {
     private func pasteSnippet(_ snippet: Snippet) {
         let pb = NSPasteboard.general
         pb.clearContents()
-        pb.setString(snippet.body, forType: .string)
+        guard pb.setString(snippet.body, forType: .string) else {
+            PasteFeedback.show(.writeFailed)
+            return
+        }
         let changeCount = pb.changeCount
         let target = frontmost.savedTarget
         let targetWindow = frontmost.savedWindow
@@ -390,6 +393,7 @@ final class PanelController {
         let targetWindow = frontmost.savedWindow
         guard let written = writePasteboard(clip), !written.isEmpty else {
             NSLog("[paste] clip has no pasteable content")
+            PasteFeedback.show(.writeFailed)
             return
         }
         NSLog("[paste] requested")

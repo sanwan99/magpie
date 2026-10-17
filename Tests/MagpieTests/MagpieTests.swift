@@ -891,3 +891,55 @@ final class CustomHotkeyTests: XCTestCase {
         XCTAssertNil(defaults.data(forKey: "magpie.hotkey.1"))
     }
 }
+
+final class PasteFeedbackPolicyTests: XCTestCase {
+    func testChangedClipboardNeverSuggestsPastingOldRecordAndCancellationIsSilent() {
+        let reason = PasteValidation.failure(currentRequest: true, targetAlive: false, targetPID: 1,
+            frontmostPID: 2, sameWindow: false, expectedChangeCount: 1, actualChangeCount: 2, trusted: false)
+        XCTAssertEqual(reason, .clipboardChanged)
+        XCTAssertFalse(PasteFailure.clipboardChanged.message(language: .en)!.contains("⌘V"))
+        XCTAssertFalse(PasteFailure.writeFailed.message(language: .en)!.contains("⌘V"))
+        XCTAssertNil(PasteFailure.superseded.message(language: .en))
+        XCTAssertEqual(PasteValidation.failure(currentRequest: false, targetAlive: false, targetPID: 1,
+            frontmostPID: 2, sameWindow: false, expectedChangeCount: 1, actualChangeCount: 2, trusted: false), .superseded)
+    }
+
+    func testEveryVisibleFailureHasChineseAndEnglishRecoveryText() {
+        for failure in PasteFailure.allCases where failure != .superseded {
+            XCTAssertFalse(failure.message(language: .zhHans)!.isEmpty)
+            XCTAssertFalse(failure.message(language: .en)!.isEmpty)
+        }
+        XCTAssertEqual(PasteValidation.failure(currentRequest: true, targetAlive: true, targetPID: 1,
+            frontmostPID: 1, sameWindow: true, expectedChangeCount: 1, actualChangeCount: 1, trusted: false), .permissionDenied)
+    }
+
+    func testGettingStartedCompletionPersistsWithoutTouchingOtherPreferences() throws {
+        let name = "magpie.onboarding.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set(true, forKey: "magpie.settings.useTouchID")
+        let preferences = GettingStartedPreferences(defaults: defaults)
+        XCTAssertTrue(preferences.needsPresentation)
+        preferences.complete()
+        XCTAssertFalse(GettingStartedPreferences(defaults: defaults).needsPresentation)
+        XCTAssertTrue(defaults.bool(forKey: "magpie.settings.useTouchID"))
+    }
+}
+
+@MainActor
+final class RecordingSettingsPolicyTests: XCTestCase {
+    func testIgnoredAppsAndHeuristicsInvalidatePolicySynchronously() throws {
+        let name = "magpie.recording.settings.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let store = SettingsStore(defaults: defaults, loginItemController: FakeLoginItemController(status: .notRegistered))
+        var changes = 0
+        store.onRecordingPolicyChange = { changes += 1 }
+        store.ignoredApps.append("com.example.Editor")
+        XCTAssertEqual(changes, 1)
+        store.skipSecretLooking.toggle()
+        XCTAssertEqual(changes, 2)
+        store.ignoredApps.removeAll()
+        XCTAssertEqual(changes, 3)
+    }
+}

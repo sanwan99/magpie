@@ -20,7 +20,8 @@ final class Database: @unchecked Sendable {
         return ingestGeneration
     }
 
-    /// Called under storageLock before clearing history; invalidates queued snapshots.
+    /// Invalidates queued snapshots on clear or recording-policy changes.
+    /// Clearing holds storageLock; policy changes do not wait for ongoing PNG I/O.
     func invalidatePendingIngests() {
         generationLock.lock()
         defer { generationLock.unlock() }

@@ -24,6 +24,7 @@ An existing, real application screenshot from this repository. Newly added setti
 
 ## Features
 
+- **Recording control:** pause for 15 minutes / 1 hour, resume early, or ignore the current app from the menu bar. The deadline survives restart; paused clipboard contents are not imported on resume.
 - **Typed history:** text, code, links, images, files and folders, with dedicated previews. File clips reference original paths; Magpie does not duplicate those files.
 - **Search and organization:** FTS5 search with a CJK substring fallback, quoted phrases, `type:code` and `app:vscode` filters; pins, notes and retention controls.
 - **Keyboard workflow:** `⌘P` opens the panel, `Return` or `⌘1–9` pastes an item. Panel and capture shortcuts can be customized. Queue Mode supports successive pastes.
@@ -47,7 +48,7 @@ For a future signed distribution, `Scripts/install-release.sh /path/to/Magpie.ap
 
 ## First run
 
-1. Open Magpie from the menu bar. It does not normally appear in the Dock.
+1. First launch opens Getting Started & Permissions, explaining storage and optional permissions. Choose Get Started to dismiss future automatic prompts; reopen the guide from the menu bar anytime. Magpie does not normally appear in the Dock.
 2. Copy ordinary text, then press `⌘P`. Clipboard contents from before launch are not automatically imported.
 3. Select a record and press Return. Grant Accessibility for automatic paste, or copy the record and paste manually.
 4. Set retention and ignored applications in History; enable the optional authentication lock in Privacy.
@@ -55,12 +56,12 @@ For a future signed distribution, `Scripts/install-release.sh /path/to/Magpie.ap
 
 | Permission / capability | Purpose | Required? |
 | --- | --- | --- |
-| Accessibility | Automatic paste and optional snippet expansion | Required for automatic paste, not history browsing; currently requested on launch and may be declined |
+| Accessibility | Automatic paste and optional snippet expansion | Required for automatic paste, not history browsing; requested only when you choose the authorization button in the guide |
 | Input Monitoring | Optional global snippet trigger observation; actual authorization depends on macOS | Not needed for basic history |
 | Screen Recording | Explicit screenshots and scrolling capture | Required for capture; Magpie does not record audio |
 | System authentication | Touch ID or macOS account password | Only with privacy lock enabled |
 
-Automatic paste checks process identity, focused window, clipboard ownership and permission again before sending. It cancels when focus changes or a window cannot be identified reliably. The content remains on the system clipboard for manual paste.
+Automatic paste checks process identity, focused window, clipboard ownership and permission again before sending. It cancels when focus changes or a window cannot be identified reliably, with a content-free notice that does not take focus. If the clipboard was replaced, the notice asks you to select the record again instead of suggesting you paste stale content.
 
 ## Keyboard shortcuts
 
@@ -85,6 +86,7 @@ See the [capture guide](docs/SCREENSHOTS.md). Capture operates per display; cros
 - **Filtering:** Concealed/Transient markers are always respected. Optional heuristics detect common tokens, private keys and contextual OTPs, with both false negatives and false positives. They cannot identify arbitrary passwords or secrets in images. Ignored-app attribution uses the observed foreground app and is not an equivalent substitute for privacy markers.
 - **Lock lifetime:** opening a hidden panel requires fresh system authentication. Hiding, sleeping, screen lock, session changes and restart relock it. Failure, cancellation and unavailable authentication policies do not grant access. Changing the lock setting also requires fresh authentication.
 - **Network boundaries:** the application currently has no telemetry, account or cloud sync implementation, and no cloud OCR/translation integration. OCR runs on-device; macOS translation may download language packs after user action. Apple controls its system services. User-selected sharing services and default applications handle sharing and links. The optional developer script `generate-theme-mascots.py` calls an external image API; it is not part of normal application execution.
+- **Pause boundaries:** pause blocks both passive history and explicit screenshot ingestion. Existing history, copying and saving screenshots remain available. It does not delete stored history or undo a write already in progress; previously queued snapshots are invalidated. Quick ignore uses the app identified when the menu opens; remove exclusions in History settings.
 - **Deletion:** Clear History removes clips, pins, FTS entries and managed image files. It preserves snippets, preferences, the system clipboard, application backups and original user files. Logical deletion cannot guarantee removal from SQLite WAL/free pages, filesystem snapshots, Time Machine or other backups.
 
 See [SECURITY.md](SECURITY.md). Never include real credentials or private clipboard content in reports.
