@@ -42,6 +42,7 @@ final class Database: @unchecked Sendable {
             NSLog("[storage] database ready")
         } catch {
             // Bootstrap-time failure — surface immediately rather than degrading silently.
+            DiagnosticLog.failure("storage.initialize", error: error)
             fatalError("Magpie database initialization failed; inspect local storage permissions and disk space.")
         }
     }

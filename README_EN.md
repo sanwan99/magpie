@@ -108,7 +108,7 @@ To use an existing stable local identity:
 MAGPIE_CODE_SIGN_IDENTITY='Your local signing identity' Scripts/build-local.sh
 ```
 
-`Scripts/setup-local-signing.py --create` is an optional developer utility that changes the local keychain. It is not required by the default build, public installation or CI. Public distributions require separate Developer ID signing and notarization.
+`python3 Scripts/setup-local-signing.py --create` is an optional developer utility that changes the local keychain. It is not required by the default build, public installation or CI. Public distributions require separate Developer ID signing and notarization.
 
 After changing `project.yml`, regenerate and commit the Xcode project:
 

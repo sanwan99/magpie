@@ -69,7 +69,7 @@ enum ImageStorage {
     /// Reject traversal, symlinks, directories, and paths outside our PNG cache.
     static func isManagedFile(_ url: URL, in directory: URL = directoryURL) -> Bool {
         let candidate = url.standardizedFileURL
-        guard candidate.deletingLastPathComponent() == directory.standardizedFileURL,
+        guard candidate.deletingLastPathComponent().standardizedFileURL.path == directory.standardizedFileURL.path,
               candidate.pathExtension.lowercased() == "png",
               let values = try? candidate.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
               values.isRegularFile == true, values.isSymbolicLink != true else { return false }

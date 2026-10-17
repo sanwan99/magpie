@@ -110,7 +110,7 @@ Scripts/build-local.sh
 MAGPIE_CODE_SIGN_IDENTITY='Your local signing identity' Scripts/build-local.sh
 ```
 
-`Scripts/setup-local-signing.py --create` 是可选开发工具，会创建本机证书及钥匙串条目，不是普通用户或 CI 的安装前置条件。公开发行必须另用 Developer ID 签名与公证。
+`python3 Scripts/setup-local-signing.py --create` 是可选开发工具，会创建本机证书及钥匙串条目，不是普通用户或 CI 的安装前置条件。公开发行必须另用 Developer ID 签名与公证。
 
 修改工程定义后，通过 [XcodeGen](https://github.com/yonaskolb/XcodeGen) 重新生成，并提交 `project.yml` 和工程文件：
 

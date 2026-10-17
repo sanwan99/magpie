@@ -32,7 +32,7 @@ python3 Scripts/check-doc-links.py
 
 Source builds default to ad-hoc signing. A stable personal signing identity is optional
 (`MAGPIE_CODE_SIGN_IDENTITY`); never commit its private key, certificate or passwords.
-`setup-local-signing.py --create` explicitly changes your local keychain and is not a CI
+`python3 Scripts/setup-local-signing.py --create` explicitly changes your local keychain and is not a CI
 or end-user prerequisite. `install-release.sh` installs already signed public apps;
 `install-app.py --local-build` is the explicit local developer path.
 
