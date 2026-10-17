@@ -46,7 +46,8 @@ actor ClipboardIngestor {
     }
 
     /// Returns true when storage changed and the UI should refresh.
-    func ingest(snapshot: ClipboardSnapshot, policy: ClipboardIngestPolicy) -> Bool {
+    func ingest(snapshot: ClipboardSnapshot, policy: ClipboardIngestPolicy,
+                expectedGeneration: UInt64? = nil) -> Bool {
         guard !snapshot.isPrivate else { return false }
         if let app = policy.appBundleIdentifier, policy.ignoredApps.contains(app) { return false }
         // Check the string before image detection can persist a file. Mixed
@@ -55,6 +56,8 @@ actor ClipboardIngestor {
            SecretDetector.looksSecret(text) { return false }
 
         return repository.database.withStorageLock {
+            if let expectedGeneration,
+               expectedGeneration != repository.database.currentIngestGeneration { return false }
             guard let detected = ClipDetector.detect(snapshot: snapshot, app: policy.appBundleIdentifier, imageDirectoryURL: imageDirectoryURL) else {
                 return false
             }

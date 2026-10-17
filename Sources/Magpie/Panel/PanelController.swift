@@ -305,6 +305,10 @@ final class PanelController {
 
     func hide(completion: (() -> Void)? = nil) {
         biometric.relock()
+        if settings.useTouchID {
+            ExpandedPreviewWindowController.shared.close()
+            SnippetEditorWindowController.shared.close()
+        }
         authenticationTask?.cancel()
         authenticationTask = nil
         visibilityGeneration += 1

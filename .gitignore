@@ -56,3 +56,24 @@ fastlane/test_output
 
 # Distribution artifacts (DMG, archives) — 通过 GitHub Releases 分发，不入 git
 /dist
+
+# Credentials, local signing and private runtime data
+.env
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.pem
+*.cer
+*.crt
+*.keychain-db
+*.key
+*.mobileprovision
+*.provisionprofile
+*.xcresult
+*.xcarchive
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+Signing/

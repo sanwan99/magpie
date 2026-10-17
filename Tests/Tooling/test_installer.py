@@ -44,7 +44,20 @@ class InstallerTests(unittest.TestCase):
         return subprocess.CompletedProcess(args, 0, '', 'TeamIdentifier=ABCDEFGHIJ\n')
 
     def install(self, **kwargs):
+        if not kwargs.get('local_build'):
+            kwargs.setdefault('team_id', 'ABCDEFGHIJ')
         return installer.install(self.source, self.target, self.support, **kwargs)
+
+    def test_first_public_install_requires_expected_team_from_release(self):
+        with self.assertRaisesRegex(RuntimeError, '--team-id'):
+            installer.install(self.source, self.target, self.support)
+        self.assertFalse(self.target.exists())
+
+    def test_public_install_rejects_missing_team_identity(self):
+        with patch.object(installer, 'verify', return_value=None):
+            with self.assertRaisesRegex(RuntimeError, 'Developer ID team'):
+                self.install()
+        self.assertFalse(self.target.exists())
 
     def test_first_install_does_not_require_old_app_or_identity(self):
         self.install()

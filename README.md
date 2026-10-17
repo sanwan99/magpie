@@ -1,298 +1,154 @@
 <div align="center">
-
-<img src="docs/screenshots/logo.png" alt="Magpie" width="180" />
+<img src="docs/screenshots/logo.png" alt="Magpie Logo" width="160" />
 
 # Magpie
 
-**本地优先、键盘驱动的 macOS 剪切板管理器**
-*A local-first, keyboard-driven clipboard manager for macOS*
+**把复制过的好东西，随手找回来。**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blueviolet.svg)](LICENSE)
-[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black.svg)](#)
-[![Swift 5.9](https://img.shields.io/badge/Swift-5.9-orange.svg)](#)
-[![Version 0.3.0](https://img.shields.io/badge/version-0.3.0-c9ff00.svg)](#)
-[![Status: alpha](https://img.shields.io/badge/status-alpha-7a2bff.svg)](#)
+本地优先、键盘驱动的 macOS 剪贴板与截图工具。保存历史、快速搜索、复用片段，再把内容贴回正在工作的窗口。
 
-像喜鹊收集闪亮的小东西一样 — 自动收下你复制的一切，按一下键召出来，再按一下贴出去。
+*A local-first clipboard and screenshot companion for macOS.*
+
+**简体中文** · [English](README_EN.md)
+
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black)](#从源码构建)
+[![MIT License](https://img.shields.io/badge/License-MIT-blueviolet)](LICENSE)
+[![Release: Source Alpha](https://img.shields.io/badge/Release-Source%20Alpha-orange)](https://github.com/sanwan99/magpie/releases)
+[![macOS CI](https://github.com/sanwan99/magpie/actions/workflows/ci.yml/badge.svg)](https://github.com/sanwan99/magpie/actions/workflows/ci.yml)
 
 </div>
 
----
+## 应用截图
 
-## ✨ 截图
+![Magpie 的 Splat 主题与 Grid 布局](docs/screenshots/panel-splat.png)
 
-> **⌘P** 召出面板，⌘1–⌘9 / ↩ 一键贴回前台 app。Splat 主题（黄绿章鱼吉祥物 + 紫色墨点装饰）让你忘不掉它。
+仓库现有版本的真实截图，展示 Splat 主题、类型筛选、网格卡片和详情预览；不代表新增设置页的最终外观。
 
-<p align="center">
-  <img src="docs/screenshots/panel-splat.png" alt="Splat 主题面板" width="900" />
-  <br/>
-  <em>Splat dark：粗黄外框 + 紫色面板 + 章鱼角落装饰</em>
-</p>
+## 核心功能
 
-<p align="center">
-  <img src="docs/screenshots/panel-stripe.png" alt="Stripe 布局" width="900" />
-  <br/>
-  <em>Stripe 布局 + Detail Pane（按 Space 召出，霓虹高亮选中卡片）</em>
-</p>
+- **剪贴板历史**：文本、代码、链接、图片、文件、文件夹，按类型预览。复制的文件只记录路径，不复制原文件。
+- **搜索与整理**：FTS5 全文搜索，中文子串回退；支持 `type:code`、`app:vscode`、引号短语及组合查询。可置顶、写备注、设置保留天数和数量。
+- **键盘操作**：默认 `⌘P` 呼出面板，`↩` 或 `⌘1–9` 粘贴；全局面板／截图快捷键可在设置中修改。Queue Mode 支持连续取用。
+- **Snippets**：保存常用文字模板；可选快捷字符串展开。隐私锁开启时自动展开暂停，避免绕过面板认证。
+- **截图编辑**：默认 `⌘J`；框选、窗口选择、箭头、文字、马赛克、撤销、PNG 保存、OCR、悬浮贴图和手动滚动长截图。自动打码后仍需人工检查。
+- **原生外观**：Stripe／Stack／Grid 三种布局，Mono／Graphite／Blue／Olive／Splat 五种主题，中英文界面。macOS 26 使用原生玻璃效果；旧系统使用兼容材质。
 
----
+列表默认最多展示 200 个匹配项，不会一次加载整个历史库。图片、文件、文件夹各保留最近 50 条非置顶记录；置顶项不受自动保留上限影响。
 
-## 为什么用 Magpie
+## 下载与安装
 
-设计目标是**替代 Maccy + Deck**，把"剪切板历史"和"代码片段"做在同一个面板里：
+**当前为 Source Alpha，尚无已发布、可供普通用户下载安装的正式 Release。**
 
-- 🔒 **纯本地** —— SQLite 落盘，永不联网，永不上传，永不分析
-- ⌨️ **键盘是一等公民** —— 任何鼠标可达功能都有快捷键
-- 🎨 **6 种内容类型** —— text / code / url / image / file / folder 各有专属预览
-- 🪟 **3 种布局** —— Stripe（横向卡片） / Stack（紧凑列表） / Grid（瓷砖墙）
-- 🔍 **FTS5 全文搜索** —— 支持 `type:code app:vscode tag:design` 这种 key:value 语法
-- 📌 **Pin / Snippets / Queue Mode** —— 钉常用、存模板、批量贴
-- 📸 **截图与标注** —— `⌘J` 框选屏幕，调整选区并添加箭头、文字、马赛克；复制到历史或保存 PNG
-- 🔐 **Touch ID 隐私门** —— 召出面板前指纹解锁（可选）
-- 🚫 **Secret 自动跳过** —— API key / Bearer token / JWT / OTP 不入库
-- 🎭 **5 种主题** —— mono / graphite / blue / olive 走系统简约；**Splat** 走 Splatoon 灵感的紫黄装饰风
-- 🌐 **中英文界面** —— Settings 一键切换
+[GitHub Releases](https://github.com/sanwan99/magpie/releases) 是未来发行包的唯一仓库下载入口。仓库内没有可下载的 `dist/*.dmg`；不要把源码 ZIP 当成应用安装包。希望直接双击安装的用户，建议等待经过 Developer ID 签名和 Apple 公证的发行包。
 
----
+开发者和愿意自行构建的用户可按下文运行源码。默认本机构建使用 ad-hoc 签名，不需要购买开发者账户或创建个人证书；它不等于经过公证的公开发行版本，系统权限授权也可能随重建而变化。
 
-## 📦 下载安装
+不要关闭 Gatekeeper、SIP 或批量移除隔离属性。若系统阻止运行下载的应用，先核对来源、签名和对应版本的发布说明；不要用“绕过安全检查”作为安装步骤。
 
-### 推荐：直接装 DMG
+已有签名发行包时，可使用 `Scripts/install-release.sh /path/to/Magpie.app --team-id 发行说明中的团队ID` 安装（首次公开安装必须核对团队 ID）。脚本校验 Developer ID、Gatekeeper 和升级前后的团队身份，升级前备份旧应用，启动检查失败时尝试回滚。它不下载应用，不生成开发证书，不重置系统权限；当前没有发行包可用于验证完整公开安装流程。
 
-下载最新 Release：[`dist/Magpie-0.3.0.dmg`](dist/Magpie-0.3.0.dmg)（4.4 MB）
+## 首次使用
 
-```bash
-# 拖进 /Applications
-open dist/Magpie-0.3.0.dmg
-```
+1. 启动后，从菜单栏 Magpie 图标打开设置。它是菜单栏应用，不常驻 Dock。
+2. 复制一段普通文字，按 `⌘P` 或从菜单栏打开面板。启动前已经在剪贴板里的内容不会自动导入。
+3. 选择记录并按 `↩`。自动粘贴需要辅助功能权限；未授权时仍可复制记录后手动 `⌘V`。
+4. 在“历史”中设置保留时间和忽略的应用；在“隐私”中按需打开认证锁。
+5. 若 `⌘P`／`⌘J` 与其他应用冲突，从“快捷键”更换组合。Carbon 报告的冲突会阻止保存；系统保留快捷键还需在系统设置中检查。
 
-> **首次启动**：macOS 会因为 ad-hoc 签名提示"无法验证开发者"。
-> 在 Finder 里**右键 .app → 打开**确认一次即可，之后双击就能开。
-> v1.0 会换正式 Apple Developer ID 签名，届时双击直接开。
+| 权限或系统能力 | 用途 | 是否必需 |
+| --- | --- | --- |
+| 辅助功能 | 将内容自动贴回目标窗口、可选片段展开 | 自动粘贴必需；历史浏览不需要。当前启动时会请求，可拒绝 |
+| 输入监控 | 可选的全局片段触发监测，实际授权行为由 macOS 决定 | 基础历史功能不需要 |
+| 屏幕录制 | 用户主动发起截图、长截图 | 截图必需；不录制音频 |
+| 系统认证 | Touch ID／macOS 账户密码回退 | 仅开启隐私锁时使用 |
 
-### 给予权限
+粘贴前会重新检查目标应用、窗口、剪贴板版本及权限。目标退出、焦点改变或窗口无法可靠识别时会取消，内容留在系统剪贴板，可自行手动粘贴。
 
-Magpie 需要以下权限才能完整工作：
+## 常用快捷键
 
-| 权限 | 用途 | 怎么开 |
-|---|---|---|
-| **辅助功能** | 模拟 ⌘V 把 clip 贴回前台 app | 系统设置 → 隐私与安全性 → 辅助功能 → 添加 Magpie |
-| **输入监控**（可选） | `;sig` 之类的片段触发器自动展开 | 系统设置 → 隐私与安全性 → 输入监控 → 添加 Magpie；并在 Magpie 设置里打开 *Auto-expand snippet shortcuts* |
-| **屏幕与系统音频录制**（可选） | 使用 `⌘J` 截图与标注 | 首次按 `⌘J` 时按系统提示授权；授权后按提示重启 Magpie |
+| 范围 | 默认快捷键 | 操作 |
+| --- | --- | --- |
+| 全局 | `⌘P` / `⌘J` | 显示／隐藏面板；截图（均可自定义） |
+| 面板 | `↩` / `⌘1–9` | 粘贴选中项／指定项 |
+| 面板 | 方向键 / `Space` / `⌘O` | 选择记录／详情／独立预览 |
+| 面板 | `⌘D` / `⌘S` / `⌘Q` | 置顶／片段抽屉／Queue Mode |
+| 面板 | `⌘\` / `⌘,` / `Esc` | 切换布局／设置／逐级取消 |
+| 截图 | `V R O A P T M E` | 选择、矩形、椭圆、箭头、画笔、文字、马赛克、表情 |
+| 截图 | `X L D N G` | OCR、系统翻译、自动打码、贴图、长截图 |
+| 截图 | `⌘Z` / `⇧⌘Z` | 撤销／重做 |
+| 截图 | `↩` / `⌘C` / `⌘S` / `Esc` | 复制／复制／保存 PNG／取消 |
 
-第一次启动如果没批准辅助功能，Magpie 会自动弹系统对话框引导。
+[完整截图操作说明](docs/SCREENSHOTS.md)。截图按当前显示器处理，暂不支持跨屏拼接。
 
----
+## 隐私与安全
 
-## ⌨️ 快捷键
+- **数据位置**：`~/Library/Application Support/Magpie/clips.sqlite` 保存历史、索引和 Snippets；图片在同目录的 `images/`；偏好使用 UserDefaults。安装脚本的应用备份位于 `Backups/`。
+- **尚未加密**：使用普通 SQLite，未集成 SQLCipher。目录／文件权限限制其他系统用户，但不能阻止同一账户下有权限的进程或管理员读取。隐私锁保护面板访问，不是数据库加密。
+- **敏感内容过滤**：始终跳过 Concealed／Transient 等标记；可选规则尝试识别常见 API key、Bearer、JWT、私钥和带上下文的验证码。规则可能漏判或误判，不能识别任意密码或图片中的秘密。忽略来源应用也是基于复制时观察到的前台应用，不能替代系统隐私标记。
+- **认证周期**：每次重新打开隐藏的面板都需要系统认证；隐藏、休眠、锁屏、切换会话或重启后重新锁定。认证失败、取消或系统策略不可用时不放行；更改锁开关也需认证。
+- **网络边界**：当前应用未实现遥测、账户或云同步，也未接入云端 OCR／翻译 API。OCR 在本机运行；macOS 翻译可能按用户操作下载语言包，系统服务自身行为由 Apple 管理。系统分享由用户选定服务处理；打开链接会交给默认应用。开发脚本 `generate-theme-mascots.py` 可主动调用外部图片 API，不属于应用运行流程。
+- **清理边界**：“清空所有剪贴板记录”删除历史、置顶、FTS 记录和受管理的图片缓存；保留 Snippets、设置、系统剪贴板、应用备份及用户原文件。删除是逻辑删除，不保证清除 SQLite WAL、空闲页、系统快照、Time Machine 或其他备份中的旧字节。
 
-### 全局
+发现安全问题请阅读 [SECURITY.md](SECURITY.md)。报告中不要粘贴真实密码、Token 或私人剪贴板内容。
 
-| 快捷键 | 行为 |
-|---|---|
-| `⌘P` | 召出 / 收起 主面板 |
-| `⌘J` | 打开截图编辑器；完成后复制或保存 PNG |
-| `Esc` | 收回面板（搜索框非空时先清搜索） |
+## 从源码构建
 
-### 截图编辑器
-
-按 `⌘J` 后拖动框选，拖动选区内部移动，拖动边缘或八个控制点调整大小。工具栏跟随选区，悬停按钮可查看名称和快捷键。
-
-标注默认红色。选择矩形、椭圆、箭头、画笔或文字后会展开色板，点击色块直接选色，白色外框表示当前颜色；也可点击工具栏的颜色按钮收起或展开色板。同一次截图切换工具保留选色，换色只影响后续标注，新一次截图恢复红色。
-
-| 快捷键 | 行为 |
-|---|---|
-| `V` | 调整选区；点击标注可选中、移动、缩放 |
-| `R` / `O` / `A` | 矩形 / 椭圆 / 箭头 |
-| `P` / `T` / `M` / `E` | 画笔 / 文字 / 马赛克 / 表情 |
-| `X` / `L` | 提取文字 / 翻译文字 |
-| `D` / `N` / `G` | 一键打码 / 贴图 / 长截图 |
-| `⇧⌘S` | 打开系统分享 |
-| `⇧` + 拖动 | 正方形、圆形或 45° 箭头 |
-| `C` / `[` / `]` | 切换颜色 / 减细 / 加粗 |
-| `⌘A` | 选择当前整屏 |
-| 方向键 / `⇧` + 方向键 | 移动选区 1 / 10 点 |
-| `⌥` + 方向键 | 调整选区右边缘或上边缘；可叠加 `⇧` |
-| `⌘Z` / `⇧⌘Z` | 撤销 / 重做；`Delete` 删除选中标注，无选中项时撤销 |
-| `↩` / `⌘C` | 复制截图并进入 Magpie 图片历史 |
-| `⌘S` | 保存 PNG；取消保存对话框会回到编辑器 |
-| `Esc` / 右键 | Esc 清除标注选择或取消；右键依次返回选项、选区与退出 |
-
-文字输入中，回车确认，Shift+回车换行，Esc 放弃当前编辑；双击已有文字可继续修改。选择工具下双击选区可复制。保存不改剪贴板，取消不产生历史记录。每个显示器可独立选择，图片保留原像素密度，暂不支持跨屏拼接。
-
-选区前可单击鼠标下的窗口，也可拖动自定义区域；放大镜显示标准 sRGB 色值，未框选时 `⌘C` 复制色值。选中标注后可移动、缩放、改色和删除，所有这些操作支持撤销。工具选项提供线宽、字号、填充、马赛克画笔/框选模式与表情大小，表情输入框接受其他完整表情。
-
-文字识别在本机执行，结果可编辑、复制。翻译使用 macOS 15+ 的系统本地能力，缺少语言包时只有点击“下载语言包并翻译”才请求系统下载；Apple 可能收集使用语言等指标，不包含原文和译文。Magpie 不接入云端 OCR 或翻译接口。一键打码检测人脸、姓名以及电话、邮箱等候选区域，完成后需检查并手动补涂遗漏。
-
-贴图窗口保持悬浮，支持拖动或方向键移动、滚轮或 `⌘+` / `⌘-` 缩放、`⌘0` 恢复大小、双击/Esc 关闭，以及复制、保存、系统分享。分享由用户主动选择系统服务，Magpie 不读取微信联系人或自动发消息。
-
-长截图请框选可滚动内容，按 `G` 后手动缓慢向下滚动；工具显示预览与已拼接高度，支持暂停、Enter 完成并复制、Esc 返回编辑。重叠不足时会提示稍向上滚回并放慢，达到 30000 像素高或 4000 万总像素时暂停；固定头尾和窗口边缘在重叠区处理，持续动画、视频及复杂固定侧栏可能需要重新选择区域。已有标注不会进入实时长截图，开始前会提示确认。
-
-### 面板内
-
-| 快捷键 | 行为 |
-|---|---|
-| `↑` `↓` `←` `→` | 切换焦点卡片 |
-| `↩` | 粘贴 focused clip |
-| `⌘1` … `⌘9` | 直接粘贴第 1–9 张 |
-| `Space` | 开 / 关 Detail Pane（搜索为空时） |
-| `⌘O` | 把 focused clip 在独立大窗口里放大查看 |
-| `⌘D` | Pin / Unpin focused clip |
-| `⌘\` | 切换布局（Stripe → Stack → Grid） |
-| `⌘S` | 开 / 关 Snippets 抽屉 |
-| `⌘Q` | 进入 / 退出 Queue Mode |
-| `⌘,` | 打开 Settings |
-
----
-
-## 🎨 主题
-
-5 种 flavor，每种都有 light/dark 两套 token：
-
-| Flavor | 风格 | 用途 |
-|---|---|---|
-| **Mono** | 纯灰 | 极简党，跟 Finder 一个气质 |
-| **Graphite** | 石墨灰 | 比 Mono 多一点点层次 |
-| **Blue** | 海军蓝 | 经典 Aqua |
-| **Olive** | 橄榄绿 | 自然柔和 |
-| **Splat** ⭐ | Splatoon 致敬 — 黄绿章鱼 + 紫色墨点 | 装饰主题，看一眼就忘不掉 |
-
-Settings → 通用 → 风格 切换。还能调毛玻璃强度和**面板透明度**（0.6–1.0）。
-
-Settings → 通用 → **界面材质** 可切换“液态玻璃 / 毛玻璃”，默认液态玻璃，支持所有布局及深浅主题。macOS 26+ 配合 Xcode 26+ 构建时使用原生 `NSGlassEffectView` 与搜索控件 `glassEffect`；macOS 14/15 或旧 Xcode 使用兼容毛玻璃和柔和高光。原生玻璃的虚化由系统管理。启用系统“减少透明度”时使用不透明背景，保留原有材质偏好。
-
----
-
-## 🔐 隐私
-
-Magpie 设计上就是**永不联网**：
-
-- ❌ 没有任何分析 / 遥测 / 崩溃上报代码
-- ❌ 没有云同步、登录、账号系统
-- ❌ Settings 里的 *Send analytics* 开关**永远不可启用**（占位提示文案而已）
-- ✅ 所有数据落 `~/Library/Application Support/Magpie/clips.sqlite`
-- ✅ 启动可选 Touch ID 解锁
-- ✅ Secret 模式自动跳过 8 类敏感字符串（API key / Bearer / GitHub token / AWS / JWT / OTP 等）
-- ✅ 用户可指定"忽略的应用"（这些 app 复制的内容永不入库）
-- ✅ History retention 设置（保留 N 天 / 限制条数 / 一键清空）
-
-> v1.0 会加 **SQLCipher 加密本地数据库**，密钥存 macOS Keychain。
-
----
-
-## 🛠️ 从源码构建
-
-需要：
-
-- macOS 14 (Sonoma) 或更高
-- 完整 Xcode 15+（仅 Command Line Tools 不够）
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen)（用 `brew install xcodegen` 安装）
+运行要求：**macOS 14+**。当前源码和全部测试使用 **完整 Xcode 26+**（含 macOS 26 SDK），仅 Command Line Tools 不够。翻译需 macOS 15+；原生玻璃需 macOS 26+。Swift 使用 5.9 语言模式；唯一 SPM 依赖是 [GRDB.swift](https://github.com/groue/GRDB.swift)。
 
 ```bash
 git clone https://github.com/sanwan99/magpie.git
 cd magpie
-python3 Scripts/setup-local-signing.py --create # 首次创建本机专用签名身份
-xcodegen generate                              # 从 project.yml 生成工程
-Scripts/install-release.sh                     # 构建、备份、安装并重启
+xcodebuild -version
+Scripts/build-local.sh
 ```
 
-本机开发构建固定使用登录钥匙串中的 `Magpie Local Development` 证书，私钥不进入仓库。首次签名时，在 macOS 钥匙串弹窗中授权 `codesign` 使用该密钥；后续构建复用同一身份。证书缺失或不可用时构建会停止，不退回临时签名。
+工程已提交，普通构建不需要 XcodeGen。首次构建由 Swift Package Manager 获取 GRDB。脚本会打印本地 `.app` 路径及显式安装命令；只对自己审查并构建的源码使用 `--local-build`。
 
-安装脚本将旧版备份到 `~/Library/Application Support/Magpie/Backups/`，校验新版本签名后替换并重启。它不自动重置权限。从旧临时签名迁移时，可明确执行 `Scripts/install-release.sh --migrate-screen-permission`，只清理 Magpie 的旧屏幕录制授权，再由用户为固定签名版本授权一次；通常更新不使用此参数。
+若需长期稳定的本机签名，可自行选择已有签名身份：
 
-截图权限尚不可用时，每次启动最多自动申请一次，同一未授权状态只显示一次帮助提示。需要重新打开设置时，使用菜单栏“屏幕录制权限…”。
+```bash
+MAGPIE_CODE_SIGN_IDENTITY='Your local signing identity' Scripts/build-local.sh
+```
 
-不要从 `build/Build/Products/Debug/Magpie.app` 启动 Magpie。启动器会索引项目内 Debug app，导致同时出现 `Magpie` 和 `Magpie Debug` 两个入口。
+`Scripts/setup-local-signing.py --create` 是可选开发工具，会创建本机证书及钥匙串条目，不是普通用户或 CI 的安装前置条件。公开发行必须另用 Developer ID 签名与公证。
 
-依赖（SPM 自动拉取）：
+修改工程定义后，通过 [XcodeGen](https://github.com/yonaskolb/XcodeGen) 重新生成，并提交 `project.yml` 和工程文件：
 
-- [GRDB.swift](https://github.com/groue/GRDB.swift) — SQLite ORM + FTS5
+```bash
+brew install xcodegen
+xcodegen generate
+```
 
-`⌘P` / `⌘J` 全局热键直接使用系统 Carbon `RegisterEventHotKey`，不依赖第三方热键包。
-
----
-
-## 🧪 测试
+## 开发与测试
 
 ```bash
 Scripts/test.sh
+python3 -m unittest discover -s Tests/Tooling -v
+python3 Scripts/check-privacy-logs.py
+python3 Scripts/check-doc-links.py
+python3 Scripts/benchmark-storage.py
 ```
 
-测试脚本使用工作区外的 `/private/tmp/magpie-derived` 作为 DerivedData，并复用 `/private/tmp/magpie-source-packages` 包缓存；结束后会清理临时 Debug app，避免启动器出现第二个 Magpie 入口。
+`Scripts/test.sh` 执行完整 XCTest，使用独立临时 DerivedData，并在 `.build/` 写入 `.xcresult`。CI 在 macOS 上构建 Release 配置并运行同一测试入口，不读取个人开发证书。
 
-XCTest 覆盖以下模块：
+真实屏幕捕获与已安装语言包测试有环境条件；原有测试会在条件不满足时报告原因，不能把这些跳过算作通过。安装事务测试模拟系统命令，不能代替真实 Gatekeeper／Touch ID／多窗口粘贴验收。
 
-- `SecretDetectorTests` — 27 个（8 种 secret 模式 + 阴性样本）
-- `SnippetRepositoryTests` — 10 个（CRUD + 触发器索引）
-- `HistoryReaperTests` — 8 个（retention + maxItems + clear all）
-- `ScreenshotCoordinatorTests` — 19 个（权限、会话、面板恢复、复制与保存分流）
-- `ScreenshotEditorTests` — 14 个编辑/渲染测试，另有 1 个需屏幕录制权限的实机捕获测试；覆盖选区边界、Retina 裁剪、马赛克、文字和鼠标/键盘事件
-- `ScreenshotAdvancedTests` — 编辑动作、表情、OCR、取色、拼接边界与真实滚动测试窗口；离线翻译测试仅在语言包已安装时运行
-- 其他模块 — 70 个（ClipDetector / SearchQueryParser / HotkeyCenter 等）
+[本次审查与验证记录](docs/review/2026-10-18.md) · [性能方法与数据](docs/PERFORMANCE.md) · [发布与人工验收清单](docs/RELEASING.md)
 
----
+## Roadmap
 
-## 🗺️ Roadmap
+- **当前 Source Alpha**：剪贴板、搜索、Snippets、主题、截图编辑及隐私／稳定性修复。
+- **下一候选版本 `v0.4.0-alpha.1`**：完成真实 macOS 权限、签名、公证、干净安装与升级验收后，再决定是否发布预发行包。这个标签尚未发布。
+- **后续评估**：本地数据加密、受签名保护的自动更新、中文搜索扩展、复杂长截图稳定性。没有已交付或固定日期的承诺。
 
-| 版本 | 状态 | 范围 |
-|---|---|---|
-| v0.1 | ✅ 已发布 | 剪切板监听、⌘P 面板、Stripe 布局、↵/双击粘贴、4 种类型 |
-| v0.2 | ✅ 已发布 | 搜索（FTS5 + key:value 语法）、类型过滤、Pin、Stack & Grid、Detail Pane、Settings |
-| v0.3 | ✅ 已发布 | Image 类型、Snippets 抽屉 + 编辑器、History/Privacy/Queue Mode、ColorScheme-aware Splat dark |
-| **v0.3-d 系列** | ✅ 已发布 | 装饰元素（squid + 墨点）、霓虹选中态、面板透明度、放大预览窗口（⌘O）、菜单栏图标 + sleep/wake/Space 切换 hotkey 自愈、粘贴去重 upsert、AX 权限自检 |
-| **v1.0** | 进行中 | `⌘J` 截图与标注、Sparkle EdDSA 自动更新、SQLCipher 加密、PasteToast 动画、ClipPreview hover 过渡、Apple Developer ID 签名、Homebrew Cask、公开仓库 |
-| Later | — | 正则搜索、URL 跟踪参数清理、CLI 工具、`;sig` CGEventTap 升级、第三方 Sync 插件接口 |
+## Contributing
 
----
+欢迎小范围、可验证的修复。先读 [贡献指南](CONTRIBUTING.md)；`project.yml` 定义工程，当前代码与测试定义已实现行为，`prototype/` 只供设计参考。PR 请写明问题、变化、验证结果和用户可见的影响。
 
-## 📁 项目结构
+Magpie 保留 SwiftUI + AppKit + GRDB + SQLite 技术栈，不计划引入跨平台壳或重写应用。
 
-```
-magpie/
-├── Magpie.xcodeproj/           # Xcode 工程（xcodegen 生成）
-├── project.yml                 # XcodeGen 项目定义
-├── Sources/Magpie/
-│   ├── App/                    # AppDelegate、StatusItemController（菜单栏）
-│   ├── Panel/                  # PanelController、PanelWindow（NSPanel 主面板）
-│   ├── Clipboard/              # ClipboardWatcher、ClipDetector（类型识别）
-│   ├── Storage/                # GRDB schema + ClipRepository（FTS5 + upsert 去重）
-│   ├── Paste/                  # FrontmostTracker + Paster（CGEvent ⌘V 模拟）
-│   ├── Hotkey/                 # HotkeyCenter（Carbon RegisterEventHotKey）
-│   ├── Screenshot/             # 屏幕捕获、选区、标注、PNG 导出与剪贴板路由
-│   ├── Snippets/               # 片段管理 + ;sig 自动展开
-│   ├── Privacy/                # SecretDetector + BiometricGate (Touch ID)
-│   ├── History/                # HistoryReaper（retention + 清理）
-│   ├── Settings/               # SettingsStore + 4 个 Pane（中英文 i18n）
-│   ├── Theme/                  # AppTheme + Flavor + SplatDecorations（自绘装饰）
-│   └── UI/                     # ClipPreview、Stripe/Stack/Grid、DetailPane、ExpandedPreviewWindow
-├── Resources/
-│   ├── Info.plist
-│   └── Assets.xcassets/        # AppIcon、SquidYellow、SquidPurple
-├── Tests/MagpieTests/          # XCTest 单元测试
-├── prototype/                  # 原始 React/JSX 视觉原型 + 13 节产品规格说明（设计依据，仅参考）
-├── md/                         # 任务计划 / changelog / ADR / 月度台账（软链到私人 notes 仓）
-└── dist/                       # DMG release 产物
-```
+## License
 
----
+[MIT](LICENSE) © 2026 sanwan99 and Magpie contributors。
 
-## 🤝 Contributing
-
-Pull requests welcome. 详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
-提 PR 前请先看 [`prototype/剪切板工具/Magpie 原型说明.html`](prototype/) — 那是 13 节完整产品规格的事实标准，任何交互/键位/视觉/命名隐喻的争议都以它为准。
-
-发现安全问题？请按 [SECURITY.md](SECURITY.md) 流程提交。
-
----
-
-## 📜 License
-
-[MIT](LICENSE) © 2026 sanwan99 and Magpie contributors
-
----
-
-## 🙏 致谢
-
-- 灵感来自 [Maccy](https://github.com/p0deje/Maccy)、[Raycast Clipboard](https://www.raycast.com)、Deck
-- Splat 主题致敬任天堂 *Splatoon* — Inkling / Octoling 的喷射美学
+Splat 是受游戏喷墨风格启发的主题；本项目与 Nintendo 无关联或背书。公开发行前仍需核对品牌素材及截图中第三方内容的再分发权利。

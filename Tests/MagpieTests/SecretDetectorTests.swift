@@ -199,6 +199,25 @@ final class ClipboardPrivacyTests: XCTestCase {
         XCTAssertEqual(try db.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips_fts") }, 0)
     }
 
+    func testClearInvalidatesQueuedSnapshotsButAllowsNewCopies() async throws {
+        let db = Magpie.Database.makeInMemoryForTests()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let ingest = ClipboardIngestor(repository: ClipRepository(database: db), imageDirectoryURL: directory)
+        let snapshot = ClipboardSnapshot(changeCount: 1, typeNames: [], fileURLs: [],
+            imageData: nil, imageTypeName: nil, string: "synthetic queued text")
+        let policy = ClipboardIngestPolicy(appBundleIdentifier: nil, ignoredApps: [], skipSecretLooking: true)
+        let beforeClear = db.currentIngestGeneration
+        XCTAssertTrue(HistoryReaper(database: db, imageDirectoryURL: directory).clearAll())
+        let stale = await ingest.ingest(snapshot: snapshot, policy: policy, expectedGeneration: beforeClear)
+        XCTAssertFalse(stale)
+        XCTAssertEqual(try ClipRepository(database: db).count(), 0)
+        let current = await ingest.ingest(snapshot: snapshot, policy: policy, expectedGeneration: db.currentIngestGeneration)
+        XCTAssertTrue(current)
+        XCTAssertEqual(try ClipRepository(database: db).count(), 1)
+    }
+
     func testAdditionalSecretFormatsAndOrdinaryText() {
         let positives = ["sk-proj-" + String(repeating: "a", count: 32),
                          "ASIAIOSFODNN7EXAMPLE", "验证码是 1234", "驗證碼：87654321",

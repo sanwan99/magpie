@@ -35,7 +35,7 @@ def main():
         verify(json.loads(STATE.read_text()))
         return
     if not args.create:
-        raise RuntimeError("Run Scripts/setup-local-signing.py --create once before building this local app.")
+        raise RuntimeError("No optional local identity is configured. Default ad-hoc builds need none; use --create only if you want a stable personal identity.")
     keychain = run("/usr/bin/security", "default-keychain", "-d", "user").stdout.strip().strip('"')
     if not keychain.endswith("/login.keychain-db"):
         raise RuntimeError("Expected the user login keychain; no keychain changes made.")

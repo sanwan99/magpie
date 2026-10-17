@@ -161,17 +161,18 @@ final class HistoryReaper {
                 try Self.trimTypeCap(db: db, type: "folder", cap: Self.folderCap)
             }
 
-            // 事务外清磁盘文件（非关键路径，失败不影响数据完整性）
+            let referenced = try database.dbQueue.read { db in
+                try Self.fetchImagePaths(db: db, sql: "SELECT payload FROM clips WHERE type = 'image'", arguments: [])
+            }
+            let referencedPaths = Set(referenced)
+            // A surviving pinned/legacy row may share an image path.
             var removed = 0
-            for path in imageFilesToRemove {
+            for path in Set(imageFilesToRemove) where !referencedPaths.contains(path) {
                 if ImageStorage.removeManagedFile(at: path, in: directory) {
                     removed += 1
                 }
             }
-            let referenced = try database.dbQueue.read { db in
-                try Self.fetchImagePaths(db: db, sql: "SELECT payload FROM clips WHERE type = 'image'", arguments: [])
-            }
-            try ImageStorage.removeOrphans(keeping: Set(referenced), in: directory)
+            try ImageStorage.removeOrphans(keeping: referencedPaths, in: directory)
             if removed > 0 {
                 NSLog("[history] image cap → 清理 %d 个磁盘文件", removed)
             }
@@ -203,7 +204,6 @@ final class HistoryReaper {
         }
 
         for id in missingIDs {
-            try db.execute(sql: "DELETE FROM clips_fts WHERE clip_id = ?;", arguments: [id])
             try db.execute(sql: "DELETE FROM clips WHERE id = ?;", arguments: [id])
         }
         return missingIDs.count
@@ -257,6 +257,7 @@ final class HistoryReaper {
 
     nonisolated private static func clearHistory(database: Database, directory: URL) -> Bool {
         database.withStorageLock {
+            database.invalidatePendingIngests()
             do {
                 try database.dbQueue.write { db in
                     try db.execute(sql: "DELETE FROM clips;")

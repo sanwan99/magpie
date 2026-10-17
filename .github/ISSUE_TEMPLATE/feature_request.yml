@@ -1,0 +1,19 @@
+name: Feature request / 功能建议
+description: Explain the workflow and the smallest useful improvement.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Workflow and problem / 场景与问题
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal and alternatives / 方案与替代方式
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Privacy, permissions and compatibility / 隐私、权限与兼容性

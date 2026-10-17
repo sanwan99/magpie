@@ -1,0 +1,126 @@
+{
+  "scope": "SQLite microbenchmark; excludes Swift, image decoding, UI and disk I/O",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+  "sqlite": "3.53.1",
+  "base": "43d72cd84a5bdae2954d895c7e058db696754a87",
+  "repetitions": 5,
+  "results": [
+    {
+      "history_count": 1000,
+      "before": {
+        "dedup": {
+          "median_ms": 0.1,
+          "rows": 1
+        },
+        "recent_200": {
+          "median_ms": 0.266,
+          "rows": 200
+        },
+        "ascii": {
+          "median_ms": 0.443,
+          "rows": 11
+        },
+        "cjk": {
+          "median_ms": 1.877,
+          "rows": 11
+        }
+      },
+      "after": {
+        "dedup": {
+          "median_ms": 0.003,
+          "rows": 1
+        },
+        "recent_200": {
+          "median_ms": 0.617,
+          "rows": 200
+        },
+        "ascii": {
+          "median_ms": 0.448,
+          "rows": 11
+        },
+        "cjk": {
+          "median_ms": 2.673,
+          "rows": 11
+        }
+      }
+    },
+    {
+      "history_count": 10000,
+      "before": {
+        "dedup": {
+          "median_ms": 2.211,
+          "rows": 1
+        },
+        "recent_200": {
+          "median_ms": 0.303,
+          "rows": 200
+        },
+        "ascii": {
+          "median_ms": 3.224,
+          "rows": 104
+        },
+        "cjk": {
+          "median_ms": 19.358,
+          "rows": 104
+        }
+      },
+      "after": {
+        "dedup": {
+          "median_ms": 0.003,
+          "rows": 1
+        },
+        "recent_200": {
+          "median_ms": 0.259,
+          "rows": 200
+        },
+        "ascii": {
+          "median_ms": 3.347,
+          "rows": 104
+        },
+        "cjk": {
+          "median_ms": 19.868,
+          "rows": 104
+        }
+      }
+    },
+    {
+      "history_count": 50000,
+      "before": {
+        "dedup": {
+          "median_ms": 18.931,
+          "rows": 1
+        },
+        "recent_200": {
+          "median_ms": 0.288,
+          "rows": 200
+        },
+        "ascii": {
+          "median_ms": 24.349,
+          "rows": 200
+        },
+        "cjk": {
+          "median_ms": 105.421,
+          "rows": 200
+        }
+      },
+      "after": {
+        "dedup": {
+          "median_ms": 0.004,
+          "rows": 1
+        },
+        "recent_200": {
+          "median_ms": 0.325,
+          "rows": 200
+        },
+        "ascii": {
+          "median_ms": 24.888,
+          "rows": 200
+        },
+        "cjk": {
+          "median_ms": 98.607,
+          "rows": 200
+        }
+      }
+    }
+  ]
+}

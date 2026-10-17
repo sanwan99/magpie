@@ -21,6 +21,10 @@ jobs:
         run: xcodebuild -version
       - name: Tooling regression tests
         run: python3 -m unittest discover -s Tests/Tooling -v
+      - name: Privacy log and documentation checks
+        run: |
+          python3 Scripts/check-privacy-logs.py
+          python3 Scripts/check-doc-links.py
       - name: Release configuration build
         run: Scripts/build-local.sh
       - name: All XCTest tests

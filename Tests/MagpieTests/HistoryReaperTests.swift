@@ -235,6 +235,20 @@ final class HistoryReaperTests: XCTestCase {
         XCTAssertEqual(try ftsCount(clipID: "missing"), 0)
     }
 
+    func testRetentionKeepsImageStillReferencedByPinnedRow() throws {
+        let image = imageDirectoryURL.appendingPathComponent("shared.png")
+        try Data([1]).write(to: image)
+        try insertImageClip(id: "old", path: image.path, createdAt: Date().addingTimeInterval(-40 * 86400))
+        try insertImageClip(id: "pin", path: image.path, pinned: true)
+        try withSettings(keepHistoryDays: 7) {
+            HistoryReaper(database: db, imageDirectoryURL: imageDirectoryURL).reapNow()
+        }
+        XCTAssertEqual(try clipCount(), 1)
+        XCTAssertEqual(try ftsCount(clipID: "old"), 0)
+        XCTAssertEqual(try ftsCount(clipID: "pin"), 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: image.path))
+    }
+
     // MARK: - clearAll
 
     func testClearAllRemovesEverything() throws {
@@ -276,6 +290,43 @@ final class StorageMigrationTests: XCTestCase {
             XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM clips_fts"), 1)
             try db.execute(sql: "DELETE FROM clips")
             XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM clips_fts"), 0)
+        }
+    }
+
+    func testAllShippedSchemasUpgradeOnDiskAndReopen() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let payload = try JSONEncoder().encode(TextPayload(body: "persisted synthetic history"))
+        for version in ["v1_initial", "v2_snippets", "v3_clip_notes"] {
+            let path = directory.appendingPathComponent(version + ".sqlite").path
+            do {
+                let queue = try DatabaseQueue(path: path)
+                try Magpie.Database.migrate(queue, upTo: version)
+                try queue.write { connection in
+                    try connection.execute(sql: "INSERT INTO clips(id,type,created_at,pinned,tags,title,payload) VALUES('old','text',1,1,'[]','persisted',?)", arguments: [payload])
+                    try connection.execute(sql: "INSERT INTO clips_fts(clip_id,title,body,tags) VALUES('old','persisted','persisted synthetic history','')")
+                    if version != "v1_initial" {
+                        try connection.execute(sql: "INSERT INTO snippets VALUES('s',';s','snippet','synthetic body',1,1)")
+                    }
+                    if version == "v3_clip_notes" {
+                        try connection.execute(sql: "UPDATE clips SET note='old note'")
+                    }
+                }
+            }
+            for _ in 0..<2 {
+                let queue = try DatabaseQueue(path: path)
+                let database = try Magpie.Database(dbQueue: queue)
+                let record = try XCTUnwrap(ClipRepository(database: database).recent().first)
+                XCTAssertEqual(record.payload, payload)
+                XCTAssertTrue(record.pinned)
+                XCTAssertEqual(record.note, version == "v3_clip_notes" ? "old note" : "")
+                XCTAssertEqual(try ClipRepository(database: database).search(SearchQueryParser.parse("persisted")).count, 1)
+                try queue.read { connection in
+                    XCTAssertEqual(try String.fetchOne(connection, sql: "SELECT payload_hash FROM clips"), ClipRepository.payloadHash(payload))
+                    XCTAssertEqual(try Int.fetchOne(connection, sql: "SELECT COUNT(*) FROM snippets"), version == "v1_initial" ? 0 : 1)
+                }
+            }
         }
     }
 

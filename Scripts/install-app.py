@@ -98,7 +98,11 @@ def install(source, target=TARGET, support=SUPPORT, local_build=False, team_id=N
     if source.is_symlink() or source.resolve() == target.resolve():
         raise RuntimeError('Source must be a separate app bundle, not a symlink or installed target.')
     previous_exists = target.exists() or target.is_symlink()
+    if not local_build and not previous_exists and not team_id:
+        raise RuntimeError('First public installation requires --team-id from the verified release instructions.')
     source_team = verify(source, local_build, team_id)
+    if not local_build and not source_team:
+        raise RuntimeError('The public application has no verifiable Developer ID team.')
     if previous_exists:
         # Verify the old bundle as well; do not silently replace a damaged or
         # differently signed installation. Explicit --local-build allows a

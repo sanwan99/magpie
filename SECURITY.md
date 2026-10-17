@@ -1,66 +1,79 @@
-# Security Policy
+# Security policy
 
-## Magpie is local-only
+Magpie is Source Alpha. No signed public binary release or long-term security-support
+commitment has been published. Fixes are developed against the current source; review
+open changes and release notes before installing.
 
-Magpie does not transmit clipboard data anywhere. There is no telemetry,
-no analytics, no cloud sync, no account system. The "Send analytics" toggle
-in Settings → Privacy is permanently disabled.
+## Threat boundaries
 
-Clip history lives in `~/Library/Application Support/Magpie/clips.sqlite`
-with macOS user-only file permissions. Image attachments live next to it
-in `images/`. v1.0 will add SQLCipher encryption (key in Keychain) for
-defense against physical disk theft; until then those files are protected
-by macOS file ACLs only.
+Magpie reads the user's pasteboard and stores history, snippets and search text in
+`~/Library/Application Support/Magpie/clips.sqlite`, with managed PNGs in `images/`.
+SQLite is **not encrypted**. The application support directory is restricted to the
+current user and new database/image files use private permissions. This does not isolate
+history from other authorized processes running as that user, administrators, backups
+or filesystem snapshots. Accessibility permission is not required to read an accessible
+SQLite file and must not be presented as a database access control.
 
-## Dependencies
+The optional panel lock uses Apple's `deviceOwnerAuthentication` policy (Touch ID,
+account-password fallback or other system-approved mechanisms). It fails closed and
+relocks on hide, sleep, screen lock and session changes. Changing the setting requires
+fresh authentication. It is a UI access barrier,
+not encryption or protection against a compromised logged-in account. Auto-expansion
+of snippets pauses while this privacy setting is enabled.
 
-Source-of-truth: `Magpie.xcodeproj` / `project.yml`. Currently:
+Concealed/Transient and compatible pasteboard markers are checked before reading
+content. Regex filtering is supplementary and can both miss secrets and reject benign
+text. No OCR-based secret filter is applied to copied images. Explicit screenshots can
+contain anything the user captured; automatic redaction must be reviewed manually.
 
-- [HotKey](https://github.com/soffes/HotKey) — global hotkeys (Carbon API wrapper)
-- [GRDB.swift](https://github.com/groue/GRDB.swift) — SQLite + FTS5
+## Content handling
 
-v1.0 will add:
-- [Sparkle](https://github.com/sparkle-project/Sparkle) — auto-update framework
+Production diagnostic logs must not include clipboard/snippet text, titles, file paths,
+search queries, raw SQL errors or provider error descriptions. Use fixed events and
+numeric errors. A conservative source regression guard runs in CI; it is not a proof of
+complete information-flow isolation. Old logs created by older versions are not erased
+by an upgrade.
 
-All dependencies are vetted open-source projects with active maintenance.
-We don't pull anything else.
+Retention and Clear History delete clip rows and FTS entries transactionally, then clean
+managed PNGs. Clearing also invalidates previously queued clipboard snapshots. Orphans from interrupted writes are reconciled on later cleanup. Failed
+file removal can leave recoverable files and is reported. Clear History preserves snippets,
+settings, originals referenced by file clips, the system clipboard and application backups.
+It does **not** guarantee secure erasure from WAL files, SQLite free pages, disks, snapshots
+or external backups. Close Magpie before making a consistent backup of the support directory.
 
-## Permissions Magpie requests
+The current app has no implemented telemetry, cloud sync or cloud OCR/translation client.
+Apple translation can request language downloads; system sharing and opened links are
+handled by user-selected services. The optional developer asset-generation script can
+call an external image API and is not part of application execution.
 
-| Permission | Why | When prompted |
-|---|---|---|
-| Accessibility | Synthesize ⌘V keystroke into the previously frontmost app for paste-back | First time you press ↵ / double-click a clip |
-| Input Monitoring | (Optional) Watch typing globally for `;sig`-style snippet auto-expansion | Only if you enable Settings → "Auto-expand snippet shortcuts" |
-| Touch ID | (Optional) Unlock the panel on first show after launch | Only if you enable Settings → "Require Touch ID" |
+## Permissions and dependencies
 
-Magpie does not request: Network, Photos, Contacts, Calendars, Microphone,
-Camera, Location, AppleScript automation of other apps.
+Accessibility is used for synthetic paste, Input Monitoring may be needed for optional
+snippet observation, and Screen Recording is required for explicit capture. Capture does
+not record microphone or system audio. LocalAuthentication handles the account password;
+Magpie never receives it.
 
-## Reporting a vulnerability
+The current SPM dependency is [GRDB.swift](https://github.com/groue/GRDB.swift), version 6.x;
+Carbon, LocalAuthentication, Vision, ScreenCaptureKit and Translation are Apple frameworks.
+There is no HotKey package, Sparkle updater or SQLCipher integration in the current app.
+Public distributions require Developer ID verification, hardened runtime, notarization
+and Gatekeeper assessment. Local ad-hoc builds are a separate, explicitly trusted workflow.
 
-**Please do not file public GitHub issues for security bugs.** Send a private
-report through GitHub Security Advisory:
+## Report a vulnerability
 
-1. Go to the repo's Security tab → Advisories → New draft advisory
-2. Describe the issue with reproduction steps
+Do not post exploit details, private screenshots or credentials in a public Issue.
+If the repository Security tab offers **Report a vulnerability**, use the
+[private reporting form](https://github.com/sanwan99/magpie/security/advisories/new).
+Availability depends on the maintainer enabling private vulnerability reporting; this
+review does not change repository security settings. If the option is absent, open a
+minimal Issue requesting a private contact channel, with no sensitive details.
 
-You'll receive acknowledgement within 7 days, and (assuming we can
-reproduce) a fix within 30 days for high-severity issues. We coordinate
-public disclosure with you.
+Provide the commit/version, macOS version, affected boundary, synthetic reproduction,
+expected/observed behavior and any proposed fix. Include whether the attacker needs
+another account, same-user code execution or an unlocked desktop. Reports involving
+filter bypasses, incorrect paste targets, unsafe file cleanup, auth bypasses and accidental
+content disclosure are welcome. Findings outside Magpie should go to the relevant vendor.
 
-## Out of scope
-
-- Issues that require physical access to an unlocked device
-- Issues that require the user to grant permissions to a malicious actor
-- Bugs in Apple's frameworks (NSPasteboard / LocalAuthentication / etc.)
-- Issues with apps that interact with clipboards in unusual ways
-  (we capture what the system pasteboard reports — by design)
-
-## What we are interested in
-
-- Anything that lets a malicious app read Magpie's database without
-  Accessibility permission
-- Anything that bypasses the "Skip secret-looking content" filter to
-  store credentials we shouldn't
-- Anything that lets a user bypass Touch ID (when enabled)
-- Code execution / privilege escalation through synthesized keystrokes
+The project does not currently promise a response SLA. Coordinate disclosure with the
+maintainer and avoid sharing working secrets. See [release acceptance](docs/RELEASING.md)
+for outstanding system-level checks.

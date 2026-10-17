@@ -3,8 +3,8 @@ import GRDB
 
 extension ClipRepository {
     /// Runs a parsed `SearchQuery` against the database.
-    /// Pin always sorts first (per spec §05), then created_at DESC.
-    /// Empty query returns recent clips like `recent(limit:)`.
+    /// Filtered results sort pins first, then creation time.
+    /// Empty query preserves the recent-history order of `recent(limit:)`.
     func search(_ query: SearchQuery, limit: Int = 200) throws -> [ClipRecord] {
         let limit = max(0, min(limit, 1000))
         if query.isEmpty {
@@ -77,9 +77,8 @@ extension ClipRepository {
             }
 
             // tags: stored as JSON array string (e.g. '["react","hook"]').
-            // v0.1 always inserts '[]'; the LIKE filter is harmless until tag editing
-            // lands in v0.3. Implemented now so the parser/UI can carry tag tokens
-            // without dropping them on the floor.
+            // New captures have no tags. Preserve matching for existing/imported
+            // tags; the current UI does not provide a tag editor.
             for tag in query.tags {
                 wheres.append("clips.tags LIKE ? ESCAPE '\\'")
                 args.append(likePattern(for: "\"\(tag)\""))

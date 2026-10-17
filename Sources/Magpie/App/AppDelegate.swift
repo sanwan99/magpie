@@ -40,8 +40,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 ignoredApps: store.ignoredApps,
                 skipSecretLooking: store.skipSecretLooking
             )
+            let generation = repo.database.currentIngestGeneration
             Task {
-                let changed = await ingestor.ingest(snapshot: snapshot, policy: policy)
+                let changed = await ingestor.ingest(snapshot: snapshot, policy: policy, expectedGeneration: generation)
                 guard changed else { return }
                 await MainActor.run {
                     vm?.refresh()

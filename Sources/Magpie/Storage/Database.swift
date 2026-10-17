@@ -10,6 +10,22 @@ final class Database: @unchecked Sendable {
     // Coordinates PNG creation + database commit with retention and clear.
     // Always acquire before dbQueue; never await while holding this lock.
     private let storageLock = NSRecursiveLock()
+    private let generationLock = NSLock()
+    private var ingestGeneration: UInt64 = 0
+
+    // Separate, short-held lock: capturing a generation never waits for PNG I/O.
+    var currentIngestGeneration: UInt64 {
+        generationLock.lock()
+        defer { generationLock.unlock() }
+        return ingestGeneration
+    }
+
+    /// Called under storageLock before clearing history; invalidates queued snapshots.
+    func invalidatePendingIngests() {
+        generationLock.lock()
+        defer { generationLock.unlock() }
+        ingestGeneration &+= 1
+    }
 
     func withStorageLock<T>(_ work: () throws -> T) rethrows -> T {
         storageLock.lock()
