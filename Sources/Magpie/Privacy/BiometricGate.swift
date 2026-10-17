@@ -38,14 +38,14 @@ final class SystemOwnerAuthenticator: OwnerAuthenticating {
 final class BiometricGate {
     private(set) var isUnlocked = false
     private let authenticator: OwnerAuthenticating
-    private let enabled: () -> Bool
+    private let enabled: @MainActor () -> Bool
     private var generation = 0
     private var authenticating = false
 
     init(authenticator: OwnerAuthenticating? = nil,
-         enabled: @escaping () -> Bool = { SettingsStore.shared.useTouchID }) {
+         enabled: (@MainActor () -> Bool)? = nil) {
         self.authenticator = authenticator ?? SystemOwnerAuthenticator()
-        self.enabled = enabled
+        self.enabled = enabled ?? { SettingsStore.shared.useTouchID }
     }
 
     func authenticateIfNeeded(reason: String = "Unlock Magpie") async -> Bool {

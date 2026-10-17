@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import CryptoKit
 
 /// Transactional persistence of clips and their searchable text.
 struct ClipRepository: Sendable {
@@ -7,6 +8,10 @@ struct ClipRepository: Sendable {
 
     init(database: Database = .shared) {
         self.database = database
+    }
+
+    static func payloadHash(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     /// Inserts a freshly-detected clip — 但如果库里已有相同 type + payload + app
@@ -21,14 +26,16 @@ struct ClipRepository: Sendable {
     /// 注意：image 类型每次保存到新文件，payload 里的 path 不同，不会被去重 —
     /// 是预期行为（不同时刻截屏也是不同图片，即使内容看着像）。
     func insert(_ detected: DetectedClip) throws {
+        let hash = Self.payloadHash(detected.payload)
         try database.dbQueue.write { db in
             let existingId = try String.fetchOne(db, sql: """
                 SELECT id FROM clips
-                 WHERE type = ? AND payload = ?
+                 WHERE payload_hash = ? AND type = ? AND payload = ?
                    AND ((app IS NULL AND ? IS NULL) OR app = ?)
                  ORDER BY created_at DESC
                  LIMIT 1;
             """, arguments: [
+                hash,
                 detected.type.rawValue,
                 detected.payload,
                 detected.app,
@@ -48,15 +55,16 @@ struct ClipRepository: Sendable {
 
             let id = UUID().uuidString
             try db.execute(sql: """
-                INSERT INTO clips (id, type, app, created_at, pinned, tags, title, payload)
-                VALUES (?, ?, ?, ?, 0, '[]', ?, ?);
+                INSERT INTO clips (id, type, app, created_at, pinned, tags, title, payload, payload_hash)
+                VALUES (?, ?, ?, ?, 0, '[]', ?, ?, ?);
             """, arguments: [
                 id,
                 detected.type.rawValue,
                 detected.app,
                 now,
                 detected.title,
-                detected.payload
+                detected.payload,
+                hash
             ])
             try db.execute(sql: """
                 INSERT INTO clips_fts (clip_id, title, body, tags)
@@ -71,8 +79,7 @@ struct ClipRepository: Sendable {
         }
     }
 
-    /// Most recent N clips. v0.1 returns `ClipRecord` (raw row);
-    /// the UI layer in step 7 will lift these into typed `Clip` view models.
+    /// Bounded recent records; the UI decodes only the requested page.
     func recent(limit: Int = 100) throws -> [ClipRecord] {
         try database.dbQueue.read { db in
             try ClipRecord

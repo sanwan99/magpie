@@ -174,14 +174,29 @@ final class ClipboardPrivacyTests: XCTestCase {
         XCTAssertEqual(try db.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips_fts") }, 0)
     }
 
-    func testMixedImageAndSecretIsRejectedBeforeImageWrite() async throws {
+    func testMixedImageSecretAndFailedInsertLeaveNoFiles() async throws {
         let db = Magpie.Database.makeInMemoryForTests()
-        let snapshot = ClipboardSnapshot(changeCount: 1, typeNames: ["public.png"], fileURLs: [],
-            imageData: Data([1, 2, 3]), imageTypeName: "public.png", string: "password=synthetic")
-        let changed = await ClipboardIngestor(repository: ClipRepository(database: db)).ingest(
-            snapshot: snapshot, policy: .init(appBundleIdentifier: nil, ignoredApps: [], skipSecretLooking: true))
-        XCTAssertFalse(changed)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        let ingestor = ClipboardIngestor(repository: ClipRepository(database: db), imageDirectoryURL: directory)
+        try db.dbQueue.write {
+            try $0.execute(sql: "CREATE TRIGGER fail_insert BEFORE INSERT ON clips BEGIN SELECT RAISE(ABORT, 'synthetic test failure'); END")
+        }
+        for text in ["password=synthetic", "ordinary image"] {
+            let snapshot = ClipboardSnapshot(changeCount: 1, typeNames: ["public.png"], fileURLs: [],
+                imageData: data, imageTypeName: "public.png", string: text)
+            let changed = await ingestor.ingest(snapshot: snapshot, policy: .init(
+                appBundleIdentifier: nil, ignoredApps: [], skipSecretLooking: true))
+            XCTAssertFalse(changed)
+            XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty)
+        }
         XCTAssertEqual(try ClipRepository(database: db).count(), 0)
+        XCTAssertEqual(try db.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips_fts") }, 0)
     }
 
     func testAdditionalSecretFormatsAndOrdinaryText() {
@@ -216,15 +231,23 @@ final class ClipboardPrivacyTests: XCTestCase {
 
 @MainActor
 final class BiometricGateTests: XCTestCase {
-    func testUnavailableFailedAndCancelledAuthenticationStayLocked() async {
-        for result in [false, false, false] {
-            let auth = FakeOwnerAuthenticator(result: result)
-            let gate = BiometricGate(authenticator: auth, enabled: { true })
-            let allowed = await gate.authenticateIfNeeded()
-            XCTAssertFalse(allowed)
-            XCTAssertFalse(gate.isUnlocked)
-            XCTAssertEqual(auth.calls, 1)
-        }
+    func testFailedAuthenticationStaysLocked() async {
+        let auth = FakeOwnerAuthenticator(result: false)
+        let gate = BiometricGate(authenticator: auth, enabled: { true })
+        let allowed = await gate.authenticateIfNeeded()
+        XCTAssertFalse(allowed)
+        XCTAssertFalse(gate.isUnlocked)
+        XCTAssertEqual(auth.calls, 1)
+    }
+
+    func testCancelledTaskCannotUnlockEvenWithSuccessfulAuthenticator() async {
+        let auth = FakeOwnerAuthenticator(result: true)
+        let gate = BiometricGate(authenticator: auth, enabled: { true })
+        let request = Task { @MainActor in await gate.authenticateIfNeeded() }
+        request.cancel()
+        let allowed = await request.value
+        XCTAssertFalse(allowed)
+        XCTAssertFalse(gate.isUnlocked)
     }
 
     func testSuccessfulAuthenticationAndRelockRequireNewPrompt() async {

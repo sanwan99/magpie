@@ -45,7 +45,7 @@ final class Database: @unchecked Sendable {
             let queue = try DatabaseQueue()  // in-memory by default
             return try Database(dbQueue: queue)
         } catch {
-            fatalError("makeInMemoryForTests failed: \(error)")
+            fatalError("In-memory database initialization failed")
         }
     }
 
@@ -137,15 +137,35 @@ final class Database: @unchecked Sendable {
                 END;
                 """)
             // Repair rows whose old index entry was missing without changing payloads.
-            let cursor = try ClipRecord.fetchCursor(db, sql: "SELECT * FROM clips WHERE fts_rowid IS NULL")
-            while let record = try cursor.next() {
-                let object = (try? JSONSerialization.jsonObject(with: record.payload)) as? [String: Any]
-                let body = (object?["body"] ?? object?["url"] ?? object?["path"]) as? String ?? record.title ?? ""
-                try db.execute(sql: "INSERT INTO clips_fts(clip_id, title, body, tags) VALUES (?, ?, ?, ?)",
-                               arguments: [record.id, record.title ?? "", body, record.tags])
-                try db.execute(sql: "UPDATE clips SET fts_rowid = ? WHERE id = ?",
-                               arguments: [db.lastInsertedRowID, record.id])
+            while true {
+                let records = try ClipRecord.fetchAll(db, sql: "SELECT * FROM clips WHERE fts_rowid IS NULL LIMIT 200")
+                if records.isEmpty { break }
+                for record in records {
+                    let object = (try? JSONSerialization.jsonObject(with: record.payload)) as? [String: Any]
+                    let body = (object?["body"] ?? object?["url"] ?? object?["path"]) as? String ?? record.title ?? ""
+                    try db.execute(sql: "INSERT INTO clips_fts(clip_id, title, body, tags) VALUES (?, ?, ?, ?)",
+                                   arguments: [record.id, record.title ?? "", body, record.tags])
+                    try db.execute(sql: "UPDATE clips SET fts_rowid = ? WHERE id = ?",
+                                   arguments: [db.lastInsertedRowID, record.id])
+                }
             }
+        }
+        migrator.registerMigration("v5_dedup_hash") { db in
+            try db.execute(sql: "ALTER TABLE clips ADD COLUMN payload_hash TEXT;")
+            // Bounded batches preserve payloads and avoid loading entire histories.
+            var lastRowID: Int64 = .min
+            while true {
+                let rows = try Row.fetchAll(db, sql: "SELECT rowid, id, payload FROM clips WHERE rowid > ? ORDER BY rowid LIMIT 200", arguments: [lastRowID])
+                if rows.isEmpty { break }
+                for row in rows {
+                    let payload: Data = row["payload"]
+                    let id: String = row["id"]
+                    lastRowID = row["rowid"]
+                    try db.execute(sql: "UPDATE clips SET payload_hash = ? WHERE id = ?",
+                                   arguments: [ClipRepository.payloadHash(payload), id])
+                }
+            }
+            try db.execute(sql: "CREATE INDEX idx_clips_dedup_hash ON clips(payload_hash, type, app);")
         }
         if let target { try migrator.migrate(queue, upTo: target) }
         else { try migrator.migrate(queue) }

@@ -40,12 +40,17 @@ final class HistoryReaperTests: XCTestCase {
                 INSERT INTO clips (id, type, app, created_at, pinned, tags, title, payload)
                 VALUES (?, ?, NULL, ?, ?, '[]', NULL, ?);
             """, arguments: [id, type, createdAt.timeIntervalSince1970, pinned ? 1 : 0, payload])
+            try dbConn.execute(sql: "INSERT INTO clips_fts(clip_id,title,body,tags) VALUES(?,'retention','synthetic searchable text','')", arguments: [id])
+            try dbConn.execute(sql: "UPDATE clips SET fts_rowid = ? WHERE id = ?", arguments: [dbConn.lastInsertedRowID, id])
         }
         return id
     }
 
     private func clipCount(pinnedOnly: Bool? = nil) throws -> Int {
         try db.dbQueue.read { dbConn in
+            let rows = try Int.fetchOne(dbConn, sql: "SELECT COUNT(*) FROM clips")
+            let indexed = try Int.fetchOne(dbConn, sql: "SELECT COUNT(*) FROM clips_fts")
+            XCTAssertEqual(rows, indexed, "Retention must remove the searchable copy transactionally")
             switch pinnedOnly {
             case .some(true):
                 return try Int.fetchOne(dbConn, sql: "SELECT COUNT(*) FROM clips WHERE pinned = 1") ?? 0

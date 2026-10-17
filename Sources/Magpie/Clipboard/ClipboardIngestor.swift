@@ -38,8 +38,11 @@ struct ClipboardIngestPolicy: Sendable {
 actor ClipboardIngestor {
     private let repository: ClipRepository
 
-    init(repository: ClipRepository) {
+    private let imageDirectoryURL: URL
+
+    init(repository: ClipRepository, imageDirectoryURL: URL = ImageStorage.directoryURL) {
         self.repository = repository
+        self.imageDirectoryURL = imageDirectoryURL
     }
 
     /// Returns true when storage changed and the UI should refresh.
@@ -52,19 +55,19 @@ actor ClipboardIngestor {
            SecretDetector.looksSecret(text) { return false }
 
         return repository.database.withStorageLock {
-            guard let detected = ClipDetector.detect(snapshot: snapshot, app: policy.appBundleIdentifier) else {
+            guard let detected = ClipDetector.detect(snapshot: snapshot, app: policy.appBundleIdentifier, imageDirectoryURL: imageDirectoryURL) else {
                 return false
             }
             if policy.skipSecretLooking, let text = Self.textBody(of: detected),
                SecretDetector.looksSecret(text) { return false }
             do {
                 try repository.insert(detected)
-                NSLog("[clipboard] ingested type=%@", detected.type.rawValue)
+                NSLog("[clipboard] ingested")
                 return true
             } catch {
                 if detected.type == .image,
                    let image = try? JSONDecoder().decode(ImagePayload.self, from: detected.payload) {
-                    _ = ImageStorage.removeManagedFile(at: image.path)
+                    _ = ImageStorage.removeManagedFile(at: image.path, in: imageDirectoryURL)
                 }
                 DiagnosticLog.failure("clipboard.insert", error: error)
                 return false

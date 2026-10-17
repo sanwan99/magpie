@@ -41,7 +41,7 @@ enum ImageStorage {
     /// Persist pasteboard image bytes as PNG. This is safe to run off the main
     /// thread and is the hot clipboard-ingest path.
     @discardableResult
-    static func save(imageData data: Data) -> SavedImage? {
+    static func save(imageData data: Data, in directory: URL = directoryURL) -> SavedImage? {
         guard let bitmap = NSBitmapImageRep(data: data),
               let pngData = bitmap.representation(using: .png, properties: [:]) else {
             NSLog("[image] save: failed to decode image data")
@@ -49,7 +49,7 @@ enum ImageStorage {
         }
 
         let id = UUID().uuidString
-        let url = directoryURL.appendingPathComponent("\(id).png")
+        let url = directory.appendingPathComponent("\(id).png")
         do {
             try pngData.write(to: url, options: .atomic)
             try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)

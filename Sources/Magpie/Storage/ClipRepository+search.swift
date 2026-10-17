@@ -6,6 +6,7 @@ extension ClipRepository {
     /// Pin always sorts first (per spec §05), then created_at DESC.
     /// Empty query returns recent clips like `recent(limit:)`.
     func search(_ query: SearchQuery, limit: Int = 200) throws -> [ClipRecord] {
+        let limit = max(0, min(limit, 1000))
         if query.isEmpty {
             return try recent(limit: limit)
         }
@@ -80,8 +81,8 @@ extension ClipRepository {
             // lands in v0.3. Implemented now so the parser/UI can carry tag tokens
             // without dropping them on the floor.
             for tag in query.tags {
-                wheres.append("clips.tags LIKE ?")
-                args.append("%\"\(tag)\"%")
+                wheres.append("clips.tags LIKE ? ESCAPE '\\'")
+                args.append(likePattern(for: "\"\(tag)\""))
             }
 
             if !wheres.isEmpty {

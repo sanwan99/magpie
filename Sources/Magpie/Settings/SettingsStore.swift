@@ -470,16 +470,16 @@ struct SettingsText {
     var encryptLocalStore: String { language.pick(zh: "加密本地数据库", en: "Encrypt local store") }
     var encryptionNote: String {
         language.pick(
-            zh: "SQLCipher 集成会在 v1.0 加入。在此之前，数据库位于 `~/Library/Application Support/Magpie/clips.sqlite`，并使用 macOS 当前用户权限保护。",
-            en: "SQLCipher integration coming in v1.0. Until then, the database lives in `~/Library/Application Support/Magpie/clips.sqlite` with macOS user-only file permissions."
+            zh: "当前数据库未加密，位于 ~/Library/Application Support/Magpie/clips.sqlite。同一账户下有权限的进程可能读取；隐私锁不能代替加密。",
+            en: "The database is not encrypted and lives at ~/Library/Application Support/Magpie/clips.sqlite. Authorized processes running as you may read it; the panel lock is not encryption."
         )
     }
     var analytics: String { language.pick(zh: "分析", en: "Analytics") }
     var sendAnalytics: String { language.pick(zh: "发送分析数据", en: "Send analytics") }
     var analyticsNote: String {
         language.pick(
-            zh: "Magpie 按本地优先设计，不会联网上传数据。这个开关永远不会启用。",
-            en: "Magpie is local-only by design. This will never be enabled."
+            zh: "当前应用未实现遥测或云同步。系统翻译可能下载语言包；分享和打开链接由相应系统服务或应用处理。",
+            en: "The app currently has no telemetry or cloud sync. System translation may download language packs; sharing and links use their respective services or apps."
         )
     }
 

@@ -920,8 +920,11 @@ final class ScreenshotCanvasView: NSView, NSTextFieldDelegate {
         }
         if sizeControl != nil {
             let text = effectiveTool == .text || effectiveTool == .sticker
-            for (index, label) in (text ? ["小", "中", "大"] : ["细", "中", "粗"]).enumerated() {
-                sizeControl.setLabel(language == .zhHans ? label : (text ? ["S", "M", "L"] : ["1", "3", "6"])[index], forSegment: index)
+            let sizeLabels = language == .zhHans
+                ? (text ? ["小", "中", "大"] : ["细", "中", "粗"])
+                : (text ? ["S", "M", "L"] : ["1", "3", "6"])
+            for index in sizeLabels.indices {
+                sizeControl.setLabel(sizeLabels[index], forSegment: index)
             }
             let value = effectiveTool == .text ? textSize : effectiveTool == .sticker ? stickerSize : strokeWidth
             let sizes: [CGFloat] = effectiveTool == .text ? [14, 21, 32] : effectiveTool == .sticker ? [24, 40, 64] : [1, 3, 6]

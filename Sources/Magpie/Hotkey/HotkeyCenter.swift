@@ -94,14 +94,13 @@ final class HotkeyCenter {
         pendingDeferredRepair = work
         diagnostics.deferredRepairSchedules += 1
         DispatchQueue.main.asyncAfter(deadline: .now() + deferredRepairDelay, execute: work)
-        NSLog("[hotkey] deferred repair scheduled reason=%@ delay=%.2fs", reason, deferredRepairDelay)
+        NSLog("[hotkey] deferred repair scheduled")
     }
 
     private func repair(reason: String) {
         diagnostics.repairAttempts += 1
         diagnostics.lastReason = reason
-        NSLog("[hotkey] repair begin reason=%@ registered=%d/%d repairs=%d",
-              reason, driver.registeredActions.count, actions.count, diagnostics.repairAttempts)
+        NSLog("[hotkey] repair begin")
 
         if !driver.registeredActions.isEmpty {
             unregister(reason: "\(reason):replaceStaleRegistration")
@@ -122,8 +121,7 @@ final class HotkeyCenter {
             if record(status: registerStatus, operation: "register", reason: reason, action: action) {
                 diagnostics.registerSuccesses += 1
                 diagnostics.registrationFailures.removeValue(forKey: action)
-                NSLog("[hotkey] register ok action=%@ reason=%@ attempts=%d",
-                      action.label, reason, diagnostics.registerAttempts)
+                NSLog("[hotkey] register ok")
             } else {
                 diagnostics.registerFailures += 1
                 diagnostics.registrationFailures[action] = registerStatus
@@ -150,11 +148,7 @@ final class HotkeyCenter {
         diagnostics.keyDownEvents += 1
         diagnostics.lastReason = "keyDown"
         diagnostics.lastAction = action
-        NSLog("[hotkey] keyDown action=%@ events=%d registered=%d/%d",
-              action.label,
-              diagnostics.keyDownEvents,
-              driver.registeredActions.count,
-              actions.count)
+        NSLog("[hotkey] keyDown")
         switch action {
         case .togglePanel:
             onTogglePanel?()
@@ -175,7 +169,7 @@ final class HotkeyCenter {
             let actionText = action.map { " action=\($0.label)" } ?? ""
             let message = "\(operation) failed\(actionText) reason=\(reason) status=\(status)"
             diagnostics.lastError = message
-            NSLog("[hotkey] %@", message)
+            NSLog("[hotkey] registration operation failed status=%d", status)
             return false
         }
         diagnostics.lastError = nil

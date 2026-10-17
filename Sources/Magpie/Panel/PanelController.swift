@@ -116,12 +116,13 @@ final class PanelController {
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(snippet.body, forType: .string)
+        let changeCount = pb.changeCount
         let target = frontmost.savedTarget
         let targetWindow = frontmost.savedWindow
         NSLog("[snippet] paste requested")
         snippetsViewModel.drawerVisible = false
         afterHide = {
-            Paster.paste(into: target, window: targetWindow)
+            Paster.paste(into: target, window: targetWindow, expectedChangeCount: changeCount)
         }
         hide()
     }
@@ -334,11 +335,13 @@ final class PanelController {
         }, completionHandler: { [weak self] in
             // orderOut tears down keyWindow + revokes frontmost focus from the panel.
             // Only after this is it safe to simulate ⌘V into the previously frontmost app.
-            guard self?.visibilityGeneration == hideGeneration else { return }
-            self?.panel.orderOut(nil)
-            Task { @MainActor [weak self] in self?.schedulePreparation() }
-            pendingAfter?()
-            completion?()
+            Task { @MainActor [weak self] in
+                guard self?.visibilityGeneration == hideGeneration else { return }
+                self?.panel.orderOut(nil)
+                self?.schedulePreparation()
+                pendingAfter?()
+                completion?()
+            }
         })
         isVisible = false
     }
@@ -371,17 +374,18 @@ final class PanelController {
         let target = frontmost.savedTarget
         let targetWindow = frontmost.savedWindow
         guard let written = writePasteboard(clip), !written.isEmpty else {
-            NSLog("[paste] clip has no pasteable content (id=%@ type=%@)", clip.id, clip.type.rawValue)
+            NSLog("[paste] clip has no pasteable content")
             return
         }
-        NSLog("[paste] requested type=%@", clip.type.rawValue)
+        NSLog("[paste] requested")
+        let changeCount = NSPasteboard.general.changeCount
 
         // Queue Mode: paste, advance focus, and re-open the panel for the
         // next paste. The panel briefly flashes during the transition; the
         // user's hand stays on ↵ for batch fills.
         let inQueue = viewModel.queueMode
         afterHide = { [weak self, weak viewModel] in
-            Paster.paste(into: target, window: targetWindow) { success in
+            Paster.paste(into: target, window: targetWindow, expectedChangeCount: changeCount) { success in
                 guard success, inQueue else { return }
                 viewModel?.advanceFocusForQueue()
                 self?.show()
@@ -589,15 +593,6 @@ final class PanelController {
             return
         }
         hide()
-    }
-
-    deinit {
-        if let accessibilityObserver {
-            NSWorkspace.shared.notificationCenter.removeObserver(accessibilityObserver)
-        }
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-        }
     }
 
     // MARK: - Content

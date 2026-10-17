@@ -156,9 +156,7 @@ final class ClipboardWatcher {
             guard let imageData = snapshot.imageData, !imageData.isEmpty else {
                 // A reservation only applies to images; wait for the explicit
                 // writer to finish or cancel it.
-                NSLog("[clipboard] count=%d ignored non-image while origin=%@ is pending",
-                      snapshot.changeCount,
-                      String(describing: preparedOrigin))
+                NSLog("[clipboard]")
                 return false
             }
             origin = preparedOrigin

@@ -16,7 +16,7 @@ enum ClipDetector {
 
     /// Detect from a copied pasteboard snapshot. This path is safe to run off
     /// MainActor and is used by `ClipboardIngestor`.
-    static func detect(snapshot: ClipboardSnapshot, app: String?) -> DetectedClip? {
+    static func detect(snapshot: ClipboardSnapshot, app: String?, imageDirectoryURL: URL = ImageStorage.directoryURL) -> DetectedClip? {
         guard !snapshot.isPrivate else { return nil }
         // 1. Real file URL items — Finder ⌘C, drag-and-drop set `.fileURL`
         // explicitly. Plain text paths fall through to string handling.
@@ -31,7 +31,7 @@ enum ClipDetector {
         //    Images go to ImageStorage; the DB only keeps a path reference.
         if let imageData = snapshot.imageData,
            !imageData.isEmpty {
-            return detectFromImageData(imageData, app: app)
+            return detectFromImageData(imageData, app: app, directory: imageDirectoryURL)
         }
 
         // 3. String content
@@ -41,8 +41,8 @@ enum ClipDetector {
         return detectFromString(raw, app: app)
     }
 
-    private static func detectFromImageData(_ data: Data, app: String?) -> DetectedClip? {
-        guard let saved = ImageStorage.save(imageData: data) else { return nil }
+    private static func detectFromImageData(_ data: Data, app: String?, directory: URL) -> DetectedClip? {
+        guard let saved = ImageStorage.save(imageData: data, in: directory) else { return nil }
         return makeImage(saved: saved, app: app)
     }
 

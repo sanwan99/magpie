@@ -1,4 +1,5 @@
 import XCTest
+import GRDB
 @testable import Magpie
 
 final class ClipRepositorySearchTests: XCTestCase {
@@ -129,5 +130,54 @@ final class ClipRepositorySearchTests: XCTestCase {
             searchText: body
         )
         try repo.insert(detected)
+    }
+}
+
+final class RepositoryPerformanceTests: XCTestCase {
+    func testLargeHistoriesRemainBoundedAndSearchable() throws {
+        // Synthetic fixtures only. Times include GRDB/decoding for repository
+        // operations; they are diagnostic measurements, not timing assertions.
+        for count in [1_000, 10_000, 50_000] {
+            let db = Database.makeInMemoryForTests()
+            try db.dbQueue.write { connection in
+                for i in 0..<count {
+                    let body = "entry \(i) " + (i % 97 == 0 ? "needle 客户回访记录" : "ordinary 常规记录")
+                    let payload = try JSONEncoder().encode(TextPayload(body: body))
+                    try connection.execute(sql: "INSERT INTO clips(id,type,app,created_at,title,payload,payload_hash) VALUES(?,'text','com.example.Editor',?,?,?,?)",
+                        arguments: ["\(i)", Double(i), body, payload, ClipRepository.payloadHash(payload)])
+                    try connection.execute(sql: "INSERT INTO clips_fts(clip_id,title,body,tags) VALUES(?,?,?,'')",
+                        arguments: ["\(i)", body, body])
+                    try connection.execute(sql: "UPDATE clips SET fts_rowid=? WHERE id=?", arguments: [connection.lastInsertedRowID, "\(i)"])
+                }
+            }
+            let repository = ClipRepository(database: db)
+            for query in ["", "needle", "回访"] {
+                let started = ProcessInfo.processInfo.systemUptime
+                let rows = try repository.search(SearchQueryParser.parse(query))
+                let ms = (ProcessInfo.processInfo.systemUptime - started) * 1000
+                XCTAssertLessThanOrEqual(rows.count, 200)
+                XCTAssertFalse(rows.isEmpty)
+                print("BENCH history=\(count) queryKind=\(query.isEmpty ? "recent" : query == "needle" ? "ascii" : "cjk") elapsedMS=\(ms)")
+            }
+            XCTAssertEqual(try repository.count(), count)
+        }
+    }
+
+    func testHashDedupPreservesPinNoteAndAppIdentity() throws {
+        let db = Database.makeInMemoryForTests(), body = "duplicate payload"
+        let repository = ClipRepository(database: db)
+        let clip = try XCTUnwrap(ClipDetector.detectFromString(body, app: "app.one"))
+        try repository.insert(clip)
+        let id = try XCTUnwrap(repository.recent().first?.id)
+        try repository.togglePin(clipId: id)
+        try repository.updateNote(clipId: id, note: "preserved")
+        try repository.insert(clip)
+        XCTAssertEqual(try repository.count(), 1)
+        let record = try XCTUnwrap(repository.recent().first)
+        XCTAssertTrue(record.pinned); XCTAssertEqual(record.note, "preserved")
+        try repository.insert(XCTUnwrap(ClipDetector.detectFromString(body, app: "app.two")))
+        XCTAssertEqual(try repository.count(), 2)
+        XCTAssertEqual(try repository.search(SearchQueryParser.parse("duplicate")).count, 2)
+        XCTAssertTrue(try repository.search(SearchQueryParser.parse("duplicate"), limit: -1).isEmpty)
     }
 }

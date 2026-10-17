@@ -129,11 +129,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func handleHotkeyLifecycleNotification(_ notification: Notification) {
         guard let event = HotkeyLifecycleEvent(notificationName: notification.name) else {
-            NSLog("[hotkey] ignored lifecycle notification=%@", notification.name.rawValue)
+            NSLog("[hotkey] ignored lifecycle")
             return
         }
-        NSLog("[hotkey] lifecycle notification=%@ event=%@",
-              notification.name.rawValue, event.rawValue)
+        NSLog("[hotkey] lifecycle")
         hotkeyCenter?.recover(after: event)
     }
 

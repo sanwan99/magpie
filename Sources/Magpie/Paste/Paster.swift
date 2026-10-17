@@ -93,11 +93,13 @@ enum Paster {
 
     /// Fails closed if focus or clipboard ownership changes during activation.
     /// `window` is captured before the panel opens, not after its hide animation.
-    static func paste(into target: NSRunningApplication?, window: AXUIElement? = nil,
+    static func paste(into target: NSRunningApplication?, window: AXUIElement?,
+                      expectedChangeCount: Int,
                       completion: ((Bool) -> Void)? = nil) {
         cancelPendingPaste()
         guard let target, !target.isTerminated, accessibilityTrusted(prompt: true),
-              let expectedWindow = window ?? focusedWindow(of: target.processIdentifier) else {
+              let expectedWindow = window,
+              NSPasteboard.general.changeCount == expectedChangeCount else {
             completion?(false)
             return
         }
@@ -108,7 +110,6 @@ enum Paster {
             return
         }
         let generation = requestID
-        let changeCount = NSPasteboard.general.changeCount
         guard target.activate() else { completion?(false); return }
         pendingPaste = Task { @MainActor in
             do { try await Task.sleep(for: .milliseconds(200)) }
@@ -120,7 +121,7 @@ enum Paster {
                 targetPID: pid,
                 frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier,
                 sameWindow: focused.map { CFEqual($0, expectedWindow) } ?? false,
-                expectedChangeCount: changeCount,
+                expectedChangeCount: expectedChangeCount,
                 actualChangeCount: NSPasteboard.general.changeCount,
                 trusted: accessibilityTrusted(prompt: false)), !Task.isCancelled else {
                 completion?(false)
