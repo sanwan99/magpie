@@ -3,11 +3,10 @@ import Foundation
 
 /// Heuristic dispatcher: NSPasteboard → DetectedClip.
 ///
-/// v0.1 priority order:
+/// Capture priority:
 ///   1. NSURL items (file paths) → folder vs file based on `isDirectory`
-///   2. plain string → URL (http/https) > code (heuristic) > text (default)
-///
-/// v0.3 will add image (NSImage / public.tiff / public.png) and richer file metadata.
+///   2. image bytes → managed PNG
+///   3. plain string → URL (http/https) > code (heuristic) > text (default)
 enum ClipDetector {
     /// Public entry point — inspects pasteboard and produces a clip if anything is recognized.
     @MainActor
@@ -18,6 +17,7 @@ enum ClipDetector {
     /// Detect from a copied pasteboard snapshot. This path is safe to run off
     /// MainActor and is used by `ClipboardIngestor`.
     static func detect(snapshot: ClipboardSnapshot, app: String?) -> DetectedClip? {
+        guard !snapshot.isPrivate else { return nil }
         // 1. Real file URL items — Finder ⌘C, drag-and-drop set `.fileURL`
         // explicitly. Plain text paths fall through to string handling.
         if let first = snapshot.fileURLs.first,

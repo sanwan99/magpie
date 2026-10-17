@@ -13,14 +13,14 @@ settings:
     SWIFT_VERSION: "5.9"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     ENABLE_HARDENED_RUNTIME: YES
-    CODE_SIGN_IDENTITY: "Magpie Local Development"
+    CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
     SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
     GCC_TREAT_WARNINGS_AS_ERRORS: NO
   configs:
     Debug:
-      # XCTest and Xcode's debug dylib need loading in a local certificate build without an Apple Team ID.
+      # CI and source builds do not require a personal signing certificate.
       ENABLE_HARDENED_RUNTIME: NO
 
 packages:

@@ -37,6 +37,7 @@ final class SnippetExpander {
     private var isExpanding = false
 
     func start() {
+        guard globalMonitor == nil, localMonitor == nil else { return }
         let mask: NSEvent.EventTypeMask = .keyDown
 
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] event in
@@ -57,6 +58,7 @@ final class SnippetExpander {
     func stop() {
         if let m = globalMonitor { NSEvent.removeMonitor(m) }
         if let m = localMonitor { NSEvent.removeMonitor(m) }
+        buffer.removeAll()
         globalMonitor = nil
         localMonitor = nil
     }
@@ -64,7 +66,7 @@ final class SnippetExpander {
     // MARK: - Observation
 
     private func observe(event: NSEvent) {
-        if isExpanding { return }
+        if isExpanding || SettingsStore.shared.useTouchID { buffer.removeAll(); return }
 
         let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         // Modifier-bearing events (shortcuts) are not text — reset & ignore.
@@ -98,8 +100,10 @@ final class SnippetExpander {
             buffer.removeAll()
             // Tiny delay so the final trigger character has time to propagate
             // into the receiving app before we start backspacing.
+            guard let target = NSWorkspace.shared.frontmostApplication,
+                  let window = Paster.focusedWindow(of: target.processIdentifier) else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in
-                self?.expand(matched)
+                self?.expand(matched, target: target, window: window)
             }
         }
     }
@@ -116,20 +120,29 @@ final class SnippetExpander {
 
     // MARK: - Expansion
 
-    private func expand(_ snippet: Snippet) {
+    private func expand(_ snippet: Snippet, target: NSRunningApplication, window: AXUIElement) {
+        guard !SettingsStore.shared.useTouchID, !target.isTerminated,
+              NSWorkspace.shared.frontmostApplication?.processIdentifier == target.processIdentifier,
+              let current = Paster.focusedWindow(of: target.processIdentifier), CFEqual(current, window) else { return }
         isExpanding = true
         let len = snippet.shortcut.count
-        NSLog("[snippets] expanding %@ (len=%d) → %d chars", snippet.shortcut, len, snippet.body.count)
+        NSLog("[snippets] expansion requested")
 
-        simulateBackspace(times: len)
+        simulateBackspace(times: len, pid: target.processIdentifier)
 
         // After backspaces propagate, write body and ⌘V.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
             guard let self else { return }
+            guard !SettingsStore.shared.useTouchID, !target.isTerminated,
+                  NSWorkspace.shared.frontmostApplication?.processIdentifier == target.processIdentifier,
+                  let current = Paster.focusedWindow(of: target.processIdentifier), CFEqual(current, window) else {
+                self.isExpanding = false
+                return
+            }
             let pb = NSPasteboard.general
             pb.clearContents()
             pb.setString(snippet.body, forType: .string)
-            self.simulateCmdV()
+            self.simulateCmdV(pid: target.processIdentifier)
             // Re-arm after our keystrokes are done.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) { [weak self] in
                 self?.isExpanding = false
@@ -139,35 +152,35 @@ final class SnippetExpander {
 
     // MARK: - Synthetic keystrokes
 
-    private func simulateBackspace(times: Int) {
+    private func simulateBackspace(times: Int, pid: pid_t) {
         let src = CGEventSource(stateID: .privateState)
         let key: CGKeyCode = 0x33  // Delete (backspace)
         for _ in 0..<times {
-            CGEvent(keyboardEventSource: src, virtualKey: key, keyDown: true)?.post(tap: .cghidEventTap)
-            CGEvent(keyboardEventSource: src, virtualKey: key, keyDown: false)?.post(tap: .cghidEventTap)
+            CGEvent(keyboardEventSource: src, virtualKey: key, keyDown: true)?.postToPid(pid)
+            CGEvent(keyboardEventSource: src, virtualKey: key, keyDown: false)?.postToPid(pid)
         }
     }
 
-    private func simulateCmdV() {
+    private func simulateCmdV(pid: pid_t) {
         let src = CGEventSource(stateID: .privateState)
         let cmdKey: CGKeyCode = 0x37
         let vKey: CGKeyCode = 0x09
 
         if let cmdDown = CGEvent(keyboardEventSource: src, virtualKey: cmdKey, keyDown: true) {
             cmdDown.flags = .maskCommand
-            cmdDown.post(tap: .cghidEventTap)
+            cmdDown.postToPid(pid)
         }
         if let vDown = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: true) {
             vDown.flags = .maskCommand
-            vDown.post(tap: .cghidEventTap)
+            vDown.postToPid(pid)
         }
         if let vUp = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: false) {
             vUp.flags = .maskCommand
-            vUp.post(tap: .cghidEventTap)
+            vUp.postToPid(pid)
         }
         if let cmdUp = CGEvent(keyboardEventSource: src, virtualKey: cmdKey, keyDown: false) {
             cmdUp.flags = []
-            cmdUp.post(tap: .cghidEventTap)
+            cmdUp.postToPid(pid)
         }
     }
 }

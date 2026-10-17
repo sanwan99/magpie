@@ -1,4 +1,5 @@
 import SwiftUI
+import Carbon
 
 struct ShortcutsPane: View {
     let language: AppLanguage
@@ -6,8 +7,7 @@ struct ShortcutsPane: View {
     private var entries: [Entry] {
         let text = SettingsText(language: language)
         return [
-            .init(keys: ["⌘", "P"],          action: text.shortcutShowHidePanel,      scope: text.scopeGlobal),
-            .init(keys: ["⌘", "J"],          action: text.shortcutCaptureScreenshot, scope: text.scopeGlobal),
+
             .init(keys: ["⌘", ","],          action: text.shortcutOpenSettings,       scope: text.scopeGlobal),
             .init(keys: ["↵"],               action: text.shortcutPasteFocused,       scope: text.scopePanel),
             .init(keys: ["⌘", "1"],          action: text.shortcutQuickPaste,         scope: text.scopePanel),
@@ -40,6 +40,10 @@ struct ShortcutsPane: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
+                GlobalShortcutEditor(action: .togglePanel, language: language)
+                GlobalShortcutEditor(action: .captureScreenshot, language: language)
+                Text(language.pick(zh: "请选择字母或数字及修饰键。占用冲突会拒绝保存；部分系统快捷键需在系统设置中检查。", en: "Choose a letter or digit and modifiers. Registration conflicts are rejected; check System Settings for reserved shortcuts."))
+                    .font(.caption).foregroundStyle(.secondary).padding(.vertical, 8)
                 ForEach(entries) { entry in
                     Row(entry: entry)
                     Divider().opacity(0.3)
@@ -89,6 +93,67 @@ struct ShortcutsPane: View {
                     .frame(width: 56, alignment: .trailing)
             }
             .padding(.vertical, 6)
+        }
+    }
+}
+
+@MainActor
+private struct GlobalShortcutEditor: View {
+    let action: GlobalHotkeyAction
+    let language: AppLanguage
+    @State private var keyCode: UInt32 = 35
+    @State private var command = true
+    @State private var control = false
+    @State private var option = false
+    @State private var shift = false
+    @State private var message = ""
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(action == .togglePanel ? SettingsText(language: language).shortcutShowHidePanel
+                 : SettingsText(language: language).shortcutCaptureScreenshot).font(.headline)
+            HStack {
+                Picker("Key", selection: $keyCode) {
+                    ForEach(HotkeyBinding.letters.keys.sorted(), id: \.self) { code in
+                        Text(HotkeyBinding.letters[code] ?? "?").tag(code)
+                    }
+                }.frame(width: 85)
+                Toggle("⌘", isOn: $command)
+                Toggle("⌃", isOn: $control)
+                Toggle("⌥", isOn: $option)
+                Toggle("⇧", isOn: $shift)
+                Button(language.pick(zh: "保存", en: "Save")) { save() }
+                Button(language.pick(zh: "默认", en: "Default")) {
+                    restore(HotkeyBinding(keyCode: action.keyCode, modifiers: action.modifiers)); save()
+                }
+            }
+            if !message.isEmpty { Text(message).font(.caption).foregroundStyle(.secondary) }
+        }
+        .padding(.vertical, 8)
+        .onAppear {
+            restore(HotkeyCenter.current?.binding(for: action)
+                    ?? HotkeyBinding(keyCode: action.keyCode, modifiers: action.modifiers))
+            if HotkeyCenter.current?.diagnosticsSnapshot.registrationFailures[action] != nil {
+                message = language.pick(zh: "当前热键注册失败，请更换组合。", en: "Registration failed. Choose another shortcut.")
+            }
+        }
+    }
+
+    private func restore(_ binding: HotkeyBinding) {
+        keyCode = binding.keyCode
+        command = binding.modifiers & UInt32(cmdKey) != 0
+        control = binding.modifiers & UInt32(controlKey) != 0
+        option = binding.modifiers & UInt32(optionKey) != 0
+        shift = binding.modifiers & UInt32(shiftKey) != 0
+    }
+    private func save() {
+        let modifiers = (command ? UInt32(cmdKey) : 0) | (control ? UInt32(controlKey) : 0)
+            | (option ? UInt32(optionKey) : 0) | (shift ? UInt32(shiftKey) : 0)
+        let binding = HotkeyBinding(keyCode: keyCode, modifiers: modifiers)
+        if HotkeyCenter.current?.setBinding(binding, for: action) == true {
+            message = language.pick(zh: "已保存：", en: "Saved: ") + binding.displayName
+        } else {
+            message = language.pick(zh: "组合无效或已被占用，原快捷键保持不变。", en: "Invalid or unavailable shortcut. The previous binding is unchanged.")
         }
     }
 }

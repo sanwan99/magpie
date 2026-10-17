@@ -17,7 +17,9 @@ final class PanelController {
     private var afterHide: (() -> Void)?
     private var noteEditorActive = false
     private var searchFieldActive = false
-    private var settingsObservationTask: Task<Void, Never>?
+    private var authenticationTask: Task<Void, Never>?
+    private var privacyObservers: [(NotificationCenter, NSObjectProtocol)] = []
+    private var visibilityGeneration = 0
     private var preparationTask: Task<Void, Never>?
     private weak var materialView: PanelMaterialView?
     private var accessibilityObserver: NSObjectProtocol?
@@ -42,6 +44,20 @@ final class PanelController {
         applyVibrancy()
         wireKeyboard()
         observeSettings()
+        let clearToken = NotificationCenter.default.addObserver(forName: .magpieHistoryCleared, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                self?.viewModel.refresh()
+                ExpandedPreviewWindowController.shared.close()
+            }
+        }
+        privacyObservers.append((NotificationCenter.default, clearToken))
+        let workspace = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification,
+                     NSWorkspace.sessionDidResignActiveNotification, NSWorkspace.sessionDidBecomeActiveNotification] {
+            observePrivacyLock(in: workspace, name: name)
+        }
+        observePrivacyLock(in: DistributedNotificationCenter.default(),
+                           name: Notification.Name("com.apple.screenIsLocked"))
         observePreviewContent()
         accessibilityObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
@@ -62,6 +78,36 @@ final class PanelController {
         }
     }
 
+    private func observePrivacyLock(in center: NotificationCenter, name: Notification.Name) {
+        let token = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.lockPrivacy() }
+        }
+        privacyObservers.append((center, token))
+    }
+
+    private func lockPrivacy() {
+        biometric.relock()
+        authenticationTask?.cancel()
+        authenticationTask = nil
+        visibilityGeneration += 1
+        afterHide = nil
+        Paster.cancelPendingPaste()
+        if settings.useTouchID {
+            panel.orderOut(nil)
+            isVisible = false
+            ExpandedPreviewWindowController.shared.close()
+            SnippetEditorWindowController.shared.close()
+        }
+    }
+
+    deinit {
+        for (center, token) in privacyObservers { center.removeObserver(token) }
+        authenticationTask?.cancel()
+        preparationTask?.cancel()
+        if let accessibilityObserver { NSWorkspace.shared.notificationCenter.removeObserver(accessibilityObserver) }
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+    }
+
     // MARK: - Snippets paste flow
 
     /// Paste a snippet's body into the previously frontmost app.
@@ -71,10 +117,11 @@ final class PanelController {
         pb.clearContents()
         pb.setString(snippet.body, forType: .string)
         let target = frontmost.savedTarget
-        NSLog("[snippet] pasting %d chars into %@", snippet.body.count, target?.bundleIdentifier ?? "?")
+        let targetWindow = frontmost.savedWindow
+        NSLog("[snippet] paste requested")
         snippetsViewModel.drawerVisible = false
         afterHide = {
-            Paster.paste(into: target)
+            Paster.paste(into: target, window: targetWindow)
         }
         hide()
     }
@@ -116,8 +163,10 @@ final class PanelController {
                 _ = store.panelSurface
                 _ = store.vibrancy
                 _ = store.panelOpacity
+                _ = store.useTouchID
             } onChange: { [weak self] in
                 Task { @MainActor in
+                    self?.lockPrivacy()
                     self?.applyAppearance()
                     self?.applyVibrancy()
                     self?.applyOpacity()
@@ -199,18 +248,24 @@ final class PanelController {
         if isVisible, panel.isVisible, panel.isKeyWindow, NSApp.isActive {
             hide()
         } else {
-            // Auth gate is async (Touch ID may prompt); wrap in Task.
-            // Default biometric path (no useTouchID, or already unlocked) is
-            // synchronous-fast — Task overhead is negligible.
-            Task { @MainActor in
-                let ok = await biometric.authenticateIfNeeded(reason: "Unlock Magpie clipboard")
-                guard ok else { return }
-                show()
-            }
+            show()
         }
     }
 
+    /// Every entry point (menu, screenshot restore, queue) uses the same gate.
     func show() {
+        guard authenticationTask == nil else { return }
+        authenticationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.authenticationTask = nil }
+            let ok = await self.biometric.authenticateIfNeeded(reason: "Unlock Magpie clipboard")
+            guard ok, !Task.isCancelled else { return }
+            self.showAuthenticated()
+        }
+    }
+
+    private func showAuthenticated() {
+        visibilityGeneration += 1
         let started = ProcessInfo.processInfo.systemUptime
         let signpost = OSSignpostID(log: Self.performanceLog)
         os_signpost(.begin, log: Self.performanceLog, name: "PanelShow", signpostID: signpost)
@@ -248,6 +303,11 @@ final class PanelController {
     }
 
     func hide(completion: (() -> Void)? = nil) {
+        biometric.relock()
+        authenticationTask?.cancel()
+        authenticationTask = nil
+        visibilityGeneration += 1
+        let hideGeneration = visibilityGeneration
         guard isVisible else {
             // Even if we weren't visible, run any pending after-hide hook so
             // paste flows can't get stranded.
@@ -274,6 +334,7 @@ final class PanelController {
         }, completionHandler: { [weak self] in
             // orderOut tears down keyWindow + revokes frontmost focus from the panel.
             // Only after this is it safe to simulate ⌘V into the previously frontmost app.
+            guard self?.visibilityGeneration == hideGeneration else { return }
             self?.panel.orderOut(nil)
             Task { @MainActor [weak self] in self?.schedulePreparation() }
             pendingAfter?()
@@ -308,24 +369,22 @@ final class PanelController {
         writePasteboard: @MainActor (ClipDisplayItem) -> String?
     ) {
         let target = frontmost.savedTarget
+        let targetWindow = frontmost.savedWindow
         guard let written = writePasteboard(clip), !written.isEmpty else {
             NSLog("[paste] clip has no pasteable content (id=%@ type=%@)", clip.id, clip.type.rawValue)
             return
         }
-        NSLog("[paste] writing %d chars (type=%@) into pasteboard, target=%@",
-              written.count, clip.type.rawValue, target?.bundleIdentifier ?? "?")
+        NSLog("[paste] requested type=%@", clip.type.rawValue)
 
         // Queue Mode: paste, advance focus, and re-open the panel for the
         // next paste. The panel briefly flashes during the transition; the
         // user's hand stays on ↵ for batch fills.
         let inQueue = viewModel.queueMode
         afterHide = { [weak self, weak viewModel] in
-            Paster.paste(into: target)
-            if inQueue {
+            Paster.paste(into: target, window: targetWindow) { success in
+                guard success, inQueue else { return }
                 viewModel?.advanceFocusForQueue()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
-                    self?.show()
-                }
+                self?.show()
             }
         }
         hide()

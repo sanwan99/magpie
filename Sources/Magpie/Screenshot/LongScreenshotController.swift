@@ -141,6 +141,8 @@ final class LongScreenshotController: NSObject {
         finished = true; task?.cancel(); exportTask?.cancel(); keys = nil
         panel?.orderOut(nil); panel?.close(); panel = nil
         regionPanel?.orderOut(nil); regionPanel?.close(); regionPanel = nil
+        preview?.image = nil; preview = nil; label = nil; pauseButton = nil
+        stitcher = nil; task = nil; exportTask = nil
         completion(result)
     }
 }

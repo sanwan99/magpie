@@ -8,7 +8,7 @@ import AppKit
 /// - **NSMenu 而非 popover**：左键单击直接弹菜单是最低惊讶；不做"左键召面板
 ///   右键弹菜单"那种 split 行为，避免新用户找不到设置入口。
 @MainActor
-final class StatusItemController: NSObject {
+final class StatusItemController: NSObject, NSMenuDelegate {
     private let statusItem: NSStatusItem
     private weak var panelController: PanelController?
     private let onCaptureScreenshot: () -> Void
@@ -35,13 +35,14 @@ final class StatusItemController: NSObject {
         let primary = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Magpie")
         button.image = primary ?? NSImage(systemSymbolName: "scissors", accessibilityDescription: "Magpie")
         button.image?.isTemplate = true  // 跟随系统暗 / 亮主题反色
-        button.toolTip = "Magpie · 剪切板管理器（⌘P 面板 · ⌘J 截图）"
+        button.toolTip = "Magpie · 剪切板管理器"
     }
 
     // MARK: - Menu
 
     private func configureMenu() {
         let menu = NSMenu()
+        menu.delegate = self
 
         let show = NSMenuItem(title: "显示面板", action: #selector(togglePanel), keyEquivalent: "p")
         show.target = self
@@ -80,6 +81,15 @@ final class StatusItemController: NSObject {
         menu.addItem(quit)
 
         statusItem.menu = menu
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        guard let center = HotkeyCenter.current else { return }
+        for (index, action) in [GlobalHotkeyAction.togglePanel, .captureScreenshot].enumerated() {
+            let binding = center.binding(for: action)
+            menu.items[index].keyEquivalent = HotkeyBinding.letters[binding.keyCode]?.lowercased() ?? ""
+            menu.items[index].keyEquivalentModifierMask = binding.cocoaModifiers
+        }
     }
 
     // MARK: - Actions

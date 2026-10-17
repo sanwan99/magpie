@@ -174,7 +174,7 @@ final class SettingsStore {
 
     // MARK: - Privacy (v0.3-c)
 
-    /// Require Touch ID on first panel show after launch.
+    /// Require system authentication each time the hidden panel is opened.
     var useTouchID: Bool = false {
         didSet { defaults.set(useTouchID, forKey: Keys.touchID) }
     }
@@ -445,25 +445,25 @@ struct SettingsText {
     var clear: String { language.pick(zh: "清空", en: "Clear") }
     var clearAllClipsMessage: String {
         language.pick(
-            zh: "这会永久删除所有剪切板记录（包括已固定和未固定）以及本地图片缓存。此操作无法撤销。",
-            en: "This permanently deletes all clips (pinned and unpinned) and the on-disk image cache. Cannot be undone."
+            zh: "删除所有历史记录（包括置顶）、搜索索引及管理的图片缓存。保留 Snippets 和设置；不会清除系统剪贴板或备份。这是逻辑删除，并非磁盘安全擦除。",
+            en: "Deletes history, pins, search index and managed images. Keeps snippets and settings; does not clear the system clipboard or backups. This is logical deletion, not secure erasure."
         )
     }
 
     var authentication: String { language.pick(zh: "认证", en: "Authentication") }
-    var requireTouchID: String { language.pick(zh: "需要 Touch ID 解锁", en: "Require Touch ID to unlock") }
+    var requireTouchID: String { language.pick(zh: "需要系统认证解锁", en: "Require authentication to unlock") }
     var touchIDNote: String {
         language.pick(
-            zh: "启用后，每次启动 App 后首次呼出面板时，Magpie 会要求 Touch ID。解锁后本次会话内保持可用。",
-            en: "When enabled, Magpie prompts for Touch ID the first time you summon the panel after launching the app. Once unlocked, stays unlocked for the session."
+            zh: "启用后，每次重新打开面板都需 Touch ID 或系统账户密码。隐藏面板、锁屏、休眠或切换用户后重新锁定；这不加密本地数据。",
+            en: "Each panel opening requires Touch ID or your macOS account password. Hiding, locking, sleeping or switching users relocks it. This does not encrypt stored data."
         )
     }
     var filters: String { language.pick(zh: "过滤", en: "Filters") }
     var skipSecret: String { language.pick(zh: "跳过疑似密钥内容（API key、token、OTP）", en: "Skip secret-looking content (API keys, tokens, OTP)") }
     var skipSecretNote: String {
         language.pick(
-            zh: "会识别形如 `api_key=...`、`Bearer ...`、GitHub token、AWS access key、JWT 和 6 位 OTP 的内容，并避免存储。",
-            en: "Detects strings shaped like `api_key=...`, `Bearer ...`, GitHub tokens, AWS access keys, JWTs, and 6-digit OTP codes — they will not be stored."
+            zh: "始终尊重 Concealed / Transient 隐私标记。可选启发式过滤尝试识别 API key、Token、JWT 和验证码；可能漏判或误判，不能识别图片里的秘密。",
+            en: "Concealed / Transient markers are always respected. Optional heuristics detect common credentials and contextual OTPs, with false positives and false negatives. Images are not secret-scanned."
         )
     }
     var encryption: String { language.pick(zh: "加密", en: "Encryption") }

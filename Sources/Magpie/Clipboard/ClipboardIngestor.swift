@@ -44,38 +44,31 @@ actor ClipboardIngestor {
 
     /// Returns true when storage changed and the UI should refresh.
     func ingest(snapshot: ClipboardSnapshot, policy: ClipboardIngestPolicy) -> Bool {
-        if let app = policy.appBundleIdentifier,
-           policy.ignoredApps.contains(app) {
-            NSLog("[clipboard] count=%d skipped (ignored app: %@)",
-                  snapshot.changeCount, app)
-            return false
-        }
+        guard !snapshot.isPrivate else { return false }
+        if let app = policy.appBundleIdentifier, policy.ignoredApps.contains(app) { return false }
+        // Check the string before image detection can persist a file. Mixed
+        // image/text pasteboards must not bypass the secret filter.
+        if policy.skipSecretLooking, let text = snapshot.string,
+           SecretDetector.looksSecret(text) { return false }
 
-        guard let detected = ClipDetector.detect(snapshot: snapshot, app: policy.appBundleIdentifier) else {
-            NSLog("[clipboard] count=%d skipped types=[%@]",
-                  snapshot.changeCount, snapshot.typesDescription)
-            return false
-        }
-
-        if policy.skipSecretLooking,
-           let text = Self.textBody(of: detected),
-           SecretDetector.looksSecret(text) {
-            NSLog("[clipboard] count=%d skipped (looks like secret)", snapshot.changeCount)
-            return false
-        }
-
-        do {
-            try repository.insert(detected)
-            let titlePreview = detected.title?.prefix(60).replacingOccurrences(of: "\n", with: "↵") ?? ""
-            NSLog("[clipboard] count=%d type=%@ from=%@ title=\"%@\" ingested",
-                  snapshot.changeCount,
-                  detected.type.rawValue,
-                  detected.app ?? "?",
-                  String(titlePreview))
-            return true
-        } catch {
-            NSLog("[clipboard] insert failed: %@", "\(error)")
-            return false
+        return repository.database.withStorageLock {
+            guard let detected = ClipDetector.detect(snapshot: snapshot, app: policy.appBundleIdentifier) else {
+                return false
+            }
+            if policy.skipSecretLooking, let text = Self.textBody(of: detected),
+               SecretDetector.looksSecret(text) { return false }
+            do {
+                try repository.insert(detected)
+                NSLog("[clipboard] ingested type=%@", detected.type.rawValue)
+                return true
+            } catch {
+                if detected.type == .image,
+                   let image = try? JSONDecoder().decode(ImagePayload.self, from: detected.payload) {
+                    _ = ImageStorage.removeManagedFile(at: image.path)
+                }
+                DiagnosticLog.failure("clipboard.insert", error: error)
+                return false
+            }
         }
     }
 

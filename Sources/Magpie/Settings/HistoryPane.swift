@@ -3,6 +3,8 @@ import SwiftUI
 struct HistoryPane: View {
     @Bindable var store: SettingsStore
     @State private var showClearAlert = false
+    @State private var clearing = false
+    @State private var clearFailed = false
     @State private var newAppId: String = ""
 
     var body: some View {
@@ -69,6 +71,10 @@ struct HistoryPane: View {
             }
 
             Section(text.dangerZone) {
+                if clearFailed {
+                    Text(store.language.pick(zh: "清理未完全完成，请检查磁盘权限后重试。", en: "Cleanup was incomplete. Check disk permissions and retry."))
+                        .foregroundStyle(.red)
+                }
                 Button(role: .destructive) {
                     showClearAlert = true
                 } label: {
@@ -77,10 +83,17 @@ struct HistoryPane: View {
                         Text(text.clearAllClips)
                     }
                 }
+                .disabled(clearing)
                 .alert(text.clearAllClipsQuestion, isPresented: $showClearAlert) {
                     Button(text.cancel, role: .cancel) {}
                     Button(text.clear, role: .destructive) {
-                        HistoryReaper().clearAll()
+                        clearing = true
+                        Task { @MainActor in
+                            let success = await HistoryReaper().clearAllInBackground()
+                            clearing = false
+                            clearFailed = !success
+                            NotificationCenter.default.post(name: .magpieHistoryCleared, object: nil)
+                        }
                     }
                 } message: {
                     Text(text.clearAllClipsMessage)
@@ -89,4 +102,8 @@ struct HistoryPane: View {
         }
         .formStyle(.grouped)
     }
+}
+
+extension Notification.Name {
+    static let magpieHistoryCleared = Notification.Name("magpie.historyCleared")
 }

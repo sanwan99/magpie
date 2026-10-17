@@ -27,7 +27,7 @@ final class SnippetsViewModel {
         do {
             snippets = try repository.all()
         } catch {
-            NSLog("[snippets] refresh failed: %@", "\(error)")
+            DiagnosticLog.failure("snippets.refresh", error: error)
         }
     }
 
@@ -51,7 +51,7 @@ final class SnippetsViewModel {
             try repository.upsert(snippet)
             refresh()
         } catch {
-            NSLog("[snippets] upsert failed: %@", "\(error)")
+            DiagnosticLog.failure("snippets.upsert", error: error)
         }
     }
 
@@ -60,7 +60,7 @@ final class SnippetsViewModel {
             try repository.delete(id: id)
             refresh()
         } catch {
-            NSLog("[snippets] delete failed: %@", "\(error)")
+            DiagnosticLog.failure("snippets.delete", error: error)
         }
     }
 

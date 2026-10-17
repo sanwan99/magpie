@@ -254,16 +254,19 @@ final class ClipsViewModel {
         let previousItems = clips
 
         refreshTask = Task { [weak self] in
-            let result = await Task.detached(priority: .userInitiated) {
+            let worker = Task.detached(priority: .userInitiated) {
                 do {
+                    try Task.checkCancellation()
                     let records = try repository.search(query, limit: limit)
+                    try Task.checkCancellation()
                     let items = records.compactMap { ClipDisplayItem(record: $0) }
                     let total = (try? repository.count()) ?? items.count
                     return Result<([ClipDisplayItem], Int, Bool), Error>.success((items, total, items != previousItems))
                 } catch {
                     return Result<([ClipDisplayItem], Int, Bool), Error>.failure(error)
                 }
-            }.value
+            }
+            let result = await withTaskCancellationHandler { await worker.value } onCancel: { worker.cancel() }
 
             guard !Task.isCancelled, let self else { return }
 
@@ -281,13 +284,14 @@ final class ClipsViewModel {
                     self.focusedIndex = 0
                 }
             case .failure(let error):
-                NSLog("[ui] refresh failed: %@", "\(error)")
+                DiagnosticLog.failure("ui.refresh", error: error)
             }
         }
     }
 
     private func scheduleDebouncedApply() {
         debounceTask?.cancel()
+        refreshTask?.cancel() // Do not publish old results during the debounce window.
         debounceTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: self?.debounceInterval ?? .milliseconds(100))
             guard !Task.isCancelled, let self else { return }
@@ -329,7 +333,7 @@ final class ClipsViewModel {
             case .success:
                 self.refresh(preferredFocusID: targetId, preserveFocus: true)
             case .failure(let error):
-                NSLog("[ui] togglePin failed: %@", "\(error)")
+                DiagnosticLog.failure("ui.togglePin", error: error)
             }
         }
     }
@@ -350,7 +354,7 @@ final class ClipsViewModel {
             case .success:
                 self.refresh(preferredFocusID: targetId, preserveFocus: true)
             case .failure(let error):
-                NSLog("[ui] updateNote failed: %@", "\(error)")
+                DiagnosticLog.failure("ui.updateNote", error: error)
             }
         }
     }

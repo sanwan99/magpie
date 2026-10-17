@@ -1,33 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DERIVED_DATA="${MAGPIE_TEST_DERIVED_DATA_PATH:-/private/tmp/magpie-derived}"
-
-# shellcheck source=Scripts/xcode-env.sh
-source "$ROOT/Scripts/xcode-env.sh"
-ensure_magpie_package_cache "$ROOT"
-python3 "$ROOT/Scripts/setup-local-signing.py"
-
-cleanup_app_entries() {
-  local status=$?
-  "$ROOT/Scripts/clean-debug-apps.sh" || {
-    local cleanup_status=$?
-    if [[ "$status" -eq 0 ]]; then
-      status="$cleanup_status"
-    fi
-  }
-  exit "$status"
+OWN_DERIVED=0
+if [[ -n "${MAGPIE_TEST_DERIVED_DATA_PATH:-}" ]]; then
+  DERIVED_DATA="$MAGPIE_TEST_DERIVED_DATA_PATH"
+else
+  DERIVED_DATA="$(mktemp -d "${TMPDIR:-/tmp}/magpie-tests.XXXXXX")"
+  OWN_DERIVED=1
+fi
+cleanup() {
+  if [[ "$OWN_DERIVED" == 1 ]]; then rm -rf -- "$DERIVED_DATA"; fi
 }
-
-trap cleanup_app_entries EXIT
-
-mkdir -p "$DERIVED_DATA"
-
-xcodebuild \
-  -project "$ROOT/Magpie.xcodeproj" \
-  -scheme Magpie \
-  -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath "$DERIVED_DATA" \
-  -clonedSourcePackagesDirPath "$MAGPIE_PACKAGE_CACHE" \
-  test
+trap cleanup EXIT
+RESULT="${MAGPIE_TEST_RESULT_PATH:-$ROOT/.build/Test-$(date +%Y%m%d-%H%M%S).xcresult}"
+mkdir -p "$(dirname "$RESULT")"
+xcodebuild -project "$ROOT/Magpie.xcodeproj" -scheme Magpie \
+  -destination 'platform=macOS' -derivedDataPath "$DERIVED_DATA" \
+  -resultBundlePath "$RESULT" -parallel-testing-enabled NO \
+  CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= test "$@"

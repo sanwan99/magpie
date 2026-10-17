@@ -6,6 +6,7 @@ import AppKit
 /// the corner case where another app launches in the same beat.
 @MainActor
 final class FrontmostTracker {
+    private(set) var savedWindow: AXUIElement?
     private(set) var savedTarget: NSRunningApplication?
 
     func snapshot() {
@@ -16,9 +17,11 @@ final class FrontmostTracker {
             return
         }
         savedTarget = frontmost
+        savedWindow = Paster.focusedWindow(of: frontmost.processIdentifier)
     }
 
     func clear() {
         savedTarget = nil
+        savedWindow = nil
     }
 }

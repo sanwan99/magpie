@@ -240,7 +240,7 @@ final class ScreenshotCoordinator {
     private func reportFailure(_ error: Error, restorePanel: Bool) {
         lastResult = .launchFailed(error.localizedDescription)
         if restorePanel { panel?.show() }
-        NSLog("[screenshot] failed: %@", error.localizedDescription)
+        DiagnosticLog.failure("screenshot", error: error)
         feedback.showLaunchFailure(error.localizedDescription)
     }
 }

@@ -47,18 +47,19 @@ final class HistoryReaper {
         pendingTask?.cancel()
         let database = self.database
         let policy = retentionPolicy()
+        let directory = imageDirectoryURL
         pendingTask = Task {
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }
             await Task.detached(priority: .utility) {
-                Self.applyRetention(database: database, policy: policy)
+                Self.applyRetention(database: database, policy: policy, directory: directory)
             }.value
         }
     }
 
     /// Apply retention immediately.
     func reapNow() {
-        Self.applyRetention(database: database, policy: retentionPolicy())
+        Self.applyRetention(database: database, policy: retentionPolicy(), directory: imageDirectoryURL)
     }
 
     /// Apply retention without blocking MainActor. Used on app launch and from
@@ -67,8 +68,9 @@ final class HistoryReaper {
     func reapInBackground() {
         let database = self.database
         let policy = retentionPolicy()
+        let directory = imageDirectoryURL
         Task.detached(priority: .utility) {
-            Self.applyRetention(database: database, policy: policy)
+            Self.applyRetention(database: database, policy: policy, directory: directory)
         }
     }
 
@@ -79,7 +81,8 @@ final class HistoryReaper {
         )
     }
 
-    nonisolated private static func applyRetention(database: Database, policy: RetentionPolicy) {
+    nonisolated private static func applyRetention(database: Database, policy: RetentionPolicy, directory: URL) {
+        database.withStorageLock {
         do {
             // 先在事务里删数据库行 + 收集要清理的 image 文件路径，事务结束后
             // 再 rm 物理文件（FileManager.removeItem 不放写事务里，避免 IO
@@ -161,10 +164,14 @@ final class HistoryReaper {
             // 事务外清磁盘文件（非关键路径，失败不影响数据完整性）
             var removed = 0
             for path in imageFilesToRemove {
-                if (try? FileManager.default.removeItem(atPath: path)) != nil {
+                if ImageStorage.removeManagedFile(at: path, in: directory) {
                     removed += 1
                 }
             }
+            let referenced = try database.dbQueue.read { db in
+                try Self.fetchImagePaths(db: db, sql: "SELECT payload FROM clips WHERE type = 'image'", arguments: [])
+            }
+            try ImageStorage.removeOrphans(keeping: Set(referenced), in: directory)
             if removed > 0 {
                 NSLog("[history] image cap → 清理 %d 个磁盘文件", removed)
             }
@@ -173,7 +180,8 @@ final class HistoryReaper {
                       missingImageRowsRemoved)
             }
         } catch {
-            NSLog("[history] reap failed: %@", "\(error)")
+            DiagnosticLog.failure("history.reap", error: error)
+        }
         }
     }
 
@@ -231,26 +239,37 @@ final class HistoryReaper {
         """, arguments: [type, type, cap])
     }
 
-    /// Wipe everything — clips + FTS index + on-disk image cache.
-    /// Settings → History → Clear all clips.
-    func clearAll() {
-        do {
-            try database.dbQueue.write { db in
-                try db.execute(sql: "DELETE FROM clips;")
-                try db.execute(sql: "DELETE FROM clips_fts;")
-            }
-            // Clear image cache (no clips → orphaned files).
-            if let urls = try? FileManager.default.contentsOfDirectory(
-                at: imageDirectoryURL,
-                includingPropertiesForKeys: nil
-            ) {
-                for url in urls {
-                    try? FileManager.default.removeItem(at: url)
+    /// Deletes clip history (including pins) and cache, preserving user snippets.
+    /// Logical deletion only: WAL, backups and filesystem snapshots may retain bytes.
+    @discardableResult
+    func clearAll() -> Bool {
+        pendingTask?.cancel()
+        return Self.clearHistory(database: database, directory: imageDirectoryURL)
+    }
+
+    func clearAllInBackground() async -> Bool {
+        pendingTask?.cancel()
+        let database = database, directory = imageDirectoryURL
+        return await Task.detached(priority: .userInitiated) {
+            Self.clearHistory(database: database, directory: directory)
+        }.value
+    }
+
+    nonisolated private static func clearHistory(database: Database, directory: URL) -> Bool {
+        database.withStorageLock {
+            do {
+                try database.dbQueue.write { db in
+                    try db.execute(sql: "DELETE FROM clips;")
+                    // Also remove any legacy or externally created orphan FTS entry.
+                    try db.execute(sql: "DELETE FROM clips_fts;")
                 }
+                try ImageStorage.removeOrphans(keeping: [], in: directory)
+                NSLog("[history] cleared clip history")
+                return true
+            } catch {
+                DiagnosticLog.failure("history.clear", error: error)
+                return false
             }
-            NSLog("[history] cleared all clips + image cache")
-        } catch {
-            NSLog("[history] clearAll failed: %@", "\(error)")
         }
     }
 }

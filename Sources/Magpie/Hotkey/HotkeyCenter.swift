@@ -5,6 +5,9 @@ import Carbon
 /// Esc is handled inside the panel as a local key event, not a global hotkey.
 @MainActor
 final class HotkeyCenter {
+    static weak var current: HotkeyCenter?
+    private let defaults: UserDefaults
+    private var bindings: [GlobalHotkeyAction: HotkeyBinding] = [:]
     private let driver: HotkeyRegistrationDriver
     private let actions: [GlobalHotkeyAction]
     private let deferredRepairDelay: TimeInterval?
@@ -16,11 +19,20 @@ final class HotkeyCenter {
 
     init(driver: HotkeyRegistrationDriver = CarbonHotkeyRegistration(),
          actions: [GlobalHotkeyAction] = GlobalHotkeyAction.allCases,
-         deferredRepairDelay: TimeInterval? = 0.75) {
+         deferredRepairDelay: TimeInterval? = 0.75,
+         defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        for action in actions {
+            if let data = defaults.data(forKey: "magpie.hotkey.\(action.rawValue)"),
+               let binding = try? JSONDecoder().decode(HotkeyBinding.self, from: data), binding.isValid {
+                bindings[action] = binding
+            }
+        }
         self.driver = driver
         self.actions = actions
         self.deferredRepairDelay = deferredRepairDelay
         repair(reason: "launch")
+        Self.current = self
     }
 
     deinit {
@@ -29,6 +41,29 @@ final class HotkeyCenter {
 
     var diagnosticsSnapshot: HotkeyDiagnostics {
         diagnostics
+    }
+
+    func binding(for action: GlobalHotkeyAction) -> HotkeyBinding {
+        bindings[action] ?? HotkeyBinding(keyCode: action.keyCode, modifiers: action.modifiers)
+    }
+
+    /// Validate both application duplicates and Carbon-reported conflicts.
+    /// Failed registration rolls back and leaves the persisted choice unchanged.
+    func setBinding(_ binding: HotkeyBinding, for action: GlobalHotkeyAction) -> Bool {
+        guard binding.isValid,
+              !actions.contains(where: { $0 != action && self.binding(for: $0) == binding }) else { return false }
+        let previous = bindings
+        pendingDeferredRepair?.cancel()
+        bindings[action] = binding
+        repair(reason: "configuration")
+        guard diagnostics.registered else {
+            bindings = previous
+            repair(reason: "configurationRollback")
+            return false
+        }
+        defaults.set(try? JSONEncoder().encode(binding), forKey: "magpie.hotkey.\(action.rawValue)")
+        NotificationCenter.default.post(name: .magpieHotkeysChanged, object: nil)
+        return true
     }
 
     /// 系统生命周期事件后的热键修复入口。
@@ -81,7 +116,7 @@ final class HotkeyCenter {
 
         for action in actions {
             diagnostics.registerAttempts += 1
-            let registerStatus = driver.register(action: action) { [weak self] action in
+            let registerStatus = driver.register(action: action, binding: binding(for: action)) { [weak self] action in
                 self?.handleKeyDown(action)
             }
             if record(status: registerStatus, operation: "register", reason: reason, action: action) {
@@ -217,6 +252,7 @@ protocol HotkeyRegistrationDriver: AnyObject {
     func reinstallEventHandler() -> OSStatus
     func register(
         action: GlobalHotkeyAction,
+        binding: HotkeyBinding,
         keyDownHandler: @escaping @MainActor (GlobalHotkeyAction) -> Void
     ) -> OSStatus
     func unregisterAll() -> [GlobalHotkeyAction: OSStatus]
@@ -261,6 +297,7 @@ private final class CarbonHotkeyRegistration: HotkeyRegistrationDriver {
 
     func register(
         action: GlobalHotkeyAction,
+        binding: HotkeyBinding,
         keyDownHandler: @escaping @MainActor (GlobalHotkeyAction) -> Void
     ) -> OSStatus {
         self.keyDownHandler = keyDownHandler
@@ -280,8 +317,8 @@ private final class CarbonHotkeyRegistration: HotkeyRegistrationDriver {
             id: action.rawValue
         )
         let status = RegisterEventHotKey(
-            action.keyCode,
-            action.modifiers,
+            binding.keyCode,
+            binding.modifiers,
             hotKeyID,
             GetApplicationEventTarget(),
             0,
@@ -367,4 +404,36 @@ private let magpieHotkeyEventHandler: EventHandlerUPP = { _, event, userData in
         .fromOpaque(userData)
         .takeUnretainedValue()
     return registration.handle(event: event)
+}
+
+struct HotkeyBinding: Codable, Equatable, Sendable {
+    let keyCode: UInt32
+    let modifiers: UInt32
+    static let letters: [UInt32: String] = [
+        0:"A",1:"S",2:"D",3:"F",4:"H",5:"G",6:"Z",7:"X",8:"C",9:"V",11:"B",
+        12:"Q",13:"W",14:"E",15:"R",16:"Y",17:"T",18:"1",19:"2",20:"3",21:"4",22:"6",
+        23:"5",25:"9",26:"7",28:"8",29:"0",31:"O",32:"U",34:"I",35:"P",37:"L",38:"J",40:"K",45:"N",46:"M"
+    ]
+    var isValid: Bool {
+        let allowed = UInt32(cmdKey | controlKey | optionKey | shiftKey)
+        return Self.letters[keyCode] != nil && modifiers & ~allowed == 0
+            && modifiers & UInt32(cmdKey | controlKey | optionKey) != 0
+    }
+    var displayName: String {
+        [(controlKey,"⌃"), (optionKey,"⌥"), (shiftKey,"⇧"), (cmdKey,"⌘")]
+            .filter { modifiers & UInt32($0.0) != 0 }.map { $0.1 }.joined()
+            + (Self.letters[keyCode] ?? "?")
+    }
+    var cocoaModifiers: NSEvent.ModifierFlags {
+        var flags: NSEvent.ModifierFlags = []
+        if modifiers & UInt32(cmdKey) != 0 { flags.insert(.command) }
+        if modifiers & UInt32(controlKey) != 0 { flags.insert(.control) }
+        if modifiers & UInt32(optionKey) != 0 { flags.insert(.option) }
+        if modifiers & UInt32(shiftKey) != 0 { flags.insert(.shift) }
+        return flags
+    }
+}
+
+extension Notification.Name {
+    static let magpieHotkeysChanged = Notification.Name("magpie.hotkeysChanged")
 }

@@ -1,8 +1,7 @@
 import Foundation
 import GRDB
 
-/// CRUD facade over `Database`. v0.1 only needs `insert` and `recent`;
-/// search/Pin/delete land in v0.2.
+/// Transactional persistence of clips and their searchable text.
 struct ClipRepository: Sendable {
     let database: Database
 
@@ -67,6 +66,8 @@ struct ClipRepository: Sendable {
                 detected.title ?? "",
                 detected.searchText
             ])
+            try db.execute(sql: "UPDATE clips SET fts_rowid = ? WHERE id = ?",
+                           arguments: [db.lastInsertedRowID, id])
         }
     }
 
@@ -76,7 +77,7 @@ struct ClipRepository: Sendable {
         try database.dbQueue.read { db in
             try ClipRecord
                 .order(Column("created_at").desc)
-                .limit(limit)
+                .limit(max(0, min(limit, 1000)))
                 .fetchAll(db)
         }
     }

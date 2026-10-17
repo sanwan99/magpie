@@ -1,22 +1,9 @@
 #!/usr/bin/env bash
+# Installs an already signed/notarized public .app. No developer certificate setup.
 set -euo pipefail
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DERIVED_DATA="${MAGPIE_DERIVED_DATA_PATH:-/private/tmp/magpie-derived}"
-RELEASE_APP="$DERIVED_DATA/Build/Products/Release/Magpie.app"
-
-source "$ROOT/Scripts/xcode-env.sh"
-ensure_magpie_package_cache "$ROOT"
-python3 "$ROOT/Scripts/setup-local-signing.py"
-
-xcodebuild \
-  -project "$ROOT/Magpie.xcodeproj" \
-  -scheme Magpie \
-  -configuration Release \
-  -destination 'platform=macOS' \
-  -derivedDataPath "$DERIVED_DATA" \
-  -clonedSourcePackagesDirPath "$MAGPIE_PACKAGE_CACHE" \
-  -disableAutomaticPackageResolution \
-  build
-
-python3 "$ROOT/Scripts/install-app.py" "$RELEASE_APP" "$@"
+if [[ $# -eq 0 ]]; then
+  printf 'Usage: Scripts/install-release.sh /path/to/Magpie.app [--team-id TEAMID]\n' >&2
+  exit 2
+fi
+exec python3 "$ROOT/Scripts/install-app.py" "$@"

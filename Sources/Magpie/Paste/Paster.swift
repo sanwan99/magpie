@@ -6,7 +6,7 @@ import AppKit
 @MainActor
 enum Paster {
     /// Writes the clip's payload to the system pasteboard.
-    /// Returns a brief description of what was written (for log).
+    /// Returns the written value for success checks. Never log this value.
     @discardableResult
     static func writeToPasteboard(_ clip: ClipDisplayItem, plainText: Bool = false) -> String? {
         // `plainText` reserved for ⇧↵ behavior in a future version.
@@ -39,7 +39,7 @@ enum Paster {
             // Path string fallback would be misleading (it's an internal cache path),
             // so omit it.
             guard let nsimg = NSImage(contentsOfFile: path) else {
-                NSLog("[paste] image file missing: %@", path)
+                NSLog("[paste] image unavailable")
                 return nil
             }
             if let tiff = nsimg.tiffRepresentation {
@@ -76,33 +76,67 @@ enum Paster {
     private static func writeFileURLToPasteboard(path: String, pasteboard: NSPasteboard) -> String? {
         let url = URL(fileURLWithPath: path)
         guard pasteboard.writeObjects([url as NSURL]) else {
-            NSLog("[paste] failed to write file URL: %@", path)
+            NSLog("[paste] file write failed")
             return nil
         }
         return path
     }
 
-    /// Activates the target app and posts a ⌘V keystroke. Honors a tiny activation
-    /// delay so the system has time to make the target the key window.
-    static func paste(into target: NSRunningApplication?) {
-        guard let target else {
-            NSLog("[paste] no frontmost target — skipping ⌘V (just wrote pasteboard)")
+    private static var pendingPaste: Task<Void, Never>?
+    private static var requestID = UUID()
+
+    static func cancelPendingPaste() {
+        pendingPaste?.cancel()
+        pendingPaste = nil
+        requestID = UUID()
+    }
+
+    /// Fails closed if focus or clipboard ownership changes during activation.
+    /// `window` is captured before the panel opens, not after its hide animation.
+    static func paste(into target: NSRunningApplication?, window: AXUIElement? = nil,
+                      completion: ((Bool) -> Void)? = nil) {
+        cancelPendingPaste()
+        guard let target, !target.isTerminated, accessibilityTrusted(prompt: true),
+              let expectedWindow = window ?? focusedWindow(of: target.processIdentifier) else {
+            completion?(false)
             return
         }
-        guard accessibilityTrusted(prompt: true) else {
-            NSLog("[paste] Accessibility permission missing — skipping ⌘V (just wrote pasteboard)")
+        let pid = target.processIdentifier
+        let currentPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        guard currentPID == pid || currentPID == ProcessInfo.processInfo.processIdentifier else {
+            completion?(false)
             return
         }
-        let bid = target.bundleIdentifier ?? "?"
-        NSLog("[paste] activating target=%@ active=%d", bid, target.isActive ? 1 : 0)
-        target.activate()
-        // Give Electron/WebView-backed editors such as Typora enough time to
-        // restore the key text view before posting the synthetic paste event.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
-            let frontNow = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?"
-            NSLog("[paste] firing ⌘V (frontmost now=%@)", frontNow)
-            simulateCmdV()
+        let generation = requestID
+        let changeCount = NSPasteboard.general.changeCount
+        guard target.activate() else { completion?(false); return }
+        pendingPaste = Task { @MainActor in
+            do { try await Task.sleep(for: .milliseconds(200)) }
+            catch { completion?(false); return }
+            let focused = focusedWindow(of: pid)
+            guard PasteValidation.maySend(
+                currentRequest: generation == requestID,
+                targetAlive: !target.isTerminated,
+                targetPID: pid,
+                frontmostPID: NSWorkspace.shared.frontmostApplication?.processIdentifier,
+                sameWindow: focused.map { CFEqual($0, expectedWindow) } ?? false,
+                expectedChangeCount: changeCount,
+                actualChangeCount: NSPasteboard.general.changeCount,
+                trusted: accessibilityTrusted(prompt: false)), !Task.isCancelled else {
+                completion?(false)
+                return
+            }
+            simulateCmdV(to: pid)
+            completion?(true)
         }
+    }
+
+    static func focusedWindow(of pid: pid_t) -> AXUIElement? {
+        let application = AXUIElementCreateApplication(pid)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(application, kAXFocusedWindowAttribute as CFString, &value) == .success,
+              let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
+        return (value as! AXUIElement)
     }
 
     private static func accessibilityTrusted(prompt: Bool) -> Bool {
@@ -123,26 +157,36 @@ enum Paster {
     /// taken literally, and we send the explicit ⌘ press/release ourselves —
     /// this makes the sequence robust regardless of what the user is doing
     /// physically at the moment we fire.
-    private static func simulateCmdV() {
+    private static func simulateCmdV(to pid: pid_t) {
         let src = CGEventSource(stateID: .privateState)
         let cmdKey: CGKeyCode = 0x37  // Left Command
         let vKey: CGKeyCode = 0x09    // ANSI V
 
         if let cmdDown = CGEvent(keyboardEventSource: src, virtualKey: cmdKey, keyDown: true) {
             cmdDown.flags = .maskCommand
-            cmdDown.post(tap: .cghidEventTap)
+            cmdDown.postToPid(pid)
         }
         if let vDown = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: true) {
             vDown.flags = .maskCommand
-            vDown.post(tap: .cghidEventTap)
+            vDown.postToPid(pid)
         }
         if let vUp = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: false) {
             vUp.flags = .maskCommand
-            vUp.post(tap: .cghidEventTap)
+            vUp.postToPid(pid)
         }
         if let cmdUp = CGEvent(keyboardEventSource: src, virtualKey: cmdKey, keyDown: false) {
             cmdUp.flags = []
-            cmdUp.post(tap: .cghidEventTap)
+            cmdUp.postToPid(pid)
         }
+    }
+}
+
+/// Pure decision boundary, shared by runtime checks and deterministic race tests.
+enum PasteValidation {
+    static func maySend(currentRequest: Bool, targetAlive: Bool, targetPID: pid_t,
+                        frontmostPID: pid_t?, sameWindow: Bool, expectedChangeCount: Int,
+                        actualChangeCount: Int, trusted: Bool) -> Bool {
+        currentRequest && targetAlive && trusted && sameWindow
+            && targetPID == frontmostPID && expectedChangeCount == actualChangeCount
     }
 }

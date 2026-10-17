@@ -7,23 +7,33 @@ final class Database: @unchecked Sendable {
     static let shared = Database()
 
     let dbQueue: DatabaseQueue
+    // Coordinates PNG creation + database commit with retention and clear.
+    // Always acquire before dbQueue; never await while holding this lock.
+    private let storageLock = NSRecursiveLock()
+
+    func withStorageLock<T>(_ work: () throws -> T) rethrows -> T {
+        storageLock.lock()
+        defer { storageLock.unlock() }
+        return try work()
+    }
 
     private init() {
         do {
-            let url = Self.databaseURL()
+            let url = try Self.databaseURL()
             self.dbQueue = try DatabaseQueue(path: url.path)
             try Self.migrate(dbQueue)
-            NSLog("[storage] database ready at %@", url.path)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+            NSLog("[storage] database ready")
         } catch {
             // Bootstrap-time failure — surface immediately rather than degrading silently.
-            fatalError("Magpie database init failed: \(error)")
+            fatalError("Magpie database initialization failed; inspect local storage permissions and disk space.")
         }
     }
 
     /// Test-only initializer that wires up an in-memory queue with the same
     /// migrations as production. Lets unit tests exercise repositories without
     /// touching the user's real database.
-    private init(dbQueue: DatabaseQueue) throws {
+    init(dbQueue: DatabaseQueue) throws {
         self.dbQueue = dbQueue
         try Self.migrate(dbQueue)
     }
@@ -39,17 +49,19 @@ final class Database: @unchecked Sendable {
         }
     }
 
-    private static func databaseURL() -> URL {
+    private static func databaseURL() throws -> URL {
         let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         ).first!
         let dir = appSupport.appendingPathComponent("Magpie", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true,
+                                               attributes: [.posixPermissions: 0o700])
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
         return dir.appendingPathComponent("clips.sqlite")
     }
 
-    private static func migrate(_ queue: DatabaseQueue) throws {
+    static func migrate(_ queue: DatabaseQueue, upTo target: String? = nil) throws {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1_initial") { db in
             try db.execute(sql: """
@@ -68,8 +80,8 @@ final class Database: @unchecked Sendable {
             try db.execute(sql: "CREATE INDEX idx_clips_type        ON clips(type);")
             try db.execute(sql: "CREATE INDEX idx_clips_pinned      ON clips(pinned, created_at DESC);")
 
-            // External-content FTS5 — body is denormalized at insert time.
-            // Cleaner contentless / triggered design lands in v0.2 once UI demands tighter sync.
+            // Contentful FTS5: it owns a second copy of searchable text.
+            // v4 repairs old orphan entries and makes deletion transactional.
             try db.execute(sql: """
                 CREATE VIRTUAL TABLE clips_fts USING fts5(
                     clip_id UNINDEXED,
@@ -99,6 +111,43 @@ final class Database: @unchecked Sendable {
         migrator.registerMigration("v3_clip_notes") { db in
             try db.execute(sql: "ALTER TABLE clips ADD COLUMN note TEXT NOT NULL DEFAULT '';")
         }
-        try migrator.migrate(queue)
+        // Preserve existing FTS body/tags while assigning a durable FTS row ID.
+        // A temporary B-tree makes the upgrade linear/log-linear, not N scans.
+        migrator.registerMigration("v4_fts_cleanup") { db in
+            try db.execute(sql: """
+                ALTER TABLE clips ADD COLUMN fts_rowid INTEGER;
+                CREATE TEMP TABLE magpie_fts_ids AS
+                    SELECT clip_id, MIN(rowid) AS fts_rowid FROM clips_fts GROUP BY clip_id;
+                CREATE INDEX temp.magpie_fts_ids_clip ON magpie_fts_ids(clip_id);
+                UPDATE clips SET fts_rowid = (
+                    SELECT fts_rowid FROM magpie_fts_ids WHERE clip_id = clips.id
+                );
+                DELETE FROM clips_fts WHERE rowid NOT IN (
+                    SELECT fts_rowid FROM clips WHERE fts_rowid IS NOT NULL
+                );
+                DROP TABLE temp.magpie_fts_ids;
+                CREATE UNIQUE INDEX idx_clips_fts_rowid ON clips(fts_rowid);
+                CREATE TRIGGER clips_delete_fts AFTER DELETE ON clips
+                WHEN OLD.fts_rowid IS NOT NULL BEGIN
+                    DELETE FROM clips_fts WHERE rowid = OLD.fts_rowid;
+                END;
+                CREATE TRIGGER clips_delete_legacy_fts AFTER DELETE ON clips
+                WHEN OLD.fts_rowid IS NULL BEGIN
+                    DELETE FROM clips_fts WHERE clip_id = OLD.id;
+                END;
+                """)
+            // Repair rows whose old index entry was missing without changing payloads.
+            let cursor = try ClipRecord.fetchCursor(db, sql: "SELECT * FROM clips WHERE fts_rowid IS NULL")
+            while let record = try cursor.next() {
+                let object = (try? JSONSerialization.jsonObject(with: record.payload)) as? [String: Any]
+                let body = (object?["body"] ?? object?["url"] ?? object?["path"]) as? String ?? record.title ?? ""
+                try db.execute(sql: "INSERT INTO clips_fts(clip_id, title, body, tags) VALUES (?, ?, ?, ?)",
+                               arguments: [record.id, record.title ?? "", body, record.tags])
+                try db.execute(sql: "UPDATE clips SET fts_rowid = ? WHERE id = ?",
+                               arguments: [db.lastInsertedRowID, record.id])
+            }
+        }
+        if let target { try migrator.migrate(queue, upTo: target) }
+        else { try migrator.migrate(queue) }
     }
 }

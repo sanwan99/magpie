@@ -121,7 +121,7 @@ final class HistoryReaperTests: XCTestCase {
         try insertClip(createdAt: Date(), pinned: false)
 
         try withSettings(keepHistoryDays: 0) {
-            HistoryReaper(database: db).reapNow()
+            HistoryReaper(database: db, imageDirectoryURL: imageDirectoryURL).reapNow()
         }
 
         XCTAssertEqual(try clipCount(), 2, "keepHistoryDays=0 means forever — nothing deleted")
@@ -134,7 +134,7 @@ final class HistoryReaperTests: XCTestCase {
         try insertClip(createdAt: now,                                  pinned: false)  // fresh
 
         try withSettings(keepHistoryDays: 30) {
-            HistoryReaper(database: db).reapNow()
+            HistoryReaper(database: db, imageDirectoryURL: imageDirectoryURL).reapNow()
         }
 
         // 40-day-old should be gone; 20-day and fresh should remain.
@@ -147,7 +147,7 @@ final class HistoryReaperTests: XCTestCase {
         try insertClip(createdAt: oldDate, pinned: false)
 
         try withSettings(keepHistoryDays: 7) {
-            HistoryReaper(database: db).reapNow()
+            HistoryReaper(database: db, imageDirectoryURL: imageDirectoryURL).reapNow()
         }
 
         XCTAssertEqual(try clipCount(pinnedOnly: true), 1, "Pinned clip survives")
@@ -161,7 +161,7 @@ final class HistoryReaperTests: XCTestCase {
             try insertClip(createdAt: Date(), pinned: false)
         }
         try withSettings(maxItems: 0) {
-            HistoryReaper(database: db).reapNow()
+            HistoryReaper(database: db, imageDirectoryURL: imageDirectoryURL).reapNow()
         }
         XCTAssertEqual(try clipCount(), 10)
     }
@@ -178,7 +178,7 @@ final class HistoryReaperTests: XCTestCase {
         }
 
         try withSettings(maxItems: 3) {
-            HistoryReaper(database: db).reapNow()
+            HistoryReaper(database: db, imageDirectoryURL: imageDirectoryURL).reapNow()
         }
 
         // Should keep the 3 newest (clip2/3/4).
@@ -203,7 +203,7 @@ final class HistoryReaperTests: XCTestCase {
 
         // Allow only 2 unpinned. Pins always preserved.
         try withSettings(maxItems: 2) {
-            HistoryReaper(database: db).reapNow()
+            HistoryReaper(database: db, imageDirectoryURL: imageDirectoryURL).reapNow()
         }
 
         XCTAssertEqual(try clipCount(pinnedOnly: true), 2, "Both pinned survive")
@@ -220,7 +220,7 @@ final class HistoryReaperTests: XCTestCase {
         try insertImageClip(id: "existing", path: existingImage.path)
         try insertImageClip(id: "missing", path: missingImage.path)
 
-        HistoryReaper(database: db).reapNow()
+        HistoryReaper(database: db, imageDirectoryURL: imageDirectoryURL).reapNow()
 
         let surviving = try db.dbQueue.read { dbConn in
             try String.fetchAll(dbConn, sql: "SELECT id FROM clips ORDER BY id")
@@ -243,5 +243,67 @@ final class HistoryReaperTests: XCTestCase {
 
         XCTAssertEqual(try clipCount(), 0, "clearAll deletes pinned + unpinned")
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedImage.path))
+    }
+}
+
+final class StorageMigrationTests: XCTestCase {
+    func testLegacyUpgradePreservesDataRepairsFTSAndIsRepeatable() throws {
+        let queue = try DatabaseQueue()
+        try Magpie.Database.migrate(queue, upTo: "v3_clip_notes")
+        try queue.write { db in
+            let payload = try JSONEncoder().encode(TextPayload(body: "legacy searchable body"))
+            for id in ["indexed", "missing-index"] {
+                try db.execute(sql: "INSERT INTO clips(id,type,created_at,pinned,tags,title,payload,note) VALUES(?,'text',1,1,'[\"tag\"]','title',?,'kept note')", arguments: [id, payload])
+            }
+            try db.execute(sql: "INSERT INTO clips_fts(clip_id,title,body,tags) VALUES('indexed','title','legacy searchable body','tag'),('orphan','old','deleted secret','')")
+            try db.execute(sql: "INSERT INTO snippets(id,shortcut,title,body,created_at,updated_at) VALUES('s',';s','kept','template',1,1)")
+        }
+        let db = try Magpie.Database(dbQueue: queue)
+        try Magpie.Database.migrate(queue)
+        XCTAssertEqual(try ClipRepository(database: db).count(), 2)
+        let records = try ClipRepository(database: db).search(SearchQueryParser.parse("legacy"))
+        XCTAssertEqual(records.count, 2)
+        XCTAssertTrue(records.allSatisfy { $0.pinned && $0.note == "kept note" && $0.tags == "[\"tag\"]" })
+        try queue.write { db in
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM clips_fts WHERE clips_fts MATCH 'secret'"), 0)
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM snippets"), 1)
+            try db.execute(sql: "DELETE FROM clips WHERE id = 'indexed'")
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM clips_fts"), 1)
+            try db.execute(sql: "DELETE FROM clips")
+            XCTAssertEqual(try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM clips_fts"), 0)
+        }
+    }
+
+    func testFailedTransactionKeepsClipAndIndex() throws {
+        let db = Magpie.Database.makeInMemoryForTests()
+        try ClipRepository(database: db).insert(XCTUnwrap(ClipDetector.detectFromString("rollback", app: nil)))
+        enum Expected: Error { case rollback }
+        XCTAssertThrowsError(try db.dbQueue.write { connection in
+            try connection.execute(sql: "DELETE FROM clips")
+            throw Expected.rollback
+        })
+        XCTAssertEqual(try ClipRepository(database: db).count(), 1)
+        XCTAssertEqual(try ClipRepository(database: db).search(SearchQueryParser.parse("rollback")).count, 1)
+    }
+
+    func testImageCleanupRejectsOutsideFilesSymlinksAndDirectories() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let managed = root.appendingPathComponent("images")
+        try FileManager.default.createDirectory(at: managed, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let outside = root.appendingPathComponent("outside.png")
+        try Data([1]).write(to: outside)
+        let link = managed.appendingPathComponent("link.png")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: outside)
+        let directory = managed.appendingPathComponent("folder.png")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        let owned = managed.appendingPathComponent("owned.png")
+        try Data([2]).write(to: owned)
+        XCTAssertFalse(ImageStorage.removeManagedFile(at: outside.path, in: managed))
+        XCTAssertFalse(ImageStorage.removeManagedFile(at: link.path, in: managed))
+        XCTAssertFalse(ImageStorage.removeManagedFile(at: directory.path, in: managed))
+        try ImageStorage.removeOrphans(keeping: [], in: managed)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outside.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: owned.path))
     }
 }

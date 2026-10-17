@@ -790,6 +790,7 @@ private final class FakeHotkeyRegistrationDriver: HotkeyRegistrationDriver {
     var registerStatuses: [GlobalHotkeyAction: [OSStatus]] = [:]
     var reinstallEventHandlerStatuses: [OSStatus] = []
 
+    private(set) var registeredBindings: [GlobalHotkeyAction: HotkeyBinding] = [:]
     private(set) var registeredActionHistory: [GlobalHotkeyAction] = []
     private(set) var unregisterAllCount = 0
     private(set) var reinstallEventHandlerCount = 0
@@ -805,9 +806,11 @@ private final class FakeHotkeyRegistrationDriver: HotkeyRegistrationDriver {
 
     func register(
         action: GlobalHotkeyAction,
+        binding: HotkeyBinding,
         keyDownHandler: @escaping @MainActor (GlobalHotkeyAction) -> Void
     ) -> OSStatus {
         registeredActionHistory.append(action)
+        registeredBindings[action] = binding
         self.keyDownHandler = keyDownHandler
 
         var statuses = registerStatuses[action] ?? []
@@ -832,5 +835,59 @@ private final class FakeHotkeyRegistrationDriver: HotkeyRegistrationDriver {
     func fireKeyDown(_ action: GlobalHotkeyAction) {
         guard registeredActions.contains(action) else { return }
         keyDownHandler?(action)
+    }
+}
+
+final class PasteValidationTests: XCTestCase {
+    func testOnlyUnchangedTargetWindowAndClipboardCanReceivePaste() {
+        func check(request: Bool = true, alive: Bool = true, pid: pid_t? = 42,
+                   window: Bool = true, count: Int = 10, trusted: Bool = true) -> Bool {
+            PasteValidation.maySend(currentRequest: request, targetAlive: alive, targetPID: 42,
+                frontmostPID: pid, sameWindow: window, expectedChangeCount: 10,
+                actualChangeCount: count, trusted: trusted)
+        }
+        XCTAssertTrue(check())
+        XCTAssertFalse(check(request: false)) // Rapid second paste supersedes first.
+        XCTAssertFalse(check(alive: false))
+        XCTAssertFalse(check(pid: 43))
+        XCTAssertFalse(check(pid: nil))
+        XCTAssertFalse(check(window: false)) // Same app, different document.
+        XCTAssertFalse(check(count: 11))
+        XCTAssertFalse(check(trusted: false))
+    }
+}
+
+@MainActor
+final class CustomHotkeyTests: XCTestCase {
+    func testCustomBindingSurvivesWakeAndRestore() throws {
+        let name = "magpie.hotkey.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let driver = FakeHotkeyRegistrationDriver()
+        let center = HotkeyCenter(driver: driver, deferredRepairDelay: nil, defaults: defaults)
+        let custom = HotkeyBinding(keyCode: 35, modifiers: UInt32(cmdKey | shiftKey))
+        XCTAssertTrue(center.setBinding(custom, for: .togglePanel))
+        center.recover(after: .willSleep)
+        center.recover(after: .didWake)
+        center.recover(after: .activeSpaceDidChange)
+        XCTAssertEqual(driver.registeredBindings[.togglePanel], custom)
+        let restored = HotkeyCenter(driver: FakeHotkeyRegistrationDriver(), deferredRepairDelay: nil, defaults: defaults)
+        XCTAssertEqual(restored.binding(for: .togglePanel), custom)
+    }
+
+    func testDuplicateAndSystemConflictRollBack() throws {
+        let name = "magpie.hotkey.tests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let driver = FakeHotkeyRegistrationDriver()
+        let center = HotkeyCenter(driver: driver, deferredRepairDelay: nil, defaults: defaults)
+        let original = center.binding(for: .togglePanel)
+        XCTAssertFalse(center.setBinding(center.binding(for: .captureScreenshot), for: .togglePanel))
+        XCTAssertFalse(center.setBinding(.init(keyCode: 35, modifiers: 0), for: .togglePanel))
+        driver.registerStatuses[.togglePanel] = [OSStatus(eventHotKeyExistsErr), noErr]
+        XCTAssertFalse(center.setBinding(.init(keyCode: 35, modifiers: UInt32(cmdKey | shiftKey)), for: .togglePanel))
+        XCTAssertEqual(center.binding(for: .togglePanel), original)
+        XCTAssertTrue(center.diagnosticsSnapshot.registered)
+        XCTAssertNil(defaults.data(forKey: "magpie.hotkey.1"))
     }
 }

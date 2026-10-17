@@ -14,8 +14,9 @@ enum ImageStorage {
         ).first!
         let dir = appSupport.appendingPathComponent("Magpie/images", isDirectory: true)
         try? FileManager.default.createDirectory(
-            at: dir, withIntermediateDirectories: true
+            at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700]
         )
+        try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: dir.path)
         return dir
     }()
 
@@ -50,7 +51,8 @@ enum ImageStorage {
         let id = UUID().uuidString
         let url = directoryURL.appendingPathComponent("\(id).png")
         do {
-            try pngData.write(to: url)
+            try pngData.write(to: url, options: .atomic)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
             return SavedImage(
                 path: url.path,
                 width: bitmap.pixelsWide,
@@ -58,8 +60,37 @@ enum ImageStorage {
                 sizeKB: max(1, Int(pngData.count / 1024))
             )
         } catch {
-            NSLog("[image] save failed: %@", "\(error)")
+            try? FileManager.default.removeItem(at: url)
+            DiagnosticLog.failure("image.save", error: error)
             return nil
+        }
+    }
+
+    /// Reject traversal, symlinks, directories, and paths outside our PNG cache.
+    static func isManagedFile(_ url: URL, in directory: URL = directoryURL) -> Bool {
+        let candidate = url.standardizedFileURL
+        guard candidate.deletingLastPathComponent() == directory.standardizedFileURL,
+              candidate.pathExtension.lowercased() == "png",
+              let values = try? candidate.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey]),
+              values.isRegularFile == true, values.isSymbolicLink != true else { return false }
+        return true
+    }
+
+    @discardableResult
+    static func removeManagedFile(at path: String, in directory: URL = directoryURL) -> Bool {
+        let url = URL(fileURLWithPath: path)
+        guard isManagedFile(url, in: directory) else { return false }
+        do { try FileManager.default.removeItem(at: url); return true }
+        catch { DiagnosticLog.failure("image.remove", error: error); return false }
+    }
+
+    /// Caller holds Database.withStorageLock so an in-flight ingest cannot be swept.
+    static func removeOrphans(keeping paths: Set<String>, in directory: URL = directoryURL) throws {
+        guard FileManager.default.fileExists(atPath: directory.path) else { return }
+        for url in try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+            if !paths.contains(url.path), isManagedFile(url, in: directory) {
+                try FileManager.default.removeItem(at: url)
+            }
         }
     }
 
