@@ -123,9 +123,23 @@ guidance for the final distribution container.
 
 Automated Python tests use synthetic bundles and mocked macOS commands; they cover
 validation failures, copy/image failures, checksum integrity, output collisions and
-publication cleanup. **No real signed-app/DMG tool execution has been established by
-those tests.** Record the actual macOS tools, app identity, final checksum and clean-device
-outcomes before treating a DMG as distributable.
+publication cleanup. Those tests do not establish real signed-app/DMG tool behavior.
+
+The separate macOS CI step runs `python3 Scripts/test-package-dmg-native.py`. It creates
+a disposable minimal app with a no-op shell executable, applies temporary ad-hoc signing,
+and calls the production packager with **only** its public-app verification callback
+replaced inside that test process by the installer's local signature verifier. It uses
+real `ditto`, `hdiutil create/verify`, a read-only mount, and checks the mounted app,
+Applications link, SHA-256 and no-overwrite behavior. The volume is detached in `finally`
+and temporary files are removed; the app is never launched and no artifact is published.
+This test requires macOS and is not run by the cross-platform unittest discovery command.
+The production packaging CLI has no ad-hoc bypass option.
+
+**A successful native smoke test validates packaging mechanics only.** It does not prove
+Developer ID identity, Gatekeeper, notarization/stapling, quarantined downloads or real
+installation. Record its actual CI result separately from those release gates. Record the
+real distribution's macOS tools, app identity, final checksum and clean-device outcomes
+before treating a DMG as distributable.
 
 `install-release.sh` verifies a provided app; first public installation requires the
 expected `--team-id` from independently verified release instructions. The release notes

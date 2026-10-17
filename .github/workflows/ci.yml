@@ -25,6 +25,9 @@ jobs:
         run: |
           python3 Scripts/check-privacy-logs.py
           python3 Scripts/check-doc-links.py
+      - name: Native DMG packaging smoke test
+        timeout-minutes: 5
+        run: python3 Scripts/test-package-dmg-native.py
       - name: All XCTest tests
         env:
           MAGPIE_TEST_RESULT_PATH: ${{ runner.temp }}/Magpie.xcresult

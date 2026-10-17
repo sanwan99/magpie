@@ -943,3 +943,17 @@ final class RecordingSettingsPolicyTests: XCTestCase {
         XCTAssertEqual(changes, 3)
     }
 }
+
+@MainActor
+final class PasteNoticeWindowTests: XCTestCase {
+    func testNoticeDoesNotChangeKeyWindowOrActivateApplication() {
+        let keyWindow = NSApp.keyWindow
+        let active = NSApp.isActive
+        defer { PasteFeedback.dismiss() }
+        PasteFeedback.show(.windowChanged)
+        XCTAssertTrue(NSApp.keyWindow === keyWindow)
+        XCTAssertEqual(NSApp.isActive, active)
+        PasteFeedback.dismiss()
+        XCTAssertTrue(NSApp.keyWindow === keyWindow)
+    }
+}
