@@ -25,12 +25,12 @@ jobs:
         run: |
           python3 Scripts/check-privacy-logs.py
           python3 Scripts/check-doc-links.py
-      - name: Release configuration build
-        run: Scripts/build-local.sh
       - name: All XCTest tests
         env:
           MAGPIE_TEST_RESULT_PATH: ${{ runner.temp }}/Magpie.xcresult
         run: Scripts/test.sh
+      - name: Release configuration build
+        run: Scripts/build-local.sh
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

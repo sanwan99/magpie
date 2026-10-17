@@ -156,7 +156,8 @@ final class ClipboardPrivacyTests: XCTestCase {
             XCTAssertFalse(changed)
         }
         XCTAssertEqual(try ClipRepository(database: db).count(), 0)
-        XCTAssertEqual(try db.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips_fts") }, 0)
+        let indexedCount = try await db.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips_fts") }
+        XCTAssertEqual(indexedCount, 0)
     }
 
     func testSecretSnapshotAndIgnoredAppNeverReachDatabaseOrFTS() async throws {
@@ -171,7 +172,8 @@ final class ClipboardPrivacyTests: XCTestCase {
             XCTAssertFalse(changed)
         }
         XCTAssertEqual(try ClipRepository(database: db).count(), 0)
-        XCTAssertEqual(try db.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips_fts") }, 0)
+        let indexedCount = try await db.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips_fts") }
+        XCTAssertEqual(indexedCount, 0)
     }
 
     func testMixedImageSecretAndFailedInsertLeaveNoFiles() async throws {
@@ -184,7 +186,7 @@ final class ClipboardPrivacyTests: XCTestCase {
             colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
         let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
         let ingestor = ClipboardIngestor(repository: ClipRepository(database: db), imageDirectoryURL: directory)
-        try db.dbQueue.write {
+        try await db.dbQueue.write {
             try $0.execute(sql: "CREATE TRIGGER fail_insert BEFORE INSERT ON clips BEGIN SELECT RAISE(ABORT, 'synthetic test failure'); END")
         }
         for text in ["password=synthetic", "ordinary image"] {
@@ -196,7 +198,8 @@ final class ClipboardPrivacyTests: XCTestCase {
             XCTAssertTrue(try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty)
         }
         XCTAssertEqual(try ClipRepository(database: db).count(), 0)
-        XCTAssertEqual(try db.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips_fts") }, 0)
+        let indexedCount = try await db.dbQueue.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM clips_fts") }
+        XCTAssertEqual(indexedCount, 0)
     }
 
     func testClearInvalidatesQueuedSnapshotsButAllowsNewCopies() async throws {
